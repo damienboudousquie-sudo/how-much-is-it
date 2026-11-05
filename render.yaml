@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: how-much-is-it
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build -w web
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.14.0"
