@@ -191,9 +191,13 @@ button { cursor: pointer; }
 .sheet.busy .pp strong { opacity: 0.72; }
 
 .hero {
+  display: block;
   min-height: 148px;
   padding: 18px;
   border-radius: 16px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
   background:
     linear-gradient(90deg, #241824, #1a1622);
   background-size: cover;

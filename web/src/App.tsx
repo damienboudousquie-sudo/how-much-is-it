@@ -39,6 +39,14 @@ interface RecentMap {
 const RECENT_KEY = "osu-pp-lookup:recent";
 let numberLocale = "en-US";
 
+function osuMapUrl(beatmapsetId: number | null, beatmapId: number, mode: Mode): string {
+  const ruleset = mode === "catch" ? "fruits" : mode;
+  if (beatmapsetId != null && beatmapsetId > 0) {
+    return `https://osu.ppy.sh/beatmapsets/${beatmapsetId}#${ruleset}/${beatmapId}`;
+  }
+  return `https://osu.ppy.sh/beatmaps/${beatmapId}`;
+}
+
 function formatPp(value: number): string {
   return value.toLocaleString(numberLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -736,7 +744,14 @@ export function App() {
 
       {route.page === "beatmap" && meta && stats && score && (
         <main className={calculating || loading ? "sheet busy" : "sheet"}>
-          <section className="hero" style={meta.cover ? { backgroundImage: `linear-gradient(90deg, rgba(12,10,16,0.92), rgba(12,10,16,0.55)), url(${meta.cover})` } : undefined}>
+          <a
+            className="hero"
+            href={osuMapUrl(meta.beatmapsetId, meta.beatmapId, meta.mode)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={t.openOnOsu}
+            style={meta.cover ? { backgroundImage: `linear-gradient(90deg, rgba(12,10,16,0.92), rgba(12,10,16,0.55)), url(${meta.cover})` } : undefined}
+          >
             <p className="kicker">
               <span className={`badge status-${meta.status}`}>{t.status[meta.status]}</span>
               <span>{modeLabel(meta.mode)}</span>
@@ -748,7 +763,7 @@ export function App() {
               {meta.version} · {meta.creator}
             </p>
             {profileFor(meta.status, t) && <p className="profile">{profileFor(meta.status, t)}</p>}
-          </section>
+          </a>
 
           {meta.difficulties.length > 1 && (
             <div className="diffs" aria-label={t.difficulties}>
