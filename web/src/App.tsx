@@ -47,6 +47,11 @@ function osuMapUrl(beatmapsetId: number | null, beatmapId: number, mode: Mode): 
   return `https://osu.ppy.sh/beatmaps/${beatmapId}`;
 }
 
+function osuDirectUrl(beatmapsetId: number | null, beatmapId: number): string {
+  if (beatmapsetId != null && beatmapsetId > 0) return `osu://dl/${beatmapsetId}`;
+  return `osu://b/${beatmapId}`;
+}
+
 function formatPp(value: number): string {
   return value.toLocaleString(numberLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -160,7 +165,8 @@ export function App() {
   const accuracyRef = useRef(100);
   const missesRef = useRef(0);
   const comboRef = useRef("");
-  const requestRef = useRef(0);
+  const lookupGen = useRef(0);
+  const calcGen = useRef(0);
   const holdCalc = useRef(false);
 
   const [query, setQuery] = useState("");
@@ -353,21 +359,22 @@ export function App() {
   }
 
   async function recalculate(beatmapId: number, mode: MapMeta["mode"]) {
-    const id = ++requestRef.current;
+    const id = ++calcGen.current;
+    const lookup = lookupGen.current;
     setCalculating(true);
     try {
       const data = await fetchCalculate(playBody(beatmapId, mode));
-      if (id !== requestRef.current) return;
+      if (id !== calcGen.current || lookup !== lookupGen.current) return;
       setStats(data.stats);
       setCurve(data.curve);
       setScore(data.score);
       setWarnings(data.warnings);
       setError(null);
     } catch (caught) {
-      if (id !== requestRef.current) return;
+      if (id !== calcGen.current || lookup !== lookupGen.current) return;
       setError(caught instanceof Error ? caught.message : t.searchFailed);
     } finally {
-      if (id === requestRef.current) setCalculating(false);
+      if (id === calcGen.current) setCalculating(false);
     }
   }
 
@@ -388,7 +395,8 @@ export function App() {
   }
 
   async function openBeatmap(beatmapId: number, beatmapsetId?: number | null) {
-    const id = ++requestRef.current;
+    const id = ++lookupGen.current;
+    calcGen.current += 1;
     holdCalc.current = true;
     setLoading(true);
     setError(null);
@@ -398,13 +406,13 @@ export function App() {
         ...lookupPlay(beatmapId),
         beatmapsetId: setIdOrNothing(beatmapsetId),
       });
-      if (id !== requestRef.current) return;
+      if (id !== lookupGen.current) return;
       applyLookup(data);
     } catch (caught) {
-      if (id !== requestRef.current) return;
+      if (id !== lookupGen.current) return;
       setError(caught instanceof ApiError ? caught.message : t.searchFailed);
     } finally {
-      if (id === requestRef.current) {
+      if (id === lookupGen.current) {
         holdCalc.current = false;
         setLoading(false);
       }
@@ -412,7 +420,8 @@ export function App() {
   }
 
   async function openSet(beatmapsetId: number) {
-    const id = ++requestRef.current;
+    const id = ++lookupGen.current;
+    calcGen.current += 1;
     holdCalc.current = true;
     setLoading(true);
     setError(null);
@@ -422,13 +431,13 @@ export function App() {
         ...lookupPlay(undefined),
         beatmapsetId,
       });
-      if (id !== requestRef.current) return;
+      if (id !== lookupGen.current) return;
       applyLookup(data);
     } catch (caught) {
-      if (id !== requestRef.current) return;
+      if (id !== lookupGen.current) return;
       setError(caught instanceof Error ? caught.message : t.searchFailed);
     } finally {
-      if (id === requestRef.current) {
+      if (id === lookupGen.current) {
         holdCalc.current = false;
         setLoading(false);
       }
@@ -740,30 +749,34 @@ export function App() {
         </p>
       )}
 
-      {route.page === "beatmap" && loading && !meta && <p className="hint">{t.loading}</p>}
+      {route.page === "beatmap" && !error && !(meta && stats && score && meta.beatmapId === route.id) && (
+        <p className="hint">{t.loading}</p>
+      )}
 
-      {route.page === "beatmap" && meta && stats && score && (
+      {route.page === "beatmap" && meta && stats && score && meta.beatmapId === route.id && (
         <main className={calculating || loading ? "sheet busy" : "sheet"}>
-          <a
+          <section
             className="hero"
-            href={osuMapUrl(meta.beatmapsetId, meta.beatmapId, meta.mode)}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={t.openOnOsu}
             style={meta.cover ? { backgroundImage: `linear-gradient(90deg, rgba(12,10,16,0.92), rgba(12,10,16,0.55)), url(${meta.cover})` } : undefined}
           >
-            <p className="kicker">
-              <span className={`badge status-${meta.status}`}>{t.status[meta.status]}</span>
-              <span>{modeLabel(meta.mode)}</span>
-            </p>
-            <h2>
-              {meta.artist} — {meta.title}
-            </h2>
-            <p className="version">
-              {meta.version} · {meta.creator}
-            </p>
-            {profileFor(meta.status, t) && <p className="profile">{profileFor(meta.status, t)}</p>}
-          </a>
+            <a className="hero-hit" href={osuMapUrl(meta.beatmapsetId, meta.beatmapId, meta.mode)} target="_blank" rel="noreferrer" aria-label={t.openOnOsu} />
+            <div className="hero-body">
+              <p className="kicker">
+                <span className={`badge status-${meta.status}`}>{t.status[meta.status]}</span>
+                <span>{modeLabel(meta.mode)}</span>
+              </p>
+              <h2>
+                {meta.artist} — {meta.title}
+              </h2>
+              <p className="version">
+                {meta.version} · {meta.creator}
+              </p>
+              {profileFor(meta.status, t) && <p className="profile">{profileFor(meta.status, t)}</p>}
+              <a className="direct" href={osuDirectUrl(meta.beatmapsetId, meta.beatmapId)}>
+                {t.osuDirect}
+              </a>
+            </div>
+          </section>
 
           {meta.difficulties.length > 1 && (
             <div className="diffs" aria-label={t.difficulties}>

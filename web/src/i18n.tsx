@@ -47,6 +47,7 @@ export type Copy = {
   chipAny: string;
   backToMaps: string;
   openOnOsu: string;
+  osuDirect: string;
   modOff: string;
   modOn: string;
   modAny: string;
@@ -120,6 +121,7 @@ const en: Copy = {
   chipAny: "any",
   backToMaps: "Back to maps",
   openOnOsu: "Open this map on osu!",
+  osuDirect: "osu!direct",
   modOff: "{mod}: excluded",
   modOn: "{mod}: required",
   modAny: "{mod}: with or without",
@@ -210,6 +212,7 @@ const fr: Copy = {
   chipAny: "les deux",
   backToMaps: "Retour aux maps",
   openOnOsu: "Ouvrir cette map sur osu!",
+  osuDirect: "osu!direct",
   modOff: "{mod} : absent",
   modOn: "{mod} : obligatoire",
   modAny: "{mod} : avec ou sans",
@@ -300,6 +303,7 @@ const es: Copy = {
   chipAny: "ambos",
   backToMaps: "Volver a los mapas",
   openOnOsu: "Abrir este mapa en osu!",
+  osuDirect: "osu!direct",
   modOff: "{mod}: ausente",
   modOn: "{mod}: obligatorio",
   modAny: "{mod}: con o sin",
