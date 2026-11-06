@@ -1,10 +1,12 @@
 import {
   FINDER_MODS,
+  DISCOVER_SORTS,
   MAP_STYLES,
   emptyFilters,
   validId,
   type CalculateRequest,
   type DiscoverRequest,
+  type DiscoverSort,
   type FinderMod,
   type LookupRequest,
   type MapStyle,
@@ -139,6 +141,12 @@ export function parseDiscover(body: unknown): DiscoverRequest {
     }
     offset = record.offset;
   }
+  const legacy: Record<string, DiscoverSort> = { pp: "pp-desc", stars: "stars-desc", length: "length-desc" };
+  const raw = record.sort == null ? "pp-desc" : record.sort;
+  const sort = typeof raw === "string" && raw in legacy ? legacy[raw] : raw;
+  if (typeof sort !== "string" || !DISCOVER_SORTS.includes(sort as DiscoverSort)) {
+    throw new AppError("invalid", tr("request.invalid"), 400);
+  }
   return {
     query,
     mode,
@@ -147,6 +155,7 @@ export function parseDiscover(body: unknown): DiscoverRequest {
     ppMin,
     ppMax,
     offset,
+    sort: sort as DiscoverSort,
   };
 }
 

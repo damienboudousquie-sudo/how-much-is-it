@@ -96,6 +96,9 @@ export interface SearchResponse {
 export const MAP_STYLES = ["any", "jump", "stream", "speed", "tech", "alt", "fingercontrol"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
+export const DISCOVER_SORTS = ["pp-desc", "pp-asc", "stars-desc", "stars-asc", "length-desc", "length-asc"] as const;
+export type DiscoverSort = (typeof DISCOVER_SORTS)[number];
+
 export interface HealthResponse {
   ok: true;
   apiKeyConfigured: boolean;
@@ -111,6 +114,7 @@ export interface DiscoverRequest {
   ppMin: number;
   ppMax: number;
   offset: number;
+  sort: DiscoverSort;
 }
 
 export interface DiscoverHit {

@@ -1,9 +1,11 @@
 import {
   STYLE_QUERY,
   classifyStyle,
+  compareDiscover,
   matchingCombos,
   modsInCombo,
   profileNote,
+  styleMatches,
   textMatches,
   type CalculateRequest,
   type CalculateResponse,
@@ -28,7 +30,7 @@ import {
   type RemoteSet,
 } from "./osuApi";
 import { tr } from "./locale";
-import { loadTextMaps, searchPpMaps, type PpDbMap } from "./ppDb";
+import { loadRangeMaps, loadTextMaps, type PpDbMap } from "./ppDb";
 import { calculatePlay } from "./pp";
 
 export async function search(query: string, signal?: AbortSignal): Promise<SearchResponse> {
@@ -109,8 +111,42 @@ export async function calculate(input: CalculateRequest): Promise<CalculateRespo
   };
 }
 
-const PAGE = 100;
-const CAP = 150;
+const PAGE = 200;
+
+function matchesStyle(map: PpDbMap, input: DiscoverRequest, styleIgnored: boolean): boolean {
+  if (styleIgnored || input.style === "any") return true;
+  const style = classifyStyle({
+    tags: map.tags ?? "",
+    version: map.version,
+    bpm: map.bpm,
+    density: map.density,
+    circleRatio: map.circleRatio,
+    stars: map.stars,
+  });
+  return style != null && styleMatches(input.style, style);
+}
+
+async function collectByRange(mods: string, input: DiscoverRequest, styleIgnored: boolean, signal?: AbortSignal) {
+  if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
+  let maps: PpDbMap[];
+  try {
+    maps = await loadRangeMaps({ mode: input.mode, mods, ppMin: input.ppMin, ppMax: input.ppMax });
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
+    return null;
+  }
+  const matched = maps.filter((map) => map.pp >= input.ppMin && map.pp <= input.ppMax && matchesStyle(map, input, styleIgnored));
+  matched.sort((a, b) => compareDiscover(input.sort, a, b));
+  const start = input.offset;
+  const slice = matched.slice(start, start + PAGE);
+  return {
+    hits: slice.map((map) => toHit(map, input)),
+    scanned: maps.length,
+    total: matched.length,
+    nextOffset: start + slice.length,
+    hasMore: start + slice.length < matched.length,
+  };
+}
 
 function inRange(map: PpDbMap, input: DiscoverRequest): boolean {
   return map.pp >= input.ppMin && map.pp <= input.ppMax && textMatches(input.query, [map.title, map.artist, map.creator, map.version]);
@@ -131,7 +167,14 @@ function toHit(map: PpDbMap, input: DiscoverRequest): DiscoverHit {
     pp: map.pp,
     lengthSeconds: map.lengthSeconds,
     mods: modsInCombo(map.mods),
-    style: input.mode === "osu" ? classifyStyle({ tags: `${map.title} ${map.artist}`, version: map.version }) : null,
+    style: input.mode === "osu" ? classifyStyle({
+      tags: map.tags ?? "",
+      version: map.version,
+      bpm: map.bpm,
+      density: map.density,
+      circleRatio: map.circleRatio,
+      stars: map.stars,
+    }) : null,
   };
 }
 
@@ -144,7 +187,7 @@ async function collectByText(mods: string, input: DiscoverRequest, query: string
     if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
     return null;
   }
-  const matched = maps.filter((map) => inRange(map, input)).sort((a, b) => b.pp - a.pp);
+  const matched = maps.filter((map) => inRange(map, input)).sort((a, b) => compareDiscover(input.sort, a, b));
   const start = input.offset;
   const slice = matched.slice(start, start + 300);
   return {
@@ -163,60 +206,9 @@ export function warmFinderIndex(): void {
 }
 
 async function collectCombo(mods: string, input: DiscoverRequest, styleIgnored: boolean, signal?: AbortSignal) {
-  const styleWord = !styleIgnored && input.style !== "any" ? STYLE_QUERY[input.style] : "";
   const userQuery = input.query.trim();
-  const text = userQuery && styleWord.includes(" OR ") ? `(${userQuery}) AND (${styleWord})` : [userQuery, styleWord].filter(Boolean).join(" ");
-  if (text) return collectByText(mods, input, text, signal);
-
-  const start = input.offset;
-  const offsets = [start];
-  const pages = await Promise.all(
-    offsets.map(async (offset) => {
-      try {
-        return await searchPpMaps(
-          { mode: input.mode, mods, ppMin: input.ppMin, ppMax: input.ppMax, limit: PAGE, offset },
-          signal,
-        );
-      } catch (error) {
-        if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
-        return null;
-      }
-    }),
-  );
-  if (pages.every((page) => page == null)) return null;
-
-  const hits: DiscoverHit[] = [];
-  let scanned = 0;
-  let total = 0;
-  let cursor = start;
-  let reachedEnd = false;
-  for (let index = 0; index < pages.length; index++) {
-    const page = pages[index];
-    if (!page) break;
-    total = page.total;
-    const pageOffset = offsets[index] ?? start;
-    if (page.maps.length === 0) {
-      cursor = pageOffset;
-      reachedEnd = true;
-      break;
-    }
-    for (let mapIndex = 0; mapIndex < page.maps.length; mapIndex++) {
-      const map = page.maps[mapIndex];
-      if (!map) continue;
-      scanned += 1;
-      cursor = pageOffset + mapIndex + 1;
-      if (inRange(map, input)) hits.push(toHit(map, input));
-      if (hits.length >= CAP) {
-        return { hits, scanned, total, nextOffset: cursor, hasMore: cursor < page.total };
-      }
-    }
-    cursor = pageOffset + page.maps.length;
-    if (cursor >= page.total) {
-      reachedEnd = true;
-      break;
-    }
-  }
-  return { hits, scanned, total, nextOffset: cursor, hasMore: !reachedEnd && cursor < total };
+  if (userQuery) return collectByText(mods, input, userQuery, signal);
+  return collectByRange(mods, input, styleIgnored, signal);
 }
 
 export async function discover(input: DiscoverRequest, signal?: AbortSignal): Promise<DiscoverResponse> {
@@ -248,7 +240,7 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
       results.push(hit);
     }
   }
-  results.sort((a, b) => b.pp - a.pp);
+  results.sort((a, b) => compareDiscover(input.sort, a, b));
   return {
     results,
     scanned,

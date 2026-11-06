@@ -30,13 +30,19 @@ export type Copy = {
   comboInteger: string;
   footer: string;
   finderTitle: string;
-  finderHint: string;
   ppMin: string;
   ppMax: string;
   keyword: string;
   optional: string;
   mode: string;
   type: string;
+  sort: string;
+  sortPpDesc: string;
+  sortPpAsc: string;
+  sortStarsDesc: string;
+  sortStarsAsc: string;
+  sortLengthDesc: string;
+  sortLengthAsc: string;
   modsLegend: string;
   modHelp: string;
   choiceOff: string;
@@ -54,6 +60,8 @@ export type Copy = {
   searchRange: string;
   showingAll: string;
   showingFiltered: string;
+  showingKeyword: string;
+  showingKeywordRange: string;
   showMore: string;
   searchingMaps: string;
   rangeInvalid: string;
@@ -76,7 +84,7 @@ export type Copy = {
 
 const en: Copy = {
   heading: "how much is it",
-  lede: "Full combo curve, mods, and a simulated score. Local lazer model.",
+  lede: "Paste a link for a map's PP, or a range and a type to search.",
   searchLabel: "Link, difficulty id, or title",
   see: "Open",
   recent: "Recent",
@@ -103,14 +111,19 @@ const en: Copy = {
   comboInteger: "Combo must be a whole number.",
   footer: "rosu-pp 4.0.1",
   finderTitle: "Find maps",
-  finderHint:
-    "SS, full combo, from a precomputed database of the same April 2026 model. A type searches the whole catalogue for that word, then keeps the maps inside the PP range.",
   ppMin: "PP min",
   ppMax: "PP max",
-  keyword: "Title or keyword",
+  keyword: "Title, artist or mapper",
   optional: "optional",
   mode: "Mode",
   type: "Type",
+  sort: "Sort",
+  sortPpDesc: "PP ↓",
+  sortPpAsc: "PP ↑",
+  sortStarsDesc: "Star rating ↓",
+  sortStarsAsc: "Star rating ↑",
+  sortLengthDesc: "Length ↓",
+  sortLengthAsc: "Length ↑",
   modsLegend: "Mods for the search",
   modHelp: "Click a mod: without, then required, then either.",
   choiceOff: "Without",
@@ -127,7 +140,9 @@ const en: Copy = {
   modAny: "{mod}: with or without",
   searchRange: "Search this range",
   showingAll: "Showing {shown} of {total} maps in this range.",
-  showingFiltered: "{shown} maps of this type in this PP range.",
+  showingFiltered: "{shown} of {total} maps of this type in this PP range.",
+  showingKeyword: "{shown} maps match this keyword.",
+  showingKeywordRange: "{shown} maps match this keyword in this PP range.",
   showMore: "Show more",
   searchingMaps: "Searching ranked maps…",
   rangeInvalid: "The PP range is invalid.",
@@ -167,7 +182,7 @@ const en: Copy = {
 
 const fr: Copy = {
   heading: "how much is it",
-  lede: "Courbe full combo, mods et score simulé. Modèle lazer local.",
+  lede: "Colle un lien pour le PP d'une map, ou une fourchette et un type pour chercher.",
   searchLabel: "Lien, ID de difficulté ou titre",
   see: "Voir",
   recent: "Récentes",
@@ -194,14 +209,19 @@ const fr: Copy = {
   comboInteger: "Le combo doit être un entier.",
   footer: "rosu-pp 4.0.1",
   finderTitle: "Trouver des maps",
-  finderHint:
-    "SS, full combo, depuis une base précalculée du même modèle d'avril 2026. Un type cherche ce mot dans tout le catalogue, puis garde les maps dans la fourchette de PP.",
   ppMin: "PP min",
   ppMax: "PP max",
-  keyword: "Titre ou mot-clé",
+  keyword: "Titre, artiste ou mappeur",
   optional: "optionnel",
   mode: "Mode",
   type: "Type",
+  sort: "Tri",
+  sortPpDesc: "PP ↓",
+  sortPpAsc: "PP ↑",
+  sortStarsDesc: "Étoiles ↓",
+  sortStarsAsc: "Étoiles ↑",
+  sortLengthDesc: "Durée ↓",
+  sortLengthAsc: "Durée ↑",
   modsLegend: "Mods de la recherche",
   modHelp: "Clique un mod : sans, puis obligatoire, puis les deux.",
   choiceOff: "Sans",
@@ -218,7 +238,9 @@ const fr: Copy = {
   modAny: "{mod} : avec ou sans",
   searchRange: "Chercher dans la fourchette",
   showingAll: "{shown} maps affichées sur {total} dans cette fourchette.",
-  showingFiltered: "{shown} maps de ce type dans cette fourchette de PP.",
+  showingFiltered: "{shown} maps affichées sur {total} de ce type dans cette fourchette de PP.",
+  showingKeyword: "{shown} maps correspondent à ce mot-clé.",
+  showingKeywordRange: "{shown} maps correspondent à ce mot-clé dans cette fourchette de PP.",
   showMore: "Afficher plus",
   searchingMaps: "Recherche des maps classées…",
   rangeInvalid: "La fourchette de PP est invalide.",
@@ -258,7 +280,7 @@ const fr: Copy = {
 
 const es: Copy = {
   heading: "how much is it",
-  lede: "Curva de full combo, mods y puntuación simulada. Modelo lazer local.",
+  lede: "Pega un enlace para el PP de un mapa, o un rango y un tipo para buscar.",
   searchLabel: "Enlace, ID de dificultad o título",
   see: "Abrir",
   recent: "Recientes",
@@ -285,14 +307,19 @@ const es: Copy = {
   comboInteger: "El combo debe ser un entero.",
   footer: "rosu-pp 4.0.1",
   finderTitle: "Encontrar mapas",
-  finderHint:
-    "SS, full combo, desde una base precalculada del mismo modelo de abril de 2026. Un tipo busca esa palabra en todo el catálogo y deja los mapas dentro del rango de PP.",
   ppMin: "PP mín.",
   ppMax: "PP máx.",
-  keyword: "Título o palabra",
+  keyword: "Título, artista o mapper",
   optional: "opcional",
   mode: "Modo",
   type: "Tipo",
+  sort: "Orden",
+  sortPpDesc: "PP ↓",
+  sortPpAsc: "PP ↑",
+  sortStarsDesc: "Estrellas ↓",
+  sortStarsAsc: "Estrellas ↑",
+  sortLengthDesc: "Duración ↓",
+  sortLengthAsc: "Duración ↑",
   modsLegend: "Mods de la búsqueda",
   modHelp: "Pulsa un mod: sin, luego obligatorio, luego ambos.",
   choiceOff: "Sin",
@@ -309,7 +336,9 @@ const es: Copy = {
   modAny: "{mod}: con o sin",
   searchRange: "Buscar en el rango",
   showingAll: "{shown} de {total} mapas en este rango.",
-  showingFiltered: "{shown} mapas de este tipo en este rango de PP.",
+  showingFiltered: "{shown} de {total} mapas de este tipo en este rango de PP.",
+  showingKeyword: "{shown} mapas coinciden con esta palabra.",
+  showingKeywordRange: "{shown} mapas coinciden con esta palabra en este rango de PP.",
   showMore: "Ver más",
   searchingMaps: "Buscando mapas clasificados…",
   rangeInvalid: "El rango de PP no es válido.",

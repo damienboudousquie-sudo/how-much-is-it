@@ -14,6 +14,7 @@ import {
   type CurvePoint,
   type DiscoverHit,
   type DiscoverNotice,
+  type DiscoverSort,
   type FinderMod,
   type LookupResponse,
   type MapMeta,
@@ -26,6 +27,7 @@ import {
   type SearchHit,
 } from "@osu-pp/shared";
 import { ApiError, fetchCalculate, fetchDiscover, fetchLookup, fetchSearch } from "./api";
+import { HexField } from "./HexField";
 import { fill, useI18n, type Copy } from "./i18n";
 import { beatmapPath, mapsPath, parseRoute, type AppRoute } from "./route";
 
@@ -196,6 +198,7 @@ export function App() {
   const [finderQuery, setFinderQuery] = useState("");
   const [finderMode, setFinderMode] = useState<Mode>("osu");
   const [finderStyle, setFinderStyle] = useState<MapStyle>("any");
+  const [finderSort, setFinderSort] = useState<DiscoverSort>("pp-desc");
   const [filters, setFilters] = useState(emptyFilters);
   const [finderBusy, setFinderBusy] = useState(false);
   const [finderHits, setFinderHits] = useState<DiscoverHit[]>([]);
@@ -207,6 +210,8 @@ export function App() {
   const [route, setRoute] = useState<AppRoute>(() => parseRoute(window.location.hash, window.location.search));
   const finderAbort = useRef<AbortController | null>(null);
   const finderNext = useRef(0);
+  const finderSortRef = useRef<DiscoverSort>("pp-desc");
+  const finderSearched = useRef(false);
   const routeRef = useRef(route);
   const fromList = useRef(false);
   const mapsScroll = useRef(0);
@@ -515,6 +520,7 @@ export function App() {
     finderAbort.current?.abort();
     const controller = new AbortController();
     finderAbort.current = controller;
+    finderSearched.current = true;
     const offset = append ? finderNext.current : 0;
     setFinderBusy(true);
     if (!append) setFinderNotice("busy");
@@ -529,6 +535,7 @@ export function App() {
           ppMin: min,
           ppMax: max,
           offset,
+          sort: finderSortRef.current,
         },
         controller.signal,
       );
@@ -597,10 +604,12 @@ export function App() {
     if (finderNotice === "failed") return finderError ?? t.searchFailed;
     const notice =
       finderNotice === "too_many" ? t.noticeTooMany : finderNotice === "none" ? t.noticeNone : finderNotice === "empty" ? t.noticeEmpty : t.noticePreview;
-    const filtered = finderQuery.trim().length > 0 || (finderMode === "osu" && finderStyle !== "any");
+    const hasKeyword = finderQuery.trim().length > 0;
+    const hasType = !hasKeyword && finderMode === "osu" && finderStyle !== "any";
+    const countLabel = hasKeyword ? t.showingKeywordRange : hasType ? t.showingFiltered : t.showingAll;
     const count =
       finderTotal > 0
-        ? fill(filtered ? t.showingFiltered : t.showingAll, {
+        ? fill(countLabel, {
             shown: finderHits.length.toLocaleString(numberLocale),
             total: finderTotal.toLocaleString(numberLocale),
           })
@@ -612,10 +621,12 @@ export function App() {
   const activeMods = meta ? MODS_BY_MODE[meta.mode] : [];
 
   return (
+    <>
+    <HexField />
     <div className="page">
       <header className="top">
         <div>
-          <h1>{t.heading}</h1>
+          <h1>{t.heading} ?</h1>
           <p className="lede">{t.lede}</p>
         </div>
         <div className="langs" role="group" aria-label="Language">
@@ -736,6 +747,12 @@ export function App() {
           }
         }}
         onStyle={setFinderStyle}
+        sort={finderSort}
+        onSort={(sort) => {
+          finderSortRef.current = sort;
+          setFinderSort(sort);
+          if (finderSearched.current) void runFinder(false);
+        }}
         onCycle={(mod) => setFilters((current) => ({ ...current, [mod]: cycleChoice(current[mod]) }))}
         onSearch={() => void runFinder(false)}
         onMore={() => void runFinder(true)}
@@ -955,6 +972,7 @@ export function App() {
 
       <footer>{t.footer}</footer>
     </div>
+    </>
   );
 }
 
@@ -964,6 +982,7 @@ function Finder(props: {
   query: string;
   mode: Mode;
   style: MapStyle;
+  sort: DiscoverSort;
   filters: Record<FinderMod, ModChoice>;
   busy: boolean;
   hits: DiscoverHit[];
@@ -974,6 +993,7 @@ function Finder(props: {
   onQuery: (value: string) => void;
   onMode: (mode: Mode) => void;
   onStyle: (style: MapStyle) => void;
+  onSort: (sort: DiscoverSort) => void;
   onCycle: (mod: FinderMod) => void;
   onSearch: () => void;
   onMore: () => void;
@@ -989,7 +1009,6 @@ function Finder(props: {
   return (
     <section className="finder">
       <h2>{t.finderTitle}</h2>
-      <p className="hint">{t.finderHint}</p>
       <div className="fields">
         <label>
           {t.ppMin}
@@ -1013,7 +1032,7 @@ function Finder(props: {
         <span className="choice-label" id="finder-mode-label">
           {t.mode}
         </span>
-        <div className="segment" role="radiogroup" aria-labelledby="finder-mode-label">
+        <div className="ribbon" role="radiogroup" aria-labelledby="finder-mode-label">
           {modes.map((mode) => (
             <button
               type="button"
@@ -1028,21 +1047,53 @@ function Finder(props: {
           ))}
         </div>
       </div>
-      <label className="choice-block">
-        <span className="choice-label">{t.type}</span>
-        <select
-          data-testid="finder-style"
-          value={props.mode === "osu" ? props.style : "any"}
-          disabled={props.mode !== "osu"}
-          onChange={(event) => props.onStyle(event.target.value as MapStyle)}
-        >
-          {MAP_STYLES.map((style) => (
-            <option key={style} value={style}>
-              {t.styles[style]}
-            </option>
+      <div className="choice-block">
+        <span className="choice-label" id="finder-style-label">{t.type}</span>
+        <div className="ribbon" role="radiogroup" aria-labelledby="finder-style-label" data-testid="finder-style">
+          {MAP_STYLES.map((style) => {
+            const selected = props.mode === "osu" && props.style === style;
+            return (
+              <button
+                type="button"
+                key={style}
+                role="radio"
+                aria-checked={selected}
+                disabled={props.mode !== "osu"}
+                className={selected ? "on" : ""}
+                onClick={() => props.onStyle(style)}
+              >
+                {t.styles[style]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="choice-block">
+        <span className="choice-label" id="finder-sort-label">{t.sort}</span>
+        <div className="ribbon" role="radiogroup" aria-labelledby="finder-sort-label" data-testid="finder-sort">
+          {(
+            [
+              ["pp-desc", t.sortPpDesc],
+              ["pp-asc", t.sortPpAsc],
+              ["stars-desc", t.sortStarsDesc],
+              ["stars-asc", t.sortStarsAsc],
+              ["length-desc", t.sortLengthDesc],
+              ["length-asc", t.sortLengthAsc],
+            ] as const
+          ).map(([sort, label]) => (
+            <button
+              type="button"
+              key={sort}
+              role="radio"
+              aria-checked={props.sort === sort}
+              className={props.sort === sort ? "on" : ""}
+              onClick={() => props.onSort(sort)}
+            >
+              {label}
+            </button>
           ))}
-        </select>
-      </label>
+        </div>
+      </div>
       <div className="mod-row" role="group" aria-label={t.modsLegend}>
         <p className="hint">{t.modHelp}</p>
         <div className="mod-chips">
@@ -1087,19 +1138,22 @@ function Finder(props: {
               }}
             >
               <Cover src={hit.cover} />
-              <span>
+              <span className="map-copy">
                 <strong>
                   {hit.artist} — {hit.title}
                 </strong>
                 <small>
-                  {hit.version}
+                  {hit.creator} · {hit.version}
                   {hit.style ? ` · ${t.styles[hit.style]}` : ""} · {hit.mods.length > 0 ? hit.mods.join("") : t.nm}
                 </small>
                 <span className="pills">
                   {hit.lengthSeconds != null && <span>{formatLength(hit.lengthSeconds)}</span>}
                   <span>{formatStars(hit.stars)}★</span>
-                  <span>{formatPp(hit.pp)} pp</span>
                 </span>
+              </span>
+              <span className="map-pp">
+                <strong>{formatPp(hit.pp)}</strong>
+                <span>pp</span>
               </span>
             </a>
           ))}

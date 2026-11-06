@@ -16,10 +16,14 @@ export interface PpDbMap {
   artist: string;
   creator: string;
   version: string;
+  tags: string;
   cover: string | null;
   stars: number;
   pp: number;
   lengthSeconds: number | null;
+  bpm: number | null;
+  density: number | null;
+  circleRatio: number | null;
   mods: string;
 }
 
@@ -32,6 +36,15 @@ export interface PpDbPage {
 function readSeconds(row: Record<string, unknown>): number | null {
   const value = row.drain_time_seconds ?? row.hit_length ?? row.total_length;
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function readTags(value: unknown): string {
+  if (Array.isArray(value)) return value.filter((tag): tag is string => typeof tag === "string").join(" ");
+  return typeof value === "string" ? value : "";
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function readId(value: unknown): number | null {
@@ -62,6 +75,9 @@ async function fetchPpPage(path: string, mods: string, offset: number, signal?: 
     const beatmapId = readId(row.beatmap_id);
     if (beatmapId == null || typeof row.pp !== "number" || typeof row.stars !== "number") continue;
     const cover = typeof row.cover === "string" && row.cover.startsWith("https://") ? row.cover : null;
+    const objects = readNumber(row.total_objects);
+    const drain = readNumber(row.drain_time_seconds);
+    const circles = readNumber(row.count_circles);
     maps.push({
       beatmapId,
       beatmapsetId: readId(row.beatmapset_id),
@@ -69,10 +85,14 @@ async function fetchPpPage(path: string, mods: string, offset: number, signal?: 
       artist: typeof row.artist === "string" ? row.artist : "Unknown artist",
       creator: typeof row.creator === "string" ? row.creator : "Unknown creator",
       version: typeof row.version === "string" ? row.version : "Difficulty",
+      tags: readTags(row.tags),
       cover,
       stars: row.stars,
       pp: row.pp,
       lengthSeconds: readSeconds(row),
+      bpm: readNumber(row.bpm),
+      density: objects != null && drain != null && drain > 0 ? objects / drain : null,
+      circleRatio: objects != null && circles != null && objects > 0 ? circles / objects : null,
       mods: typeof row.mods === "string" ? row.mods : mods,
     });
   }
@@ -153,6 +173,44 @@ async function fetchAllText(input: { query: string; mode: Mode; mods: string }):
           Array.from({ length: pages - 1 }, (_, index) => searchPpText({ ...input, limit: size, offset: (index + 1) * size })),
         );
   return first.maps.concat(...rest.map((page) => page.maps));
+}
+
+async function fetchAllRange(input: { mode: Mode; mods: string; ppMin: number; ppMax: number }): Promise<PpDbMap[]> {
+  const size = 100;
+  const first = await searchPpMaps({ ...input, limit: size, offset: 0 });
+  const pages = Math.min(150, Math.max(1, Math.ceil(first.total / size)));
+  const rest: PpDbMap[] = [];
+  const batch = 8;
+  for (let page = 1; page < pages; page += batch) {
+    const offsets = Array.from({ length: Math.min(batch, pages - page) }, (_, index) => (page + index) * size);
+    const loaded = await Promise.all(offsets.map((offset) => searchPpMaps({ ...input, limit: size, offset })));
+    for (const entry of loaded) rest.push(...entry.maps);
+  }
+  return first.maps.concat(rest);
+}
+
+/** Every ranked map in a PP window, kept so a type filter does not depend on one keyword. */
+export async function loadRangeMaps(input: { mode: Mode; mods: string; ppMin: number; ppMax: number }): Promise<PpDbMap[]> {
+  const key = indexKey(`range:${input.ppMin}:${input.ppMax}`, input.mode, input.mods);
+  const cached = memoryIndex.get(key);
+  if (cached && Date.now() - cached.at < INDEX_TTL_MS) return cached.maps;
+  const pending = indexInflight.get(key);
+  if (pending) return pending;
+  const job = (async () => {
+    const disk = await readIndex(key);
+    if (disk) {
+      memoryIndex.set(key, disk);
+      return disk.maps;
+    }
+    const maps = await fetchAllRange(input);
+    const stored = { at: Date.now(), maps };
+    memoryIndex.set(key, stored);
+    await mkdir(INDEX_DIR, { recursive: true });
+    await writeFile(indexPath(key), JSON.stringify(stored)).catch(() => undefined);
+    return maps;
+  })().finally(() => indexInflight.delete(key));
+  indexInflight.set(key, job);
+  return job;
 }
 
 /** Full text catalogue, kept in memory and on disk so a PP range is a local filter. */
