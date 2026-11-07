@@ -57,3 +57,17 @@ export function fetchDiscover(body: DiscoverRequest, signal: AbortSignal): Promi
 export function fetchCalculate(body: CalculateRequest): Promise<CalculateResponse> {
   return request("/api/calculate", { method: "POST", body: JSON.stringify(body) });
 }
+
+const prefetched = new Set<number>();
+
+/** Fire and forget: the server starts loading the map before the click lands. */
+export function prefetchMap(beatmapId: number, beatmapsetId: number | null): void {
+  if (prefetched.has(beatmapId)) return;
+  prefetched.add(beatmapId);
+  void fetch("/api/prefetch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ beatmapId, beatmapsetId }),
+    keepalive: true,
+  }).catch(() => prefetched.delete(beatmapId));
+}

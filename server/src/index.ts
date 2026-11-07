@@ -11,7 +11,7 @@ import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
 import { bindLang, tr } from "./locale";
-import { calculate, discover, lookup, search, warmFinderIndex } from "./service";
+import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, disableRequestLogging: true });
 
@@ -73,7 +73,12 @@ app.get("/api/search", async (request, reply) => {
 
 app.post("/api/lookup", async (request, reply) => {
   try {
-    return await lookup(parseLookup(request.body));
+    const timing: Timing = {};
+    const start = performance.now();
+    const result = await lookup(parseLookup(request.body), timing);
+    timing.total = performance.now() - start;
+    reply.header("server-timing", Object.entries(timing).map(([name, ms]) => `${name};dur=${ms.toFixed(0)}`).join(", "));
+    return result;
   } catch (error) {
     sendError(reply, error);
   }
@@ -86,6 +91,14 @@ app.post("/api/discover", async (request, reply) => {
   } catch (error) {
     sendError(reply, error);
   }
+});
+
+app.post("/api/prefetch", async (request, reply) => {
+  const body = (request.body ?? {}) as { beatmapId?: unknown; beatmapsetId?: unknown };
+  const id = typeof body.beatmapId === "number" && Number.isInteger(body.beatmapId) && body.beatmapId > 0 ? body.beatmapId : null;
+  const setId = typeof body.beatmapsetId === "number" && Number.isInteger(body.beatmapsetId) && body.beatmapsetId > 0 ? body.beatmapsetId : null;
+  if (id != null) prefetch(id, setId);
+  reply.status(204).send();
 });
 
 app.post("/api/calculate", async (request, reply) => {

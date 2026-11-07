@@ -62,7 +62,28 @@ async function remoteSet(id: number, warnings: string[]): Promise<RemoteSet | nu
   }
 }
 
-export async function lookup(input: LookupRequest): Promise<LookupResponse> {
+/** Warms the .osu file and the set so a click right after a hover opens instantly. */
+export function prefetch(beatmapId: number, beatmapsetId: number | null): void {
+  void loadBeatmapFile(beatmapId)
+    .then((file) => {
+      const setId = beatmapsetId ?? parseOsuText(file.text).beatmapsetId;
+      if (setId) return getBeatmapset(setId).then(() => undefined);
+    })
+    .catch(() => undefined);
+}
+
+export type Timing = Record<string, number>;
+
+async function timed<T>(timing: Timing | undefined, name: string, job: Promise<T>): Promise<T> {
+  const start = performance.now();
+  try {
+    return await job;
+  } finally {
+    if (timing) timing[name] = performance.now() - start;
+  }
+}
+
+export async function lookup(input: LookupRequest, timing?: Timing): Promise<LookupResponse> {
   const warnings: string[] = [];
   let beatmapId = input.beatmapId;
   let remotePromise: Promise<RemoteSet | null> | null = null;
@@ -73,17 +94,17 @@ export async function lookup(input: LookupRequest): Promise<LookupResponse> {
     remotePromise = Promise.resolve(remote);
   } else if (input.beatmapsetId != null) {
     // The set id is known: fetch the set and the .osu file at the same time.
-    remotePromise = remoteSet(input.beatmapsetId, warnings);
+    remotePromise = timed(timing, "set", remoteSet(input.beatmapsetId, warnings));
   }
 
-  const file = await loadBeatmapFile(beatmapId);
+  const file = await timed(timing, "file", loadBeatmapFile(beatmapId));
   const local = parseOsuText(file.text);
   const setId = input.beatmapsetId ?? local.beatmapsetId;
-  if (!remotePromise && setId) remotePromise = remoteSet(setId, warnings);
+  if (!remotePromise && setId) remotePromise = timed(timing, "set", remoteSet(setId, warnings));
 
   const [remote, play] = await Promise.all([
     remotePromise ?? Promise.resolve(null),
-    calculatePlay({ ...input, beatmapId }, local.mode, local.endMs, true),
+    timed(timing, "calc", calculatePlay({ ...input, beatmapId }, local.mode, local.endMs, true)),
   ]);
   const current = remote?.beatmaps.find((beatmap) => beatmap.id === beatmapId);
   if (current?.totalLength != null && play.clockRate > 0) {

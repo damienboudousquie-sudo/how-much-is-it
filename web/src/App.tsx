@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import type { DiscoverHit, Lang, LookupResponse, MapMeta, Mode } from "@osu-pp/shared";
 import { fetchLookup } from "./api";
-import { BeatmapView, type PlayPreset } from "./BeatmapView";
+import { BeatmapView, type MapPreview, type PlayPreset } from "./BeatmapView";
 import { Finder } from "./Finder";
 import { plainClick } from "./format";
 import { useI18n } from "./i18n";
 import { beatmapPath, mapsPath, parseRoute, type AppRoute } from "./route";
 import { SearchBox, type OpenTarget } from "./SearchBox";
+import { Triangles } from "./Triangles";
 import { readJson, writeJson } from "./storage";
 
 interface RecentMap {
@@ -34,6 +35,7 @@ interface Navigation {
   id: number;
   setId?: number | null;
   preset: PlayPreset | null;
+  preview: MapPreview | null;
   prefetched: LookupResponse | null;
 }
 
@@ -82,8 +84,8 @@ export function App() {
     document.title = route.page === "beatmap" && title ? `${title} · how much is it?` : "how much is it?";
   }, [route, title]);
 
-  function open(target: OpenTarget, preset: PlayPreset | null = null, prefetched: LookupResponse | null = null) {
-    nav.current = { id: target.id, setId: target.setId, preset, prefetched };
+  function open(target: OpenTarget, preset: PlayPreset | null = null, prefetched: LookupResponse | null = null, preview: MapPreview | null = null) {
+    nav.current = { id: target.id, setId: target.setId, preset, prefetched, preview };
     const path = beatmapPath(target.mode, target.id);
     if (window.location.hash === path) {
       // Same map: remount the view so a new preset applies.
@@ -146,6 +148,7 @@ export function App() {
 
   return (
     <div className="app">
+      <Triangles />
       <div className="backdrop" aria-hidden="true" />
       <header className="topbar">
         <a className="brand" href={mapsPath(finderMode)} onClick={(event) => route.page === "beatmap" && backToMaps(event, finderMode)}>
@@ -209,6 +212,7 @@ export function App() {
             id={route.id}
             setId={pending?.setId}
             preset={pending?.preset ?? null}
+            preview={pending?.preview ?? null}
             prefetched={pending?.prefetched ?? null}
             onOpen={(id, mode, setId) => open({ id, mode, setId })}
             onLoaded={onLoaded}
@@ -221,7 +225,18 @@ export function App() {
         <Finder
           mode={finderMode}
           onMode={setFinderMode}
-          onOpen={(hit: DiscoverHit) => open({ id: hit.beatmapId, mode: hit.mode, setId: hit.beatmapsetId }, { mods: hit.mods })}
+          onOpen={(hit: DiscoverHit) =>
+            open({ id: hit.beatmapId, mode: hit.mode, setId: hit.beatmapsetId }, { mods: hit.mods }, null, {
+              title: hit.title,
+              artist: hit.artist,
+              version: hit.version,
+              creator: hit.creator,
+              cover: hit.cover,
+              stars: hit.stars,
+              pp: hit.pp,
+              mods: hit.mods,
+            })
+          }
         />
       </div>
 

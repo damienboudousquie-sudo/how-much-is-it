@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { modeLabel, parseInput, type Mode, type SearchHit } from "@osu-pp/shared";
-import { fetchSearch } from "./api";
+import { fetchSearch, prefetchMap } from "./api";
 import { formatStars } from "./format";
 import { useI18n } from "./i18n";
 
@@ -175,7 +175,10 @@ export function SearchBox(props: {
                         aria-selected={index === highlight}
                         className={index === highlight ? "chip on" : "chip"}
                         onMouseDown={(event) => event.preventDefault()}
-                        onMouseEnter={() => setHighlight(index)}
+                        onMouseEnter={() => {
+                          setHighlight(index);
+                          prefetchMap(beatmap.id, hit.beatmapsetId);
+                        }}
                         onClick={() => choose({ id: beatmap.id, mode: beatmap.mode, setId: hit.beatmapsetId })}
                       >
                         {beatmap.stars != null && <b>{formatStars(beatmap.stars)}★</b>}

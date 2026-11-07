@@ -37,6 +37,7 @@ export type Copy = {
   resultsCount: string;
   analyzing: string;
   loadingCatalog: string;
+  searching: string;
   estimated: string;
   farm: string;
   farmHelp: string;
@@ -134,6 +135,7 @@ const en: Copy = {
   resultsCount: "{total} maps",
   analyzing: "Reading the patterns of {count} maps…",
   loadingCatalog: "Loading maps in this range: {loaded} / {expected}…",
+  searching: "Updating…",
   estimated: "type estimated from tags, still being checked",
   farm: "Farm",
   farmHelp: "Farm score: short drain, aim-friendly, more pp than the stars suggest.",
@@ -240,6 +242,7 @@ const fr: Copy = {
   resultsCount: "{total} maps",
   analyzing: "Lecture des patterns de {count} maps…",
   loadingCatalog: "Chargement des maps de la fourchette : {loaded} / {expected}…",
+  searching: "Mise à jour…",
   estimated: "type estimé d'après les tags, vérification en cours",
   farm: "Farm",
   farmHelp: "Score farm : drain court, facile en aim, plus de PP que les étoiles ne le laissent penser.",
@@ -346,6 +349,7 @@ const es: Copy = {
   resultsCount: "{total} mapas",
   analyzing: "Leyendo los patrones de {count} mapas…",
   loadingCatalog: "Cargando los mapas del rango: {loaded} / {expected}…",
+  searching: "Actualizando…",
   estimated: "tipo estimado por las etiquetas, en revisión",
   farm: "Farm",
   farmHelp: "Puntuación farm: drain corto, fácil de aim, más PP de lo que sugieren las estrellas.",

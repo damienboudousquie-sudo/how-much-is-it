@@ -13,7 +13,7 @@ import {
   type ModChoice,
   type Mode,
 } from "@osu-pp/shared";
-import { fetchDiscover } from "./api";
+import { fetchDiscover, prefetchMap } from "./api";
 import { formatCount, formatLength, formatPp, formatStars, plainClick } from "./format";
 import { fill, useI18n } from "./i18n";
 import { beatmapPath } from "./route";
@@ -123,6 +123,8 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
       const { results, ...rest } = data;
       setMeta(rest);
       setHits((previous) => {
+        // While the catalogue is still arriving, keep the list on screen steady and only move the counter.
+        if (options.silent && data.catalog && previous.length > 0) return previous;
         if (!options.append) return results;
         const seen = new Set(previous.map((hit) => `${hit.beatmapId}:${hit.mods.join("")}`));
         return [...previous, ...results.filter((hit) => !seen.has(`${hit.beatmapId}:${hit.mods.join("")}`))];
@@ -296,6 +298,11 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
       </div>
 
       <div className="results-head" aria-live="polite">
+        {status.kind === "loading" && hits.length > 0 && (
+          <p className="analyzing">
+            <span className="spinner" aria-hidden="true" /> {t.searching}
+          </p>
+        )}
         {status.kind === "invalid" && <p className="notice warn">{t.rangeInvalid}</p>}
         {status.kind === "error" && <p className="notice error">{status.message}</p>}
         {status.kind === "done" && meta && (
@@ -327,15 +334,16 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
         )}
       </div>
 
-      {status.kind === "loading" ? (
+      {status.kind === "loading" && hits.length === 0 ? (
         <div className="map-list" aria-busy="true">
           {Array.from({ length: 6 }, (_, index) => (
-            <div className="map skeleton" key={index} />
+            <div className="map skeleton" key={index} style={{ animationDelay: `${index * 120}ms` }} />
           ))}
         </div>
       ) : (
         hits.length > 0 && (
-          <div className="map-list" data-testid="finder-results">
+          // While a new search runs, the previous results stay in place, slightly dimmed.
+          <div className={status.kind === "loading" ? "map-list stale" : "map-list"} aria-busy={status.kind === "loading"} data-testid="finder-results">
             {hits.map((hit, index) => (
               <MapCard key={`${hit.beatmapId}-${hit.mods.join("")}`} hit={hit} rank={index + 1} sort={sort} onOpen={props.onOpen} />
             ))}
@@ -369,6 +377,9 @@ function MapCard(props: { hit: DiscoverHit; rank: number; sort: DiscoverSort; on
     <a
       className={`map${tier ? ` farm-${tier}` : ""}`}
       href={beatmapPath(hit.mode, hit.beatmapId)}
+      onPointerEnter={() => prefetchMap(hit.beatmapId, hit.beatmapsetId)}
+      onFocus={() => prefetchMap(hit.beatmapId, hit.beatmapsetId)}
+      onTouchStart={() => prefetchMap(hit.beatmapId, hit.beatmapsetId)}
       onClick={(event) => {
         if (!plainClick(event)) return;
         event.preventDefault();

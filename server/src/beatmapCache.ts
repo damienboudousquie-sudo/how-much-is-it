@@ -104,26 +104,40 @@ async function download(id: number, store = true): Promise<{ bytes: Uint8Array; 
     throw new AppError("not_found", tr("map.missing"), 404);
   }
 
-  if (store) {
-    const path = cachePath(id);
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, buffer);
-  }
+  if (store) await persist(id, buffer);
   return { bytes: buffer, text };
 }
 
+async function persist(id: number, bytes: Uint8Array): Promise<void> {
+  try {
+    const path = cachePath(id);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, bytes);
+  } catch {
+    // The disk copy only saves a later download.
+  }
+}
+
+/** .osu files read for pattern analysis, kept so opening one of those maps is instant. */
+const recentText = new Lru<{ bytes: Uint8Array; text: string }>(300);
+
 /**
  * The .osu text for pattern analysis. Uses the lookup cache when the map was opened,
- * otherwise downloads without keeping the file, so scanning a range does not fill the disk.
+ * otherwise downloads without writing to disk, so scanning a range does not fill it.
  */
 export async function fetchBeatmapText(id: number): Promise<string> {
-  const cached = maps.get(String(id));
+  const cached = maps.get(String(id)) ?? recentText.get(String(id));
   if (cached) return cached.text;
   const disk = await readDisk(id);
   if (disk) return disk.text;
-  const pending = inflight.get(id);
-  if (pending) return (await pending).text;
-  return (await download(id, false)).text;
+  let pending = inflight.get(id);
+  if (!pending) {
+    pending = download(id, false).finally(() => inflight.delete(id));
+    inflight.set(id, pending);
+  }
+  const file = await pending;
+  recentText.set(String(id), file);
+  return file.text;
 }
 
 export function primeBeatmap(id: number, bytes: Uint8Array): void {
@@ -138,6 +152,13 @@ export function primeBeatmap(id: number, bytes: Uint8Array): void {
 export async function loadBeatmapFile(id: number): Promise<{ bytes: Uint8Array; text: string }> {
   const cached = maps.get(String(id));
   if (cached) return { bytes: cached.bytes, text: cached.text };
+
+  const recent = recentText.get(String(id));
+  if (recent) {
+    maps.set(String(id), { ...recent, byMode: new Map(), diffs: new Map() });
+    void persist(id, recent.bytes);
+    return recent;
+  }
 
   const disk = await readDisk(id);
   if (disk) {

@@ -23,6 +23,18 @@ export interface PlayPreset {
   mods: string[];
 }
 
+/** What the list already knows about a map, shown at once while the full sheet loads. */
+export interface MapPreview {
+  title: string;
+  artist: string;
+  version: string;
+  creator: string;
+  cover: string | null;
+  stars: number;
+  pp: number;
+  mods: string[];
+}
+
 function rateKind(mods: readonly string[]): "DT" | "HT" | null {
   if (mods.includes("HT")) return "HT";
   if (mods.includes("DT") || mods.includes("NC")) return "DT";
@@ -90,6 +102,7 @@ export function BeatmapView(props: {
   id: number;
   setId?: number | null;
   preset: PlayPreset | null;
+  preview: MapPreview | null;
   prefetched: LookupResponse | null;
   onOpen: (id: number, mode: Mode, setId?: number | null) => void;
   onLoaded: (meta: MapMeta) => void;
@@ -202,14 +215,46 @@ export function BeatmapView(props: {
   }
 
   if (!data) {
-    return error ? (
-      <p className="notice error" role="alert" data-testid="error">
-        {error}
-      </p>
-    ) : (
+    if (error) {
+      return (
+        <p className="notice error" role="alert" data-testid="error">
+          {error}
+        </p>
+      );
+    }
+    const preview = props.preview;
+    return (
       <div className="sheet loading" aria-busy="true">
-        <div className="hero skeleton" />
-        <p className="muted center">{t.loading}</p>
+        {preview ? (
+          <section className="hero" style={preview.cover ? { backgroundImage: `url(${preview.cover})` } : undefined}>
+            <div className="hero-shade" />
+            <div className="hero-body">
+              <p className="kicker">
+                <span className="badge plain">
+                  <span className="spinner small" aria-hidden="true" /> {t.loading}
+                </span>
+              </p>
+              <h1>{preview.title}</h1>
+              <p className="hero-sub">
+                {preview.artist} · <strong>{preview.version}</strong> · {preview.creator}
+              </p>
+              <p className="pattern">
+                {formatStars(preview.stars)}★ · {formatPp(preview.pp)} pp SS{preview.mods.length > 0 ? ` · ${preview.mods.join("")}` : ""}
+              </p>
+            </div>
+          </section>
+        ) : (
+          <div className="hero skeleton" />
+        )}
+        <div className="stats skeleton-row" aria-hidden="true">
+          {Array.from({ length: 8 }, (_, index) => (
+            <div key={index} className="skeleton" style={{ animationDelay: `${index * 80}ms` }} />
+          ))}
+        </div>
+        <div className="columns" aria-hidden="true">
+          <div className="card skeleton tall" />
+          <div className="card skeleton tall" style={{ animationDelay: "160ms" }} />
+        </div>
       </div>
     );
   }
