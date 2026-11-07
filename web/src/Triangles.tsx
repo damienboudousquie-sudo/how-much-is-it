@@ -2,12 +2,13 @@ import { useEffect, useRef } from "react";
 
 /**
  * osu!-style background: pink triangles rising slowly, bigger ones closer and fainter.
- * Draws at 30 fps at most, stops while the tab is hidden, and holds a still frame
+ * Draws at 40 fps at most, stops while the tab is hidden, and holds a still frame
  * when the system asks for reduced motion.
  */
 
 const COLORS = ["255, 102, 170", "255, 143, 196", "214, 92, 255", "255, 74, 140"];
-const FRAME_MS = 1000 / 30;
+// 40 fps keeps the faster motion smooth while staying light.
+const FRAME_MS = 1000 / 40;
 
 interface Triangle {
   x: number;
@@ -29,8 +30,8 @@ function spawn(width: number, height: number, anywhere: boolean): Triangle {
     y: anywhere ? Math.random() * (height + size) : height + size,
     size,
     // Small triangles feel far away: slower and a little dimmer.
-    speed: 6 + (1 - depth) * 4 + depth * 16,
-    drift: 4 + Math.random() * 10,
+    speed: 22 + depth * 48 + Math.random() * 10,
+    drift: 8 + Math.random() * 14,
     phase: Math.random() * Math.PI * 2,
     alpha: 0.06 + Math.random() * 0.12,
     color: COLORS[Math.floor(Math.random() * COLORS.length)]!,
@@ -76,7 +77,7 @@ export function Triangles() {
 
     const render = (time: number) => {
       ctx.clearRect(0, 0, width, height);
-      for (const item of items) draw(ctx, item, item.x + Math.sin(time / 4000 + item.phase) * item.drift);
+      for (const item of items) draw(ctx, item, item.x + Math.sin(time / 2500 + item.phase) * item.drift);
     };
 
     const resize = () => {
