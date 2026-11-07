@@ -31,7 +31,7 @@ function spawn(width: number, height: number, anywhere: boolean): Triangle {
     y: anywhere ? Math.random() * (height + size) : height + size,
     size,
     // Small triangles feel far away: slower and a little dimmer.
-    speed: 22 + depth * 48 + Math.random() * 10,
+    speed: (22 + depth * 48 + Math.random() * 10) / 3,
     drift: 8 + Math.random() * 14,
     phase: Math.random() * Math.PI * 2,
     alpha: 0.06 + Math.random() * 0.12,
@@ -77,7 +77,7 @@ export function Triangles() {
 
     const render = (time: number) => {
       ctx.clearRect(0, 0, width, height);
-      for (const item of items) draw(ctx, item, item.x + Math.sin(time / 2500 + item.phase) * item.drift);
+      for (const item of items) draw(ctx, item, item.x + Math.sin(time / 7500 + item.phase) * item.drift);
     };
 
     const resize = () => {
