@@ -518,5 +518,5 @@ footer { margin-top: 22px; font-size: 0.85rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  * { transition: none !important; animation: none !important; }
 }
