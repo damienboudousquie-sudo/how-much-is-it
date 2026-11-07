@@ -156,7 +156,7 @@ export function App() {
             <svg viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="30" />
               <text x="32" y="32" dy="0.35em" textAnchor="middle">
-                how?
+                how
               </text>
             </svg>
           </span>
