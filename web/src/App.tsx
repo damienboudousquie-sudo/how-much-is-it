@@ -81,7 +81,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.title = route.page === "beatmap" && title ? `${title} · how much is it?` : "how much is it?";
+    document.title = route.page === "beatmap" && title ? `${title} · how much is it ?` : "how much is it ?";
   }, [route, title]);
 
   function open(target: OpenTarget, preset: PlayPreset | null = null, prefetched: LookupResponse | null = null, preview: MapPreview | null = null) {
@@ -151,15 +151,17 @@ export function App() {
       <Triangles />
       <div className="backdrop" aria-hidden="true" />
       <header className="topbar">
-        <a className="brand" href={mapsPath(finderMode)} onClick={(event) => route.page === "beatmap" && backToMaps(event, finderMode)}>
+        <a className="brand" aria-label="how much is it ?" href={mapsPath(finderMode)} onClick={(event) => route.page === "beatmap" && backToMaps(event, finderMode)}>
           <span className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32">
-              <circle cx="16" cy="16" r="13" />
-              <circle cx="16" cy="16" r="6" />
+            <svg viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="30" />
+              <text x="32" y="32" dy="0.35em" textAnchor="middle">
+                how?
+              </text>
             </svg>
           </span>
-          <span>
-            how much is it<span className="brand-q">?</span>
+          <span className="brand-text">
+            much is it <span className="brand-q">?</span>
           </span>
         </a>
         <div className="langs" role="group" aria-label="Language">
@@ -170,8 +172,6 @@ export function App() {
           ))}
         </div>
       </header>
-
-      {route.page === "maps" && <p className="tagline">{t.tagline}</p>}
 
       <SearchBox compact={route.page === "beatmap"} busy={resolving} onOpen={(target) => open(target)} onOpenSet={(setId) => void openSet(setId)} />
       {resolveError && (

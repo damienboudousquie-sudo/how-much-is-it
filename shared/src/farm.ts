@@ -1,5 +1,4 @@
-import type { MapStyle } from "./types";
-import type { StyleScores } from "./styles";
+import type { ConcreteStyle, StyleScores } from "./styles";
 
 /**
  * Farm maps give more pp than they cost. In practice:
@@ -35,11 +34,11 @@ function clamp(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
-/** How well the map fits what the player wants to farm. */
-export function typeFit(scores: StyleScores, wanted: MapStyle): number {
-  if (wanted !== "any") return scores[wanted];
-  const against = Math.max(scores.stream, scores.tech, scores.fingercontrol);
-  return 0.15 + 0.85 * clamp(scores.jump - 0.4 * against + 0.25 * scores.speed);
+/** How well the map fits what the player wants to farm: the chosen types, or jump maps by default. */
+export function typeFit(scores: StyleScores, wanted: readonly ConcreteStyle[]): number {
+  if (wanted.length > 0) return Math.max(...wanted.map((style) => scores[style]));
+  const against = Math.max(scores.stream, scores.speed, scores.tech, scores.fingercontrol);
+  return 0.15 + 0.85 * clamp(scores.jump - 0.4 * against);
 }
 
 export interface FarmCandidate {
@@ -57,7 +56,7 @@ function residual(map: FarmCandidate): number {
 }
 
 /** Farm score, 0 to 100, for every candidate. Efficiency is relative to the other candidates. */
-export function farmScores(maps: readonly FarmCandidate[], wanted: MapStyle): number[] {
+export function farmScores(maps: readonly FarmCandidate[], wanted: readonly ConcreteStyle[]): number[] {
   if (maps.length === 0) return [];
   const values = maps.map(residual);
   const sorted = [...values].sort((a, b) => a - b);

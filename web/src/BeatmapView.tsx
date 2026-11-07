@@ -4,8 +4,10 @@ import {
   MODS_BY_MODE,
   defaultClockRate,
   matchesStyleScores,
+  modRate,
   modeLabel,
   sanitizeMods,
+  styleScores,
   toggleMod,
   type BeatmapStatus,
   type LookupResponse,
@@ -248,12 +250,12 @@ export function BeatmapView(props: {
         )}
         <div className="stats skeleton-row" aria-hidden="true">
           {Array.from({ length: 8 }, (_, index) => (
-            <div key={index} className="skeleton" style={{ animationDelay: `${index * 80}ms` }} />
+            <div key={index} className="skeleton" />
           ))}
         </div>
         <div className="columns" aria-hidden="true">
           <div className="card skeleton tall" />
-          <div className="card skeleton tall" style={{ animationDelay: "160ms" }} />
+          <div className="card skeleton tall" />
         </div>
       </div>
     );
@@ -263,7 +265,10 @@ export function BeatmapView(props: {
   const shownRate = clockRate ?? defaultClockRate(mods);
   const parts = breakdown(meta.mode, score, t);
   const profile = profileFor(meta.status, t);
-  const types = styles ? CONCRETE_STYLES.filter((style) => matchesStyleScores(styles, style)).sort((a, b) => styles[b] - styles[a]) : [];
+  // Types depend on speed: re-score with the current mods (DT turns fast streams into speed).
+  const rate = shownRate ?? modRate(mods);
+  const scored = pattern ? styleScores(pattern, { version: meta.version }, rate) : styles;
+  const types = scored ? CONCRETE_STYLES.filter((style) => matchesStyleScores(scored, style)).sort((a, b) => scored[b] - scored[a]) : [];
   const best = curve[0]?.pp ?? 1;
   const numberLocale = lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
 

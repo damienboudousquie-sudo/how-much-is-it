@@ -3,7 +3,6 @@ import type { BeatmapStatus, DiscoverSort, Lang, MapStyle } from "@osu-pp/shared
 import { setNumberLocale } from "./format";
 
 export type Copy = {
-  tagline: string;
   searchPlaceholder: string;
   searchHint: string;
   open: string;
@@ -25,6 +24,7 @@ export type Copy = {
   ppMax: string;
   type: string;
   typeHelp: Record<MapStyle, string>;
+  typeMulti: string;
   mode: string;
   mods: string;
   modHelp: string;
@@ -85,7 +85,6 @@ export type Copy = {
 };
 
 const en: Copy = {
-  tagline: "PP of any osu! map, and the best maps to farm in your range.",
   searchPlaceholder: "Paste an osu! link, a difficulty id, or type a title",
   searchHint: "Press / to search from anywhere.",
   open: "Open",
@@ -108,13 +107,14 @@ const en: Copy = {
   type: "Type",
   typeHelp: {
     any: "Every type. Farm order favours short jump maps.",
-    jump: "Spaced 1/2 and 1/1 movement. The classic farm.",
+    jump: "Spaced 1/2 and 1/1 movement, fast DT aim included. The classic farm.",
     stream: "Long 1/4 chains: streams and deathstreams.",
-    speed: "Fast tapping: 1/2 jumps past 240 BPM, fast streams.",
+    speed: "Fast streams, around 200 BPM and up (with mods counted).",
     tech: "Sliders, SV changes, unusual rhythms.",
     alt: "Short 1/4 bursts mixed in, you have to alternate.",
     fingercontrol: "Uneven rhythms and short chains at moderate BPM.",
   },
+  typeMulti: "Pick several to mix them.",
   mode: "Mode",
   mods: "Mods",
   modHelp: "Click to cycle: without → with → either.",
@@ -192,7 +192,6 @@ const en: Copy = {
 };
 
 const fr: Copy = {
-  tagline: "Le PP de n'importe quelle map osu!, et les meilleures maps à farm dans ta fourchette.",
   searchPlaceholder: "Colle un lien osu!, un ID de difficulté, ou tape un titre",
   searchHint: "Appuie sur / pour chercher depuis n'importe où.",
   open: "Voir",
@@ -215,13 +214,14 @@ const fr: Copy = {
   type: "Type",
   typeHelp: {
     any: "Tous les types. Le tri farm favorise les maps jump courtes.",
-    jump: "Déplacements espacés en 1/2 et 1/1. Le farm classique.",
+    jump: "Déplacements espacés en 1/2 et 1/1, aim rapide en DT compris. Le farm classique.",
     stream: "Longues chaînes en 1/4 : streams et deathstreams.",
-    speed: "Tapping rapide : jumps 1/2 au-delà de 240 BPM, streams rapides.",
+    speed: "Streams rapides, à partir de 200 BPM environ (mods compris).",
     tech: "Sliders, changements de SV, rythmes inhabituels.",
     alt: "Petits bursts en 1/4 au milieu des patterns, il faut alterner.",
     fingercontrol: "Rythmes irréguliers et chaînes courtes à BPM modéré.",
   },
+  typeMulti: "Tu peux en choisir plusieurs.",
   mode: "Mode",
   mods: "Mods",
   modHelp: "Clique pour changer : sans → avec → les deux.",
@@ -299,7 +299,6 @@ const fr: Copy = {
 };
 
 const es: Copy = {
-  tagline: "El PP de cualquier mapa de osu!, y los mejores mapas para farmear en tu rango.",
   searchPlaceholder: "Pega un enlace de osu!, un ID de dificultad o escribe un título",
   searchHint: "Pulsa / para buscar desde cualquier sitio.",
   open: "Abrir",
@@ -322,13 +321,14 @@ const es: Copy = {
   type: "Tipo",
   typeHelp: {
     any: "Todos los tipos. El orden farm favorece mapas jump cortos.",
-    jump: "Movimiento espaciado en 1/2 y 1/1. El farm clásico.",
+    jump: "Movimiento espaciado en 1/2 y 1/1, aim rápido en DT incluido. El farm clásico.",
     stream: "Cadenas largas en 1/4: streams y deathstreams.",
-    speed: "Tapping rápido: jumps 1/2 por encima de 240 BPM, streams rápidos.",
+    speed: "Streams rápidos, desde unos 200 BPM (con los mods).",
     tech: "Sliders, cambios de SV, ritmos poco comunes.",
     alt: "Bursts cortos en 1/4 entre patrones, hay que alternar.",
     fingercontrol: "Ritmos irregulares y cadenas cortas a BPM moderado.",
   },
+  typeMulti: "Puedes elegir varios.",
   mode: "Modo",
   mods: "Mods",
   modHelp: "Pulsa para cambiar: sin → con → ambos.",

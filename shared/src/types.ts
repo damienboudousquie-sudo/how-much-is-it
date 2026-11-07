@@ -113,7 +113,8 @@ export type DiscoverNotice = "preview" | "none" | "empty" | "too_many";
 export interface DiscoverRequest {
   query: string;
   mode: Mode;
-  style: MapStyle;
+  /** Types to keep (any of them). Empty means every type. */
+  styles: Exclude<MapStyle, "any">[];
   mods: Record<"EZ" | "HD" | "HR" | "DT" | "HT" | "FL", "off" | "on" | "any">;
   ppMin: number;
   ppMax: number;

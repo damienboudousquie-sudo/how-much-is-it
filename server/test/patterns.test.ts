@@ -33,7 +33,7 @@ function jumps(bpm: number, count: number): [number, number, number][] {
 
 describe("pattern analysis", () => {
   it("reads a full 1/4 map as a stream map", () => {
-    const profile = analyzePatterns(osuFile(190, streams(190, 400)))!;
+    const profile = analyzePatterns(osuFile(180, streams(180, 400)))!;
     expect(profile.streamShare).toBeGreaterThan(0.9);
     expect(profile.longestStream).toBe(400);
     const scores = styleScores(profile);
@@ -48,10 +48,19 @@ describe("pattern analysis", () => {
     expect(primaryStyle(styleScores(profile))).toBe("jump");
   });
 
-  it("reads 1/2 jumps under 125 ms as speed as well", () => {
+  it("keeps fast 1/2 jumps as jumps, not speed (DT aim maps)", () => {
     const scores = styleScores(analyzePatterns(osuFile(260, jumps(260, 400)))!);
-    expect(matchesStyleScores(scores, "speed")).toBe(true);
-    expect(matchesStyleScores(scores, "jump")).toBe(true);
+    expect(primaryStyle(scores)).toBe("jump");
+    expect(matchesStyleScores(scores, "speed")).toBe(false);
+  });
+
+  it("calls fast streams speed, and counts DT in the speed", () => {
+    const fastStreams = styleScores(analyzePatterns(osuFile(210, streams(210, 400)))!);
+    expect(primaryStyle(fastStreams)).toBe("speed");
+    expect(matchesStyleScores(fastStreams, "stream")).toBe(true);
+    const plain = analyzePatterns(osuFile(170, streams(170, 400)))!;
+    expect(primaryStyle(styleScores(plain))).toBe("stream");
+    expect(primaryStyle(styleScores(plain, undefined, 1.5))).toBe("speed");
   });
 
   it("treats 1/8 streams at half BPM as 1/4 streams", () => {
@@ -60,7 +69,8 @@ describe("pattern analysis", () => {
     const profile = analyzePatterns(osuFile(100, circles))!;
     expect(profile.bpm).toBe(200);
     expect(profile.irregularShare).toBeLessThan(0.05);
-    expect(primaryStyle(styleScores(profile))).toBe("stream");
+    // 200 BPM streams once rescaled: fast enough to be speed.
+    expect(primaryStyle(styleScores(profile))).toBe("speed");
   });
 
   it("skips non-standard maps", () => {
@@ -87,7 +97,7 @@ describe("farm", () => {
   it("ranks a short low-star jump map above a long stream map worth the same pp", () => {
     const jump = { pp: 400, stars: 6.2, lengthSeconds: 85, hint: 0.5, scores: { ...guessedScores(null), jump: 1, stream: 0 } };
     const stream = { pp: 400, stars: 6.8, lengthSeconds: 280, hint: 0, scores: { ...guessedScores(null), jump: 0.1, stream: 1 } };
-    const [jumpScore, streamScore] = farmScores([jump, stream], "any");
+    const [jumpScore, streamScore] = farmScores([jump, stream], []);
     expect(jumpScore).toBeGreaterThan(streamScore!);
   });
 });

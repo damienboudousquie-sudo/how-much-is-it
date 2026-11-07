@@ -167,11 +167,24 @@ button:disabled {
 
 .brand-mark svg {
   display: block;
-  width: 28px;
-  height: 28px;
-  fill: none;
-  stroke: var(--pink);
+  width: 44px;
+  height: 44px;
+  filter: drop-shadow(0 4px 14px rgba(255, 102, 170, 0.35));
+}
+
+/* osu!-style mark: a pink disc with white bold lettering. */
+.brand-mark circle {
+  fill: var(--pink);
+  stroke: #fff;
   stroke-width: 3;
+}
+
+.brand-mark text {
+  fill: #fff;
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .brand-q {
@@ -200,15 +213,6 @@ button:disabled {
 .langs button.on {
   background: var(--surface-3);
   color: var(--text);
-}
-
-.tagline {
-  max-width: 640px;
-  margin: 0 0 18px;
-  font-size: clamp(1.5rem, 3.2vw, 2.2rem);
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
 }
 
 .footer {
@@ -977,23 +981,12 @@ button:disabled {
   margin-top: 16px;
 }
 
+/* Placeholders stay still: no pulse, no shimmer. */
 .skeleton {
   min-height: 84px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--surface);
-  animation: breathe 2.4s ease-in-out infinite both;
-}
-
-/* A slow, low-contrast breath instead of a flashing shimmer. */
-@keyframes breathe {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 0.85;
-  }
+  background: rgba(20, 18, 27, 0.8);
 }
 
 .map-list {
@@ -1059,16 +1052,20 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: calc(var(--radius) + 4px);
   background: linear-gradient(135deg, #1b1724, #121019) center / cover no-repeat;
+  /* Keep the cover inside the border, so the grey veil covers all of it. */
+  background-clip: padding-box;
 }
 
 .hero.skeleton {
   min-height: 220px;
 }
 
+/* One even grey veil over the whole banner, edges included. */
 .hero-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(11, 10, 16, 0.95) 0%, rgba(11, 10, 16, 0.78) 55%, rgba(11, 10, 16, 0.45) 100%);
+  border-radius: inherit;
+  background: rgba(11, 10, 16, 0.72);
 }
 
 .hero-body {

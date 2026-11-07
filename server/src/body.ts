@@ -122,9 +122,18 @@ export function parseDiscover(body: unknown): DiscoverRequest {
   if (query.length > 80) throw new AppError("invalid", tr("request.query", { max: 80 }), 400);
   const mode = readMode(record.mode);
   if (!mode) throw new AppError("invalid", tr("request.needMode"), 400);
-  const style = record.style;
-  if (typeof style !== "string" || !MAP_STYLES.includes(style as MapStyle)) {
-    throw new AppError("invalid", tr("request.style"), 400);
+  // `styles` is a list of types; the older single `style` field is still read.
+  let styles: Exclude<MapStyle, "any">[] = [];
+  if (Array.isArray(record.styles)) {
+    if (record.styles.length > MAP_STYLES.length || record.styles.some((item) => typeof item !== "string" || item === "any" || !MAP_STYLES.includes(item as MapStyle))) {
+      throw new AppError("invalid", tr("request.style"), 400);
+    }
+    styles = [...new Set(record.styles as Exclude<MapStyle, "any">[])];
+  } else if (record.style != null) {
+    if (typeof record.style !== "string" || !MAP_STYLES.includes(record.style as MapStyle)) {
+      throw new AppError("invalid", tr("request.style"), 400);
+    }
+    if (record.style !== "any") styles = [record.style as Exclude<MapStyle, "any">];
   }
   const ppMin = record.ppMin;
   const ppMax = record.ppMax;
@@ -150,7 +159,7 @@ export function parseDiscover(body: unknown): DiscoverRequest {
   return {
     query,
     mode,
-    style: style as MapStyle,
+    styles,
     mods: readFilters(record.mods),
     ppMin,
     ppMax,

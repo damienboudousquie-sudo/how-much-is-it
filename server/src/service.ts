@@ -2,7 +2,8 @@ import {
   compareDiscover,
   farmScores,
   guessedScores,
-  matchesStyleScores,
+  matchesAnyStyle,
+  modRate,
   matchingCombos,
   modsInCombo,
   primaryStyle,
@@ -158,7 +159,7 @@ interface Candidate {
 function scoresFor(map: PpDbMap, osu: boolean): { scores: StyleScores; known: boolean } {
   if (!osu) return { scores: guessedScores(null), known: false };
   const profile = getProfile(map.beatmapId);
-  if (profile) return { scores: styleScores(profile, { version: map.version }), known: true };
+  if (profile) return { scores: styleScores(profile, { version: map.version }, modRate(modsInCombo(map.mods))), known: true };
   if (profile === null) return { scores: guessedScores(map.guess), known: true };
   return { scores: guessedScores(map.guess), known: false };
 }
@@ -169,9 +170,9 @@ function scoresFor(map: PpDbMap, osu: boolean): { scores: StyleScores; known: bo
  * metadata guess to agree.
  */
 function keep(candidate: Candidate, input: DiscoverRequest, strict: boolean): boolean {
-  if (input.style === "any") return true;
-  if (candidate.known) return matchesStyleScores(candidate.scores, input.style);
-  return strict ? candidate.map.guess === input.style : true;
+  if (input.styles.length === 0) return true;
+  if (candidate.known) return matchesAnyStyle(candidate.scores, input.styles);
+  return strict ? candidate.map.guess != null && input.styles.includes(candidate.map.guess) : true;
 }
 
 function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
@@ -183,7 +184,7 @@ function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
       hint: item.map.hint,
       scores: item.scores,
     })),
-    input.style,
+    input.styles,
   );
   list.forEach((item, index) => {
     item.farm = farms[index]!;
@@ -249,8 +250,8 @@ async function loadCombos(input: DiscoverRequest, combos: string[]) {
 
 export async function discover(input: DiscoverRequest, signal?: AbortSignal): Promise<DiscoverResponse> {
   const osu = input.mode === "osu";
-  const styleIgnored = !osu && input.style !== "any";
-  const effective: DiscoverRequest = styleIgnored ? { ...input, style: "any" } : input;
+  const styleIgnored = !osu && input.styles.length > 0;
+  const effective: DiscoverRequest = styleIgnored ? { ...input, styles: [] } : input;
   const combos = matchingCombos(input.mods);
   const empty = { results: [], scanned: 0, total: 0, hasMore: false, nextOffset: 0, styleIgnored, analyzing: 0, limitedFrom: null, catalog: null };
   if (combos.length > 8) return { ...empty, notice: "too_many" };
@@ -271,7 +272,7 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
   }
 
   // Exact types and farm ranking need the hit objects. Read the maps that would be shown first.
-  const refine = osu && (effective.style !== "any" || effective.sort === "farm");
+  const refine = osu && (effective.styles.length > 0 || effective.sort === "farm");
   let analyzing = 0;
   if (refine) {
     let ranked = rank(pool.filter((item) => keep(item, effective, false)), effective);
@@ -314,7 +315,7 @@ export function warmFinderIndex(): void {
   void discover({
     query: "",
     mode: "osu",
-    style: "any",
+    styles: [],
     mods: { EZ: "off", HD: "off", HR: "off", DT: "off", HT: "off", FL: "off" },
     ppMin: 500,
     ppMax: 600,

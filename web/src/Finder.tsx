@@ -5,6 +5,7 @@ import {
   MAP_STYLES,
   cycleChoice,
   emptyFilters,
+  type ConcreteStyle,
   type DiscoverHit,
   type DiscoverResponse,
   type DiscoverSort,
@@ -42,7 +43,8 @@ interface Settings {
   ppMin: string;
   ppMax: string;
   query: string;
-  style: MapStyle;
+  /** Types to show, any of them. Empty means every type. */
+  styles: ConcreteStyle[];
   sort: DiscoverSort;
   filters: Record<FinderMod, ModChoice>;
 }
@@ -58,10 +60,17 @@ function readSettings(): Settings {
     ppMin: typeof saved.ppMin === "string" ? saved.ppMin : "400",
     ppMax: typeof saved.ppMax === "string" ? saved.ppMax : "500",
     query: typeof saved.query === "string" ? saved.query : "",
-    style: MAP_STYLES.includes(saved.style as MapStyle) ? (saved.style as MapStyle) : "any",
+    styles: readStyles(saved),
     sort: DISCOVER_SORTS.includes(saved.sort as DiscoverSort) ? (saved.sort as DiscoverSort) : "farm",
     filters,
   };
+}
+
+function readStyles(saved: Partial<Settings> & { style?: unknown }): ConcreteStyle[] {
+  const valid = (value: unknown): value is ConcreteStyle => typeof value === "string" && value !== "any" && MAP_STYLES.includes(value as MapStyle);
+  if (Array.isArray(saved.styles)) return [...new Set(saved.styles.filter(valid))];
+  // Settings saved before several types could be picked.
+  return valid(saved.style) ? [saved.style] : [];
 }
 
 function parseRange(min: string, max: string): [number, number] | null {
@@ -87,7 +96,8 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
   const sentinel = useRef<HTMLDivElement>(null);
   const firstRun = useRef(true);
 
-  const { ppMin, ppMax, query, style, sort, filters } = settings;
+  const { ppMin, ppMax, query, styles, sort, filters } = settings;
+  const stylesKey = styles.join(",");
   const mode = props.mode;
   const filtersKey = FINDER_MODS.map((mod) => filters[mod]).join(",");
 
@@ -116,7 +126,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
     else if (!options.silent) setStatus({ kind: "loading" });
     try {
       const data = await fetchDiscover(
-        { query: query.trim(), mode, style: mode === "osu" ? style : "any", mods: filters, ppMin: range[0], ppMax: range[1], offset, sort },
+        { query: query.trim(), mode, styles: mode === "osu" ? styles : [], mods: filters, ppMin: range[0], ppMax: range[1], offset, sort },
         current.signal,
       );
       if (current.signal.aborted || gen !== generation.current) return;
@@ -153,7 +163,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
     return () => window.clearTimeout(timer);
     // run reads the settings of this render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ppMin, ppMax, query, mode, style, sort, filtersKey]);
+  }, [ppMin, ppMax, query, mode, stylesKey, sort, filtersKey]);
 
   useEffect(
     () => () => {
@@ -235,26 +245,32 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
 
         <div className="control">
           <span className="label">{t.type}</span>
-          <div className="types" role="radiogroup" aria-label={t.type} data-testid="finder-style">
+          <div className="types" role="group" aria-label={t.type} data-testid="finder-style">
             {MAP_STYLES.map((item) => {
-              const selected = mode === "osu" && style === item;
+              const selected = item === "any" ? styles.length === 0 || mode !== "osu" : mode === "osu" && styles.includes(item);
               return (
                 <button
                   type="button"
                   key={item}
-                  role="radio"
-                  aria-checked={selected}
+                  aria-pressed={selected}
                   disabled={mode !== "osu" && item !== "any"}
                   className={`type type-${item}${selected ? " on" : ""}`}
                   title={t.typeHelp[item]}
-                  onClick={() => update({ style: item })}
+                  onClick={() =>
+                    update({
+                      styles:
+                        item === "any" ? [] : styles.includes(item) ? styles.filter((style) => style !== item) : [...styles, item],
+                    })
+                  }
                 >
                   {t.styles[item]}
                 </button>
               );
             })}
           </div>
-          <p className="help">{t.typeHelp[mode === "osu" ? style : "any"]}</p>
+          <p className="help">
+            {mode === "osu" && styles.length > 0 ? styles.map((style) => t.typeHelp[style]).join(" ") : t.typeHelp.any} {mode === "osu" ? t.typeMulti : ""}
+          </p>
         </div>
 
         <div className="control-row">
@@ -337,7 +353,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
       {status.kind === "loading" && hits.length === 0 ? (
         <div className="map-list" aria-busy="true">
           {Array.from({ length: 6 }, (_, index) => (
-            <div className="map skeleton" key={index} style={{ animationDelay: `${index * 120}ms` }} />
+            <div className="map skeleton" key={index} />
           ))}
         </div>
       ) : (
@@ -373,8 +389,26 @@ function MapCard(props: { hit: DiscoverHit; rank: number; sort: DiscoverSort; on
   const { hit } = props;
   const [coverFailed, setCoverFailed] = useState(false);
   const tier = farmTier(hit.farm);
+  const cardRef = useRef<HTMLAnchorElement>(null);
+
+  // A card that stays on screen for a moment is probably about to be clicked: warm it up.
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!node) return;
+    let timer: number | undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      window.clearTimeout(timer);
+      if (entry?.isIntersecting) timer = window.setTimeout(() => prefetchMap(hit.beatmapId, hit.beatmapsetId), 700);
+    });
+    observer.observe(node);
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [hit.beatmapId, hit.beatmapsetId]);
   return (
     <a
+      ref={cardRef}
       className={`map${tier ? ` farm-${tier}` : ""}`}
       href={beatmapPath(hit.mode, hit.beatmapId)}
       onPointerEnter={() => prefetchMap(hit.beatmapId, hit.beatmapsetId)}
