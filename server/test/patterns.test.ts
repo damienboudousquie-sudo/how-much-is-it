@@ -55,7 +55,7 @@ describe("pattern analysis", () => {
   });
 
   it("calls fast streams speed, and counts DT in the speed", () => {
-    const fastStreams = styleScores(analyzePatterns(osuFile(210, streams(210, 400)))!);
+    const fastStreams = styleScores(analyzePatterns(osuFile(250, streams(250, 400)))!);
     expect(primaryStyle(fastStreams)).toBe("speed");
     expect(matchesStyleScores(fastStreams, "stream")).toBe(true);
     const plain = analyzePatterns(osuFile(170, streams(170, 400)))!;
@@ -69,8 +69,8 @@ describe("pattern analysis", () => {
     const profile = analyzePatterns(osuFile(100, circles))!;
     expect(profile.bpm).toBe(200);
     expect(profile.irregularShare).toBeLessThan(0.05);
-    // 200 BPM streams once rescaled: fast enough to be speed.
-    expect(primaryStyle(styleScores(profile))).toBe("speed");
+    // 200 BPM streams once rescaled: plain streams, speed starts around 240.
+    expect(primaryStyle(styleScores(profile))).toBe("stream");
   });
 
   it("skips non-standard maps", () => {

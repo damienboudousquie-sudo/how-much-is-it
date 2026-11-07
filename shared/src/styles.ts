@@ -54,7 +54,7 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
  * played with DT is a 270 BPM speed map.
  *
  * - stream: long 1/4 chains carry the map (bursts count a little).
- * - speed: those streams, fast. Around 200 BPM and up (sytho-style speed streams).
+ * - speed: those streams, fast: about 240 BPM and up, mods counted.
  *   Fast 1/2 jumps are not speed: DT aim maps stay jump maps.
  * - jump: spaced 1/2 and 1/1 movement, few streams, at any speed.
  * - alt: short 1/4 bursts and doubles mixed into patterns, too fast to single-tap.
@@ -66,7 +66,8 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   const bpm = p.bpm * (rate > 0 ? rate : 1);
   const streamMass = p.streamShare + 0.4 * p.burstShare;
   const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7));
-  const fast = ramp(bpm, 185, 205);
+  // Speed starts around 240 BPM: 200 BPM streams are plain streams.
+  const fast = ramp(bpm, 228, 248);
 
   const speed = streamCore * fast;
   const stream = streamCore * (1 - 0.25 * fast);
