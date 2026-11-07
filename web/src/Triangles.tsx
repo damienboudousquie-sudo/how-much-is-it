@@ -2,8 +2,9 @@ import { useEffect, useRef } from "react";
 
 /**
  * osu!-style background: pink triangles rising slowly, bigger ones closer and fainter.
- * Draws at 40 fps at most, stops while the tab is hidden, and holds a still frame
- * when the system asks for reduced motion.
+ * Draws at 40 fps at most and stops while the tab is hidden. It keeps moving even
+ * when the system asks for reduced motion: the motion is slow, in the background,
+ * and the site owner wants it visible.
  */
 
 const COLORS = ["255, 102, 170", "255, 143, 196", "214, 92, 255", "255, 74, 140"];
@@ -68,7 +69,6 @@ export function Triangles() {
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let width = 0;
     let height = 0;
     let items: Triangle[] = [];
@@ -107,7 +107,7 @@ export function Triangles() {
     };
 
     const start = () => {
-      if (reduced || frame) return;
+      if (frame) return;
       last = 0;
       frame = window.requestAnimationFrame(tick);
     };
