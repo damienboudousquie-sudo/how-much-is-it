@@ -107,10 +107,11 @@ if (existsSync(webRoot)) {
   await app.register(fastifyStatic, {
     root: webRoot,
     preCompressed: true,
-    setHeaders(res, path) {
+    // In @fastify/static 10 this receives the Fastify reply, not the raw Node response.
+    setHeaders(reply: FastifyReply, path: string) {
       // Vite fingerprints everything under assets/, so it never changes under the same name.
-      if (/[\\/]assets[\\/]/.test(path)) res.setHeader("cache-control", "public, max-age=31536000, immutable");
-      else res.setHeader("cache-control", "no-cache");
+      if (/[\\/]assets[\\/]/.test(path)) reply.header("cache-control", "public, max-age=31536000, immutable");
+      else reply.header("cache-control", "no-cache");
     },
   });
 }
