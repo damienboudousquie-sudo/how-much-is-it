@@ -1,3 +1,5 @@
+import type { PatternProfile, StyleScores } from "./styles";
+
 export type Mode = "osu" | "taiko" | "catch" | "mania";
 
 export type BeatmapStatus =
@@ -65,7 +67,9 @@ export interface LookupResponse {
   curve: CurvePoint[];
   score: ScoreResult;
   warnings: string[];
-  profileNote: string | null;
+  /** osu! standard only: measured patterns and type scores. */
+  pattern: PatternProfile | null;
+  styles: StyleScores | null;
   apiKeyConfigured: boolean;
 }
 
@@ -96,7 +100,7 @@ export interface SearchResponse {
 export const MAP_STYLES = ["any", "jump", "stream", "speed", "tech", "alt", "fingercontrol"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
-export const DISCOVER_SORTS = ["pp-desc", "pp-asc", "stars-desc", "stars-asc", "length-desc", "length-asc"] as const;
+export const DISCOVER_SORTS = ["farm", "pp-desc", "pp-asc", "stars-desc", "stars-asc", "length-desc", "length-asc"] as const;
 export type DiscoverSort = (typeof DISCOVER_SORTS)[number];
 
 export interface HealthResponse {
@@ -132,6 +136,10 @@ export interface DiscoverHit {
   lengthSeconds: number | null;
   mods: string[];
   style: Exclude<MapStyle, "any"> | null;
+  /** 0 to 100. Higher means more pp for the effort. */
+  farm: number;
+  /** True while the type comes from metadata, before the .osu file is read. */
+  estimated: boolean;
 }
 
 export interface DiscoverResponse {
@@ -142,6 +150,10 @@ export interface DiscoverResponse {
   nextOffset: number;
   notice: DiscoverNotice;
   styleIgnored: boolean;
+  /** Maps near the top still being analysed. Ask again shortly to refine. */
+  analyzing: number;
+  /** Set when the range was too wide: maps below this PP were not loaded. */
+  limitedFrom: number | null;
 }
 
 export interface CalculateRequest {

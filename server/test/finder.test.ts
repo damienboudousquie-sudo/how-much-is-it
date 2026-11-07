@@ -1,4 +1,4 @@
-import { PP_COMBOS, classifyStyle, compareDiscover, emptyFilters, matchingCombos, modsInCombo, starWindow, styleMatches, textMatches } from "@osu-pp/shared";
+import { PP_COMBOS, classifyStyle, compareDiscover, emptyFilters, matchingCombos, modsInCombo, styleMatches, textMatches } from "@osu-pp/shared";
 import { describe, expect, it } from "vitest";
 
 describe("map styles", () => {
@@ -67,9 +67,9 @@ describe("map styles", () => {
     expect([long, short, hard].sort((a, b) => compareDiscover("length-asc", a, b)).map((map) => map.lengthSeconds)).toEqual([90, 120, 400]);
   });
 
-  it("places a 550 pp nomod map near 7 stars", () => {
-    const [low, high] = starWindow(520, 580, [], null);
-    expect(low).toBeLessThan(7);
-    expect(high).toBeGreaterThan(7);
+  it("puts the farm score first when sorting for farm", () => {
+    const a = { pp: 500, stars: 6, lengthSeconds: 90, farm: 40 };
+    const b = { pp: 480, stars: 6, lengthSeconds: 90, farm: 80 };
+    expect([a, b].sort((x, y) => compareDiscover("farm", x, y))[0]).toBe(b);
   });
 });

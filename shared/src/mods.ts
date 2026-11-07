@@ -20,8 +20,6 @@ export class InputError extends Error {
   }
 }
 
-const RATE_MODS = new Set<string>(["DT", "NC", "HT"]);
-
 export function assertMods(mods: readonly string[], mode: Mode): ModId[] {
   const allowed = new Set<string>(MODS_BY_MODE[mode]);
   const selected = new Set<string>();
@@ -110,48 +108,9 @@ export function resolveClockRate(mods: readonly string[], clockRate: number | nu
   return rounded;
 }
 
-export function hasRateMod(mods: readonly string[]): boolean {
-  return mods.some((mod) => RATE_MODS.has(mod));
-}
-
 export function modeLabel(mode: Mode): string {
   if (mode === "osu") return "osu!";
   return mode;
-}
-
-export function statusLabel(status: BeatmapStatus): string {
-  switch (status) {
-    case "ranked":
-      return "classée";
-    case "approved":
-      return "approuvée";
-    case "qualified":
-      return "qualifiée";
-    case "loved":
-      return "loved";
-    case "pending":
-      return "en attente";
-    case "graveyard":
-      return "abandonnée";
-    case "wip":
-      return "brouillon";
-    default:
-      return "statut inconnu";
-  }
-}
-
-export function profileNote(status: BeatmapStatus): string | null {
-  switch (status) {
-    case "loved":
-    case "pending":
-    case "graveyard":
-    case "wip":
-      return "Ce PP ne s'ajoute pas au profil.";
-    case "qualified":
-      return "Ce PP compte temporairement, tant que la map est qualifiée.";
-    default:
-      return null;
-  }
 }
 
 export function normalizeStatus(raw: string | null | undefined): BeatmapStatus {

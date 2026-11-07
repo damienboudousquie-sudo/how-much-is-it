@@ -1,13 +1,23 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Mode } from "@osu-pp/shared";
+import { classifyStyle, farmHint, type ConcreteStyle, type Mode } from "@osu-pp/shared";
 import { AppError } from "./errors";
 import { repoRoot } from "./env";
 import { tr } from "./locale";
+import { Lru } from "./lru";
 
 const MIRROR = "https://mirror.hinamizawa.ai";
 const MODE_ID: Record<Mode, string> = { osu: "0", taiko: "1", catch: "2", mania: "3" };
+const PAGE_SIZE = 100;
+/** PP width of one cached slice. A range is the union of the slices it touches. */
+export const BAND = 25;
+/** Widest range loaded at once, so a 0 to 2000 request does not pull the whole catalogue. */
+export const MAX_BANDS = 24;
+const MAX_PAGES_PER_BAND = 80;
+const TTL_MS = 24 * 60 * 60 * 1000;
+const SCHEMA = 2;
+const DIR = join(repoRoot, "cache", "pp-bands");
 
 export interface PpDbMap {
   beatmapId: number;
@@ -16,31 +26,37 @@ export interface PpDbMap {
   artist: string;
   creator: string;
   version: string;
-  tags: string;
-  cover: string | null;
   stars: number;
   pp: number;
   lengthSeconds: number | null;
   bpm: number | null;
-  density: number | null;
-  circleRatio: number | null;
   mods: string;
+  /** Type guessed from tags, name and density, before the .osu file is read. */
+  guess: ConcreteStyle | null;
+  /** 0 to 1, see farmHint. */
+  hint: number;
 }
 
-export interface PpDbPage {
+export interface RangeLoad {
   maps: PpDbMap[];
-  total: number;
-  hasMore: boolean;
+  /** Lowest PP actually loaded when the range was wider than MAX_BANDS. */
+  limitedFrom: number | null;
 }
 
-function readSeconds(row: Record<string, unknown>): number | null {
-  const value = row.drain_time_seconds ?? row.hit_length ?? row.total_length;
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
-}
+/* ---------- mirror requests, at most 8 at a time ---------- */
 
-function readTags(value: unknown): string {
-  if (Array.isArray(value)) return value.filter((tag): tag is string => typeof tag === "string").join(" ");
-  return typeof value === "string" ? value : "";
+let active = 0;
+const waiting: (() => void)[] = [];
+
+async function slot<T>(job: () => Promise<T>): Promise<T> {
+  if (active >= 8) await new Promise<void>((resolve) => waiting.push(resolve));
+  active += 1;
+  try {
+    return await job();
+  } finally {
+    active -= 1;
+    waiting.shift()?.();
+  }
 }
 
 function readNumber(value: unknown): number | null {
@@ -52,187 +68,193 @@ function readId(value: unknown): number | null {
   return Number.isInteger(id) && id > 0 && id <= 2_147_483_647 ? id : null;
 }
 
-async function fetchPpPage(path: string, mods: string, offset: number, signal?: AbortSignal): Promise<PpDbPage> {
-  const timeout = AbortSignal.timeout(12_000);
-  const signals = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  let response: Response;
-  try {
-    response = await fetch(`${MIRROR}${path}`, {
-      headers: { Accept: "application/json", "User-Agent": "osu-pp-lookup/0.1 (+local)" },
-      signal: signals,
-    });
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    throw new AppError("unavailable", tr("ppdb.down"), 502);
-  }
-  if (!response.ok) throw new AppError("unavailable", tr("ppdb.down"), 502);
-  const json = (await response.json()) as { maps?: unknown; total?: unknown };
-  if (!Array.isArray(json.maps)) throw new AppError("unavailable", tr("ppdb.down"), 502);
-  const maps: PpDbMap[] = [];
-  for (const item of json.maps) {
-    if (!item || typeof item !== "object") continue;
-    const row = item as Record<string, unknown>;
-    const beatmapId = readId(row.beatmap_id);
-    if (beatmapId == null || typeof row.pp !== "number" || typeof row.stars !== "number") continue;
-    const cover = typeof row.cover === "string" && row.cover.startsWith("https://") ? row.cover : null;
-    const objects = readNumber(row.total_objects);
-    const drain = readNumber(row.drain_time_seconds);
-    const circles = readNumber(row.count_circles);
-    maps.push({
-      beatmapId,
-      beatmapsetId: readId(row.beatmapset_id),
-      title: typeof row.title === "string" ? row.title : "Untitled",
-      artist: typeof row.artist === "string" ? row.artist : "Unknown artist",
-      creator: typeof row.creator === "string" ? row.creator : "Unknown creator",
-      version: typeof row.version === "string" ? row.version : "Difficulty",
-      tags: readTags(row.tags),
-      cover,
-      stars: row.stars,
-      pp: row.pp,
-      lengthSeconds: readSeconds(row),
-      bpm: readNumber(row.bpm),
+function readText(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function readTags(value: unknown): string {
+  if (Array.isArray(value)) return value.filter((tag): tag is string => typeof tag === "string").join(" ");
+  return typeof value === "string" ? value : "";
+}
+
+function toMap(row: Record<string, unknown>, mods: string): PpDbMap | null {
+  const beatmapId = readId(row.beatmap_id);
+  const pp = readNumber(row.pp);
+  const stars = readNumber(row.stars);
+  if (beatmapId == null || pp == null || stars == null) return null;
+  const seconds = readNumber(row.drain_time_seconds ?? row.hit_length ?? row.total_length);
+  const objects = readNumber(row.total_objects);
+  const drain = readNumber(row.drain_time_seconds);
+  const circles = readNumber(row.count_circles);
+  const bpm = readNumber(row.bpm);
+  const title = readText(row.title, "Untitled");
+  const creator = readText(row.creator, "Unknown creator");
+  const version = readText(row.version, "Difficulty");
+  const tags = readTags(row.tags);
+  return {
+    beatmapId,
+    beatmapsetId: readId(row.beatmapset_id),
+    title,
+    artist: readText(row.artist, "Unknown artist"),
+    creator,
+    version,
+    stars,
+    pp,
+    lengthSeconds: seconds != null && seconds > 0 ? seconds : null,
+    bpm,
+    mods: typeof row.mods === "string" ? row.mods : mods,
+    guess: classifyStyle({
+      tags,
+      version,
+      bpm,
+      stars,
       density: objects != null && drain != null && drain > 0 ? objects / drain : null,
       circleRatio: objects != null && circles != null && objects > 0 ? circles / objects : null,
-      mods: typeof row.mods === "string" ? row.mods : mods,
-    });
-  }
-  const total = typeof json.total === "number" ? json.total : offset + maps.length;
-  return { maps, total, hasMore: offset + maps.length < total };
+    }),
+    hint: farmHint({ title, creator, tags }),
+  };
 }
 
-export async function searchPpMaps(
-  input: { mode: Mode; mods: string; ppMin: number; ppMax: number; limit: number; offset: number },
-  signal?: AbortSignal,
-): Promise<PpDbPage> {
-  const limit = Math.min(100, Math.max(1, Math.floor(input.limit)));
-  const offset = Math.max(0, Math.floor(input.offset));
-  const params = new URLSearchParams({
-    mods: input.mods,
-    game_mode: MODE_ID[input.mode],
-    min_pp: String(input.ppMin),
-    max_pp: String(input.ppMax),
-    limit: String(limit),
-    offset: String(offset),
+async function fetchPage(path: string, mods: string, signal?: AbortSignal): Promise<{ maps: PpDbMap[]; total: number }> {
+  return slot(async () => {
+    const timeout = AbortSignal.timeout(15_000);
+    const signals = signal ? AbortSignal.any([signal, timeout]) : timeout;
+    let response: Response;
+    try {
+      response = await fetch(`${MIRROR}${path}`, {
+        headers: { Accept: "application/json", "User-Agent": "osu-pp-lookup/0.2 (+local)" },
+        signal: signals,
+      });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      throw new AppError("unavailable", tr("ppdb.down"), 502);
+    }
+    if (!response.ok) throw new AppError("unavailable", tr("ppdb.down"), 502);
+    const json = (await response.json()) as { maps?: unknown; total?: unknown };
+    if (!Array.isArray(json.maps)) throw new AppError("unavailable", tr("ppdb.down"), 502);
+    const maps: PpDbMap[] = [];
+    for (const item of json.maps) {
+      if (!item || typeof item !== "object") continue;
+      const map = toMap(item as Record<string, unknown>, mods);
+      if (map) maps.push(map);
+    }
+    return { maps, total: typeof json.total === "number" ? json.total : maps.length };
   });
-  return fetchPpPage(`/v3/osu/pp-maps?${params}`, input.mods, offset, signal);
 }
 
-export async function searchPpText(
-  input: { query: string; mode: Mode; mods: string; limit: number; offset: number },
-  signal?: AbortSignal,
-): Promise<PpDbPage> {
-  const limit = Math.min(100, Math.max(1, Math.floor(input.limit)));
-  const offset = Math.max(0, Math.floor(input.offset));
-  const params = new URLSearchParams({
-    q: input.query,
-    mods: input.mods,
-    game_mode: MODE_ID[input.mode],
-    limit: String(limit),
-    offset: String(offset),
-  });
-  return fetchPpPage(`/v3/osu/pp-maps/search?${params}`, input.mods, offset, signal);
+async function fetchAll(pathFor: (offset: number) => string, mods: string, maxPages: number): Promise<{ maps: PpDbMap[]; complete: boolean }> {
+  const first = await fetchPage(pathFor(0), mods);
+  const pages = Math.max(1, Math.ceil(first.total / PAGE_SIZE));
+  const wanted = Math.min(maxPages, pages);
+  const rest = await Promise.all(
+    Array.from({ length: wanted - 1 }, (_, index) => fetchPage(pathFor((index + 1) * PAGE_SIZE), mods).then((page) => page.maps)),
+  );
+  return { maps: first.maps.concat(...rest), complete: wanted === pages };
 }
 
-const INDEX_TTL_MS = 12 * 60 * 60 * 1000;
-const INDEX_DIR = join(repoRoot, "cache", "pp-index");
+/* ---------- cache: memory LRU over disk files ---------- */
 
-interface StoredIndex {
+interface Stored {
+  schema: number;
   at: number;
   maps: PpDbMap[];
 }
 
-const memoryIndex = new Map<string, StoredIndex>();
-const indexInflight = new Map<string, Promise<PpDbMap[]>>();
+const memory = new Lru<Stored>(160);
+const inflight = new Map<string, Promise<PpDbMap[]>>();
 
-function indexKey(query: string, mode: Mode, mods: string): string {
-  return `${mode}\n${mods}\n${query}`;
+function fileFor(key: string): string {
+  return join(DIR, `${createHash("sha1").update(key).digest("hex")}.json`);
 }
 
-function indexPath(key: string): string {
-  return join(INDEX_DIR, `${createHash("sha1").update(key).digest("hex")}.json`);
-}
-
-async function readIndex(key: string): Promise<StoredIndex | null> {
+async function readStored(key: string): Promise<Stored | null> {
   try {
-    const parsed = JSON.parse(await readFile(indexPath(key), "utf8")) as StoredIndex;
-    if (!parsed || !Array.isArray(parsed.maps) || Date.now() - parsed.at > INDEX_TTL_MS) return null;
+    const parsed = JSON.parse(await readFile(fileFor(key), "utf8")) as Stored;
+    if (parsed?.schema !== SCHEMA || !Array.isArray(parsed.maps) || Date.now() - parsed.at > TTL_MS) return null;
     return parsed;
   } catch {
     return null;
   }
 }
 
-async function fetchAllText(input: { query: string; mode: Mode; mods: string }): Promise<PpDbMap[]> {
-  const size = 100;
-  const first = await searchPpText({ ...input, limit: size, offset: 0 });
-  const pages = Math.min(20, Math.max(1, Math.ceil(first.total / size)));
-  const rest =
-    pages === 1
-      ? []
-      : await Promise.all(
-          Array.from({ length: pages - 1 }, (_, index) => searchPpText({ ...input, limit: size, offset: (index + 1) * size })),
-        );
-  return first.maps.concat(...rest.map((page) => page.maps));
-}
-
-async function fetchAllRange(input: { mode: Mode; mods: string; ppMin: number; ppMax: number }): Promise<PpDbMap[]> {
-  const size = 100;
-  const first = await searchPpMaps({ ...input, limit: size, offset: 0 });
-  const pages = Math.min(150, Math.max(1, Math.ceil(first.total / size)));
-  const rest: PpDbMap[] = [];
-  const batch = 8;
-  for (let page = 1; page < pages; page += batch) {
-    const offsets = Array.from({ length: Math.min(batch, pages - page) }, (_, index) => (page + index) * size);
-    const loaded = await Promise.all(offsets.map((offset) => searchPpMaps({ ...input, limit: size, offset })));
-    for (const entry of loaded) rest.push(...entry.maps);
+async function writeStored(key: string, stored: Stored): Promise<void> {
+  try {
+    await mkdir(DIR, { recursive: true });
+    const path = fileFor(key);
+    const temp = `${path}.${process.pid}.tmp`;
+    await writeFile(temp, JSON.stringify(stored));
+    await rename(temp, path);
+  } catch {
+    // The cache is an optimisation. A failed write only costs a refetch.
   }
-  return first.maps.concat(rest);
 }
 
-/** Every ranked map in a PP window, kept so a type filter does not depend on one keyword. */
-export async function loadRangeMaps(input: { mode: Mode; mods: string; ppMin: number; ppMax: number }): Promise<PpDbMap[]> {
-  const key = indexKey(`range:${input.ppMin}:${input.ppMax}`, input.mode, input.mods);
-  const cached = memoryIndex.get(key);
-  if (cached && Date.now() - cached.at < INDEX_TTL_MS) return cached.maps;
-  const pending = indexInflight.get(key);
+function cached(key: string, load: () => Promise<PpDbMap[]>): Promise<PpDbMap[]> {
+  const hit = memory.get(key);
+  if (hit && Date.now() - hit.at < TTL_MS) return Promise.resolve(hit.maps);
+  const pending = inflight.get(key);
   if (pending) return pending;
   const job = (async () => {
-    const disk = await readIndex(key);
+    const disk = await readStored(key);
     if (disk) {
-      memoryIndex.set(key, disk);
+      memory.set(key, disk);
       return disk.maps;
     }
-    const maps = await fetchAllRange(input);
-    const stored = { at: Date.now(), maps };
-    memoryIndex.set(key, stored);
-    await mkdir(INDEX_DIR, { recursive: true });
-    await writeFile(indexPath(key), JSON.stringify(stored)).catch(() => undefined);
+    const maps = await load();
+    const stored = { schema: SCHEMA, at: Date.now(), maps };
+    memory.set(key, stored);
+    void writeStored(key, stored);
     return maps;
-  })().finally(() => indexInflight.delete(key));
-  indexInflight.set(key, job);
+  })().finally(() => inflight.delete(key));
+  inflight.set(key, job);
   return job;
 }
 
-/** Full text catalogue, kept in memory and on disk so a PP range is a local filter. */
-export async function loadTextMaps(input: { query: string; mode: Mode; mods: string }): Promise<PpDbMap[]> {
-  const key = indexKey(input.query, input.mode, input.mods);
-  const cached = memoryIndex.get(key);
-  if (cached && Date.now() - cached.at < INDEX_TTL_MS) return cached.maps;
-  const pending = indexInflight.get(key);
-  if (pending) return pending;
-  const job = (async () => {
-    const disk = await readIndex(key);
-    if (disk) {
-      memoryIndex.set(key, disk);
-      return disk.maps;
-    }
-    const maps = await fetchAllText(input);
-    const stored = { at: Date.now(), maps };
-    memoryIndex.set(key, stored);
-    await mkdir(INDEX_DIR, { recursive: true });
-    await writeFile(indexPath(key), JSON.stringify(stored)).catch(() => undefined);
+function loadBand(mode: Mode, mods: string, low: number): Promise<PpDbMap[]> {
+  const key = `band\n${mode}\n${mods}\n${low}`;
+  return cached(key, async () => {
+    const params = (offset: number) =>
+      new URLSearchParams({
+        mods,
+        game_mode: MODE_ID[mode],
+        min_pp: String(low),
+        max_pp: String(low + BAND),
+        limit: String(PAGE_SIZE),
+        offset: String(offset),
+      });
+    const { maps } = await fetchAll((offset) => `/v3/osu/pp-maps?${params(offset)}`, mods, MAX_PAGES_PER_BAND);
+    // Bands share their edges; keep the low edge only so a map is never counted twice.
+    return maps.filter((map) => map.pp >= low && map.pp < low + BAND);
+  });
+}
+
+/** Every ranked map in a PP window, loaded band by band from the top of the window. */
+export async function loadRangeMaps(input: { mode: Mode; mods: string; ppMin: number; ppMax: number }): Promise<RangeLoad> {
+  const top = Math.floor(input.ppMax / BAND) * BAND;
+  const bottom = Math.floor(input.ppMin / BAND) * BAND;
+  const bands: number[] = [];
+  for (let low = top; low >= bottom && bands.length < MAX_BANDS; low -= BAND) bands.push(low);
+  const lowest = bands[bands.length - 1] ?? bottom;
+  const lists = await Promise.all(bands.map((low) => loadBand(input.mode, input.mods, low)));
+  const maps: PpDbMap[] = [];
+  for (const list of lists) {
+    for (const map of list) if (map.pp >= input.ppMin && map.pp <= input.ppMax) maps.push(map);
+  }
+  return { maps, limitedFrom: lowest > bottom ? lowest : null };
+}
+
+/** Text search across the catalogue. The PP range is then a local filter. */
+export function loadTextMaps(input: { query: string; mode: Mode; mods: string }): Promise<PpDbMap[]> {
+  const query = input.query.trim().toLowerCase();
+  const key = `text\n${input.mode}\n${input.mods}\n${query}`;
+  return cached(key, async () => {
+    const params = (offset: number) =>
+      new URLSearchParams({ q: query, mods: input.mods, game_mode: MODE_ID[input.mode], limit: String(PAGE_SIZE), offset: String(offset) });
+    const { maps } = await fetchAll((offset) => `/v3/osu/pp-maps/search?${params(offset)}`, input.mods, 20);
     return maps;
-  })().finally(() => indexInflight.delete(key));
-  indexInflight.set(key, job);
-  return job;
+  });
+}
+
+export function coverFor(beatmapsetId: number | null, size: "card" | "cover" = "card"): string | null {
+  return beatmapsetId ? `https://assets.ppy.sh/beatmaps/${beatmapsetId}/covers/${size}.jpg` : null;
 }

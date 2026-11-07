@@ -1,383 +1,404 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { BeatmapStatus, Lang, MapStyle } from "@osu-pp/shared";
+import type { BeatmapStatus, DiscoverSort, Lang, MapStyle } from "@osu-pp/shared";
+import { setNumberLocale } from "./format";
 
 export type Copy = {
-  heading: string;
-  lede: string;
-  searchLabel: string;
-  see: string;
+  tagline: string;
+  searchPlaceholder: string;
+  searchHint: string;
+  open: string;
   recent: string;
-  empty: string;
-  shortcut: string;
   loading: string;
+  backToMaps: string;
+  openOnOsu: string;
+  osuDirect: string;
+  footer: string;
+  searchFailed: string;
+  network: string;
+  copied: string;
+  copyFailed: string;
+
+  finderTitle: string;
+  finderLede: string;
+  range: string;
+  ppMin: string;
+  ppMax: string;
+  type: string;
+  typeHelp: Record<MapStyle, string>;
+  mode: string;
+  mods: string;
+  modHelp: string;
+  modState: { off: string; on: string; any: string };
+  modAria: { off: string; on: string; any: string };
+  keyword: string;
+  keywordPlaceholder: string;
+  sort: string;
+  sorts: Record<DiscoverSort, string>;
+  resultsCount: string;
+  analyzing: string;
+  estimated: string;
+  farm: string;
+  farmHelp: string;
+  ssNote: string;
+  noticeNone: string;
+  noticeTooMany: string;
+  styleIgnored: string;
+  rangeInvalid: string;
+  limitedFrom: string;
+  showMore: string;
+  nm: string;
+
   stars: string;
   maxCombo: string;
   bpm: string;
   length: string;
   keys: string;
   difficulty: string;
-  accuracy: string;
   aim: string;
   speed: string;
-  flashlight: string;
   precision: string;
+  flashlight: string;
   fullCombo: string;
+  copyHint: string;
   simulated: string;
+  accuracy: string;
   combo: string;
   misses: string;
-  copied: string;
-  copyFailed: string;
-  comboInteger: string;
-  footer: string;
-  finderTitle: string;
-  ppMin: string;
-  ppMax: string;
-  keyword: string;
-  optional: string;
-  mode: string;
-  type: string;
-  sort: string;
-  sortPpDesc: string;
-  sortPpAsc: string;
-  sortStarsDesc: string;
-  sortStarsAsc: string;
-  sortLengthDesc: string;
-  sortLengthAsc: string;
-  modsLegend: string;
-  modHelp: string;
-  choiceOff: string;
-  choiceOn: string;
-  choiceAny: string;
-  chipOff: string;
-  chipOn: string;
-  chipAny: string;
-  backToMaps: string;
-  openOnOsu: string;
-  osuDirect: string;
-  modOff: string;
-  modOn: string;
-  modAny: string;
-  searchRange: string;
-  showingAll: string;
-  showingFiltered: string;
-  showingKeyword: string;
-  showingKeywordRange: string;
-  showMore: string;
-  searchingMaps: string;
-  rangeInvalid: string;
-  searchFailed: string;
   scoreLine: string;
+  comboInteger: string;
+  ssMisses: string;
+  accuracyRange: string;
   difficulties: string;
-  mods: string;
   speedLabel: string;
-  noticePreview: string;
-  noticeNone: string;
-  noticeEmpty: string;
-  noticeTooMany: string;
-  styleIgnored: string;
-  nm: string;
-  styles: Record<MapStyle, string>;
-  status: Record<BeatmapStatus, string>;
   profileLoved: string;
   profileQualified: string;
+  mapType: string;
+  patternStream: string;
+  patternJump: string;
+  patternLongest: string;
+  patternSliders: string;
+
+  styles: Record<MapStyle, string>;
+  status: Record<BeatmapStatus, string>;
 };
 
 const en: Copy = {
-  heading: "how much is it",
-  lede: "Paste a link for a map's PP, or a range and a type to search.",
-  searchLabel: "Link, difficulty id, or title",
-  see: "Open",
-  recent: "Recent",
-  empty: "Paste a beatmap link, a difficulty id, or search a title.",
-  shortcut: "Press / to focus the search.",
+  tagline: "PP of any osu! map, and the best maps to farm in your range.",
+  searchPlaceholder: "Paste an osu! link, a difficulty id, or type a title",
+  searchHint: "Press / to search from anywhere.",
+  open: "Open",
+  recent: "Recently opened",
   loading: "Loading the beatmap…",
+  backToMaps: "Back to maps",
+  openOnOsu: "Open on osu!",
+  osuDirect: "osu!direct",
+  footer: "PP from rosu-pp 4.0.1 (lazer, April 2026). Reading skill not included yet.",
+  searchFailed: "Search failed.",
+  network: "The server is not responding. Start it with npm run dev.",
+  copied: "copied",
+  copyFailed: "Copy failed.",
+
+  finderTitle: "Find maps to farm",
+  finderLede: "Pick a PP range and a type. The easiest pp comes first.",
+  range: "PP range (SS)",
+  ppMin: "Min",
+  ppMax: "Max",
+  type: "Type",
+  typeHelp: {
+    any: "Every type. Farm order favours short jump maps.",
+    jump: "Spaced 1/2 and 1/1 movement. The classic farm.",
+    stream: "Long 1/4 chains: streams and deathstreams.",
+    speed: "Fast tapping: 1/2 jumps past 240 BPM, fast streams.",
+    tech: "Sliders, SV changes, unusual rhythms.",
+    alt: "Short 1/4 bursts mixed in, you have to alternate.",
+    fingercontrol: "Uneven rhythms and short chains at moderate BPM.",
+  },
+  mode: "Mode",
+  mods: "Mods",
+  modHelp: "Click to cycle: without → with → either.",
+  modState: { off: "without", on: "with", any: "either" },
+  modAria: { off: "{mod}: without", on: "{mod}: with", any: "{mod}: with or without" },
+  keyword: "Title, artist or mapper",
+  keywordPlaceholder: "optional",
+  sort: "Sort",
+  sorts: {
+    farm: "Farm first",
+    "pp-desc": "PP, high to low",
+    "pp-asc": "PP, low to high",
+    "stars-desc": "Stars, high to low",
+    "stars-asc": "Stars, low to high",
+    "length-desc": "Longest first",
+    "length-asc": "Shortest first",
+  },
+  resultsCount: "{total} maps",
+  analyzing: "Reading the patterns of {count} maps…",
+  estimated: "type estimated from tags, still being checked",
+  farm: "Farm",
+  farmHelp: "Farm score: short drain, aim-friendly, more pp than the stars suggest.",
+  ssNote: "SS full combo, with the mods shown on each map.",
+  noticeNone: "No ranked map here. Widen the range or change the filters.",
+  noticeTooMany: "Too many mods on “either”. Keep three at most.",
+  styleIgnored: "Types apply to osu! standard only.",
+  rangeInvalid: "Enter a PP range, low to high, between 0 and 2000.",
+  limitedFrom: "Wide range: only maps from {pp} pp up are loaded.",
+  showMore: "Show more",
+  nm: "NM",
+
   stars: "Stars",
   maxCombo: "Max combo",
   bpm: "BPM",
   length: "Length",
   keys: "Keys",
   difficulty: "Difficulty",
-  accuracy: "Accuracy",
   aim: "Aim",
   speed: "Speed",
-  flashlight: "Flashlight",
   precision: "Accuracy",
+  flashlight: "Flashlight",
   fullCombo: "Full combo",
-  simulated: "Simulated score",
+  copyHint: "Click a value to copy it.",
+  simulated: "Your score",
+  accuracy: "Accuracy %",
   combo: "Combo",
   misses: "Misses",
-  copied: "copied",
-  copyFailed: "Copy failed.",
-  comboInteger: "Combo must be a whole number.",
-  footer: "rosu-pp 4.0.1",
-  finderTitle: "Find maps",
-  ppMin: "PP min",
-  ppMax: "PP max",
-  keyword: "Title, artist or mapper",
-  optional: "optional",
-  mode: "Mode",
-  type: "Type",
-  sort: "Sort",
-  sortPpDesc: "PP ↓",
-  sortPpAsc: "PP ↑",
-  sortStarsDesc: "Star rating ↓",
-  sortStarsAsc: "Star rating ↑",
-  sortLengthDesc: "Length ↓",
-  sortLengthAsc: "Length ↑",
-  modsLegend: "Mods for the search",
-  modHelp: "Click a mod: without, then required, then either.",
-  choiceOff: "Without",
-  choiceOn: "Required",
-  choiceAny: "Either",
-  chipOff: "off",
-  chipOn: "must",
-  chipAny: "any",
-  backToMaps: "Back to maps",
-  openOnOsu: "Open this map on osu!",
-  osuDirect: "osu!direct",
-  modOff: "{mod}: excluded",
-  modOn: "{mod}: required",
-  modAny: "{mod}: with or without",
-  searchRange: "Search this range",
-  showingAll: "Showing {shown} of {total} maps in this range.",
-  showingFiltered: "{shown} of {total} maps of this type in this PP range.",
-  showingKeyword: "{shown} maps match this keyword.",
-  showingKeywordRange: "{shown} maps match this keyword in this PP range.",
-  showMore: "Show more",
-  searchingMaps: "Searching ranked maps…",
-  rangeInvalid: "The PP range is invalid.",
-  searchFailed: "Search failed.",
   scoreLine: "{accuracy} % · combo {combo} / {max} · {misses} miss",
+  comboInteger: "Combo must be a whole number.",
+  ssMisses: "100% accuracy means no misses.",
+  accuracyRange: "Accuracy goes from 0 to 100.",
   difficulties: "Difficulties",
-  mods: "Mods",
   speedLabel: "Speed {rate}",
-  noticePreview: "SS, full combo, for the mods written on each card.",
-  noticeNone: "No ranked map in this range for those mods. Widen the range or change the filters.",
-  noticeEmpty: "No ranked map matched this search.",
-  noticeTooMany: "Too many mods are set to “with or without”. Leave at most three in that state.",
-  styleIgnored: "Map types (jump, stream…) apply to osu! standard.",
-  nm: "NM",
-  styles: {
-    any: "All types",
-    jump: "Jump",
-    stream: "Stream",
-    speed: "Speed",
-    tech: "Tech",
-    alt: "Alt",
-    fingercontrol: "Finger control",
-  },
-  status: {
-    ranked: "ranked",
-    approved: "approved",
-    qualified: "qualified",
-    loved: "loved",
-    pending: "pending",
-    graveyard: "graveyard",
-    wip: "wip",
-    unknown: "unknown status",
-  },
   profileLoved: "This PP is not added to your profile.",
   profileQualified: "This PP counts only while the map stays qualified.",
+  mapType: "Type",
+  patternStream: "{share} in streams",
+  patternJump: "{share} jumps",
+  patternLongest: "longest stream {count}",
+  patternSliders: "{share} sliders",
+
+  styles: { any: "All", jump: "Jump", stream: "Stream", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
+  status: {
+    ranked: "Ranked",
+    approved: "Approved",
+    qualified: "Qualified",
+    loved: "Loved",
+    pending: "Pending",
+    graveyard: "Graveyard",
+    wip: "WIP",
+    unknown: "Unknown status",
+  },
 };
 
 const fr: Copy = {
-  heading: "how much is it",
-  lede: "Colle un lien pour le PP d'une map, ou une fourchette et un type pour chercher.",
-  searchLabel: "Lien, ID de difficulté ou titre",
-  see: "Voir",
-  recent: "Récentes",
-  empty: "Colle un lien de beatmap, un ID de difficulté, ou cherche un titre.",
-  shortcut: "Le raccourci / ramène au champ.",
+  tagline: "Le PP de n'importe quelle map osu!, et les meilleures maps à farm dans ta fourchette.",
+  searchPlaceholder: "Colle un lien osu!, un ID de difficulté, ou tape un titre",
+  searchHint: "Appuie sur / pour chercher depuis n'importe où.",
+  open: "Voir",
+  recent: "Ouvertes récemment",
   loading: "Chargement de la beatmap…",
+  backToMaps: "Retour aux maps",
+  openOnOsu: "Ouvrir sur osu!",
+  osuDirect: "osu!direct",
+  footer: "PP calculé avec rosu-pp 4.0.1 (lazer, avril 2026). Le skill Reading n'est pas encore inclus.",
+  searchFailed: "Recherche impossible.",
+  network: "Le serveur ne répond pas. Lance-le avec npm run dev.",
+  copied: "copié",
+  copyFailed: "La copie a échoué.",
+
+  finderTitle: "Trouver des maps à farm",
+  finderLede: "Choisis une fourchette de PP et un type. Le PP le plus facile sort en premier.",
+  range: "Fourchette de PP (SS)",
+  ppMin: "Min",
+  ppMax: "Max",
+  type: "Type",
+  typeHelp: {
+    any: "Tous les types. Le tri farm favorise les maps jump courtes.",
+    jump: "Déplacements espacés en 1/2 et 1/1. Le farm classique.",
+    stream: "Longues chaînes en 1/4 : streams et deathstreams.",
+    speed: "Tapping rapide : jumps 1/2 au-delà de 240 BPM, streams rapides.",
+    tech: "Sliders, changements de SV, rythmes inhabituels.",
+    alt: "Petits bursts en 1/4 au milieu des patterns, il faut alterner.",
+    fingercontrol: "Rythmes irréguliers et chaînes courtes à BPM modéré.",
+  },
+  mode: "Mode",
+  mods: "Mods",
+  modHelp: "Clique pour changer : sans → avec → les deux.",
+  modState: { off: "sans", on: "avec", any: "les deux" },
+  modAria: { off: "{mod} : sans", on: "{mod} : avec", any: "{mod} : avec ou sans" },
+  keyword: "Titre, artiste ou mappeur",
+  keywordPlaceholder: "optionnel",
+  sort: "Tri",
+  sorts: {
+    farm: "Farm d'abord",
+    "pp-desc": "PP décroissant",
+    "pp-asc": "PP croissant",
+    "stars-desc": "Étoiles décroissantes",
+    "stars-asc": "Étoiles croissantes",
+    "length-desc": "Plus longues d'abord",
+    "length-asc": "Plus courtes d'abord",
+  },
+  resultsCount: "{total} maps",
+  analyzing: "Lecture des patterns de {count} maps…",
+  estimated: "type estimé d'après les tags, vérification en cours",
+  farm: "Farm",
+  farmHelp: "Score farm : drain court, facile en aim, plus de PP que les étoiles ne le laissent penser.",
+  ssNote: "SS full combo, avec les mods indiqués sur chaque map.",
+  noticeNone: "Aucune map classée ici. Élargis la fourchette ou change les filtres.",
+  noticeTooMany: "Trop de mods sur « les deux ». Garde-en trois au plus.",
+  styleIgnored: "Les types ne concernent que osu! standard.",
+  rangeInvalid: "Indique une fourchette de PP, du plus bas au plus haut, entre 0 et 2000.",
+  limitedFrom: "Fourchette large : seules les maps à partir de {pp} pp sont chargées.",
+  showMore: "Afficher plus",
+  nm: "NM",
+
   stars: "Étoiles",
   maxCombo: "Combo max",
   bpm: "BPM",
   length: "Durée",
   keys: "Touches",
   difficulty: "Difficulté",
-  accuracy: "Précision",
   aim: "Aim",
   speed: "Speed",
-  flashlight: "Flashlight",
   precision: "Précision",
+  flashlight: "Flashlight",
   fullCombo: "Full combo",
-  simulated: "Score simulé",
+  copyHint: "Clique une valeur pour la copier.",
+  simulated: "Ton score",
+  accuracy: "Précision %",
   combo: "Combo",
   misses: "Misses",
-  copied: "copié",
-  copyFailed: "La copie a échoué.",
-  comboInteger: "Le combo doit être un entier.",
-  footer: "rosu-pp 4.0.1",
-  finderTitle: "Trouver des maps",
-  ppMin: "PP min",
-  ppMax: "PP max",
-  keyword: "Titre, artiste ou mappeur",
-  optional: "optionnel",
-  mode: "Mode",
-  type: "Type",
-  sort: "Tri",
-  sortPpDesc: "PP ↓",
-  sortPpAsc: "PP ↑",
-  sortStarsDesc: "Étoiles ↓",
-  sortStarsAsc: "Étoiles ↑",
-  sortLengthDesc: "Durée ↓",
-  sortLengthAsc: "Durée ↑",
-  modsLegend: "Mods de la recherche",
-  modHelp: "Clique un mod : sans, puis obligatoire, puis les deux.",
-  choiceOff: "Sans",
-  choiceOn: "Obligatoire",
-  choiceAny: "Les deux",
-  chipOff: "sans",
-  chipOn: "requis",
-  chipAny: "les deux",
-  backToMaps: "Retour aux maps",
-  openOnOsu: "Ouvrir cette map sur osu!",
-  osuDirect: "osu!direct",
-  modOff: "{mod} : absent",
-  modOn: "{mod} : obligatoire",
-  modAny: "{mod} : avec ou sans",
-  searchRange: "Chercher dans la fourchette",
-  showingAll: "{shown} maps affichées sur {total} dans cette fourchette.",
-  showingFiltered: "{shown} maps affichées sur {total} de ce type dans cette fourchette de PP.",
-  showingKeyword: "{shown} maps correspondent à ce mot-clé.",
-  showingKeywordRange: "{shown} maps correspondent à ce mot-clé dans cette fourchette de PP.",
-  showMore: "Afficher plus",
-  searchingMaps: "Recherche des maps classées…",
-  rangeInvalid: "La fourchette de PP est invalide.",
-  searchFailed: "Recherche impossible.",
   scoreLine: "{accuracy} % · combo {combo} / {max} · {misses} miss",
+  comboInteger: "Le combo doit être un entier.",
+  ssMisses: "100 % de précision veut dire aucun miss.",
+  accuracyRange: "La précision va de 0 à 100.",
   difficulties: "Difficultés",
-  mods: "Mods",
   speedLabel: "Vitesse {rate}",
-  noticePreview: "SS, full combo, pour les mods indiqués sur chaque carte.",
-  noticeNone: "Aucune map classée dans cette fourchette pour ces mods. Élargis la fourchette ou change les filtres.",
-  noticeEmpty: "Aucune map classée ne correspond à cette recherche.",
-  noticeTooMany: "Trop de mods sont sur « avec ou sans ». Laisse-en au plus trois dans cet état.",
-  styleIgnored: "Les types (jump, stream…) concernent osu! standard.",
-  nm: "NM",
-  styles: {
-    any: "Tous types",
-    jump: "Jump",
-    stream: "Stream",
-    speed: "Speed",
-    tech: "Tech",
-    alt: "Alt",
-    fingercontrol: "Finger control",
-  },
-  status: {
-    ranked: "classée",
-    approved: "approuvée",
-    qualified: "qualifiée",
-    loved: "loved",
-    pending: "en attente",
-    graveyard: "abandonnée",
-    wip: "brouillon",
-    unknown: "statut inconnu",
-  },
   profileLoved: "Ce PP ne s'ajoute pas au profil.",
   profileQualified: "Ce PP compte temporairement, tant que la map est qualifiée.",
+  mapType: "Type",
+  patternStream: "{share} en streams",
+  patternJump: "{share} de jumps",
+  patternLongest: "stream max {count}",
+  patternSliders: "{share} de sliders",
+
+  styles: { any: "Tous", jump: "Jump", stream: "Stream", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
+  status: {
+    ranked: "Classée",
+    approved: "Approuvée",
+    qualified: "Qualifiée",
+    loved: "Loved",
+    pending: "En attente",
+    graveyard: "Abandonnée",
+    wip: "Brouillon",
+    unknown: "Statut inconnu",
+  },
 };
 
 const es: Copy = {
-  heading: "how much is it",
-  lede: "Pega un enlace para el PP de un mapa, o un rango y un tipo para buscar.",
-  searchLabel: "Enlace, ID de dificultad o título",
-  see: "Abrir",
-  recent: "Recientes",
-  empty: "Pega un enlace de beatmap, un ID de dificultad o busca un título.",
-  shortcut: "Pulsa / para ir al buscador.",
+  tagline: "El PP de cualquier mapa de osu!, y los mejores mapas para farmear en tu rango.",
+  searchPlaceholder: "Pega un enlace de osu!, un ID de dificultad o escribe un título",
+  searchHint: "Pulsa / para buscar desde cualquier sitio.",
+  open: "Abrir",
+  recent: "Abiertos hace poco",
   loading: "Cargando el beatmap…",
+  backToMaps: "Volver a los mapas",
+  openOnOsu: "Abrir en osu!",
+  osuDirect: "osu!direct",
+  footer: "PP calculado con rosu-pp 4.0.1 (lazer, abril de 2026). El skill Reading aún no está incluido.",
+  searchFailed: "No se pudo buscar.",
+  network: "El servidor no responde. Inícialo con npm run dev.",
+  copied: "copiado",
+  copyFailed: "No se pudo copiar.",
+
+  finderTitle: "Encontrar mapas para farmear",
+  finderLede: "Elige un rango de PP y un tipo. El PP más fácil sale primero.",
+  range: "Rango de PP (SS)",
+  ppMin: "Mín.",
+  ppMax: "Máx.",
+  type: "Tipo",
+  typeHelp: {
+    any: "Todos los tipos. El orden farm favorece mapas jump cortos.",
+    jump: "Movimiento espaciado en 1/2 y 1/1. El farm clásico.",
+    stream: "Cadenas largas en 1/4: streams y deathstreams.",
+    speed: "Tapping rápido: jumps 1/2 por encima de 240 BPM, streams rápidos.",
+    tech: "Sliders, cambios de SV, ritmos poco comunes.",
+    alt: "Bursts cortos en 1/4 entre patrones, hay que alternar.",
+    fingercontrol: "Ritmos irregulares y cadenas cortas a BPM moderado.",
+  },
+  mode: "Modo",
+  mods: "Mods",
+  modHelp: "Pulsa para cambiar: sin → con → ambos.",
+  modState: { off: "sin", on: "con", any: "ambos" },
+  modAria: { off: "{mod}: sin", on: "{mod}: con", any: "{mod}: con o sin" },
+  keyword: "Título, artista o mapper",
+  keywordPlaceholder: "opcional",
+  sort: "Orden",
+  sorts: {
+    farm: "Farm primero",
+    "pp-desc": "PP, de mayor a menor",
+    "pp-asc": "PP, de menor a mayor",
+    "stars-desc": "Estrellas, de más a menos",
+    "stars-asc": "Estrellas, de menos a más",
+    "length-desc": "Más largos primero",
+    "length-asc": "Más cortos primero",
+  },
+  resultsCount: "{total} mapas",
+  analyzing: "Leyendo los patrones de {count} mapas…",
+  estimated: "tipo estimado por las etiquetas, en revisión",
+  farm: "Farm",
+  farmHelp: "Puntuación farm: drain corto, fácil de aim, más PP de lo que sugieren las estrellas.",
+  ssNote: "SS full combo, con los mods indicados en cada mapa.",
+  noticeNone: "Ningún mapa clasificado aquí. Amplía el rango o cambia los filtros.",
+  noticeTooMany: "Demasiados mods en «ambos». Deja tres como máximo.",
+  styleIgnored: "Los tipos solo se aplican a osu! standard.",
+  rangeInvalid: "Indica un rango de PP, de menor a mayor, entre 0 y 2000.",
+  limitedFrom: "Rango amplio: solo se cargan mapas desde {pp} pp.",
+  showMore: "Ver más",
+  nm: "NM",
+
   stars: "Estrellas",
   maxCombo: "Combo máx.",
   bpm: "BPM",
   length: "Duración",
   keys: "Teclas",
   difficulty: "Dificultad",
-  accuracy: "Precisión",
   aim: "Aim",
   speed: "Speed",
-  flashlight: "Flashlight",
   precision: "Precisión",
+  flashlight: "Flashlight",
   fullCombo: "Full combo",
-  simulated: "Puntuación simulada",
+  copyHint: "Pulsa un valor para copiarlo.",
+  simulated: "Tu puntuación",
+  accuracy: "Precisión %",
   combo: "Combo",
   misses: "Misses",
-  copied: "copiado",
-  copyFailed: "No se pudo copiar.",
-  comboInteger: "El combo debe ser un entero.",
-  footer: "rosu-pp 4.0.1",
-  finderTitle: "Encontrar mapas",
-  ppMin: "PP mín.",
-  ppMax: "PP máx.",
-  keyword: "Título, artista o mapper",
-  optional: "opcional",
-  mode: "Modo",
-  type: "Tipo",
-  sort: "Orden",
-  sortPpDesc: "PP ↓",
-  sortPpAsc: "PP ↑",
-  sortStarsDesc: "Estrellas ↓",
-  sortStarsAsc: "Estrellas ↑",
-  sortLengthDesc: "Duración ↓",
-  sortLengthAsc: "Duración ↑",
-  modsLegend: "Mods de la búsqueda",
-  modHelp: "Pulsa un mod: sin, luego obligatorio, luego ambos.",
-  choiceOff: "Sin",
-  choiceOn: "Obligatorio",
-  choiceAny: "Ambos",
-  chipOff: "sin",
-  chipOn: "sí",
-  chipAny: "ambos",
-  backToMaps: "Volver a los mapas",
-  openOnOsu: "Abrir este mapa en osu!",
-  osuDirect: "osu!direct",
-  modOff: "{mod}: ausente",
-  modOn: "{mod}: obligatorio",
-  modAny: "{mod}: con o sin",
-  searchRange: "Buscar en el rango",
-  showingAll: "{shown} de {total} mapas en este rango.",
-  showingFiltered: "{shown} de {total} mapas de este tipo en este rango de PP.",
-  showingKeyword: "{shown} mapas coinciden con esta palabra.",
-  showingKeywordRange: "{shown} mapas coinciden con esta palabra en este rango de PP.",
-  showMore: "Ver más",
-  searchingMaps: "Buscando mapas clasificados…",
-  rangeInvalid: "El rango de PP no es válido.",
-  searchFailed: "No se pudo buscar.",
   scoreLine: "{accuracy} % · combo {combo} / {max} · {misses} miss",
+  comboInteger: "El combo debe ser un entero.",
+  ssMisses: "100 % de precisión significa ningún miss.",
+  accuracyRange: "La precisión va de 0 a 100.",
   difficulties: "Dificultades",
-  mods: "Mods",
   speedLabel: "Velocidad {rate}",
-  noticePreview: "SS, full combo, para los mods escritos en cada tarjeta.",
-  noticeNone: "Ningún mapa clasificado entra en este rango con esos mods. Amplía el rango o cambia los filtros.",
-  noticeEmpty: "Ningún mapa clasificado coincide con esta búsqueda.",
-  noticeTooMany: "Demasiados mods están en «con o sin». Deja como máximo tres en ese estado.",
-  styleIgnored: "Los tipos (jump, stream…) son de osu! standard.",
-  nm: "NM",
-  styles: {
-    any: "Todos los tipos",
-    jump: "Jump",
-    stream: "Stream",
-    speed: "Speed",
-    tech: "Tech",
-    alt: "Alt",
-    fingercontrol: "Finger control",
-  },
-  status: {
-    ranked: "clasificado",
-    approved: "aprobado",
-    qualified: "calificado",
-    loved: "loved",
-    pending: "pendiente",
-    graveyard: "abandonado",
-    wip: "borrador",
-    unknown: "estado desconocido",
-  },
   profileLoved: "Este PP no se suma al perfil.",
   profileQualified: "Este PP cuenta solo mientras el mapa siga calificado.",
+  mapType: "Tipo",
+  patternStream: "{share} en streams",
+  patternJump: "{share} de jumps",
+  patternLongest: "stream máx. {count}",
+  patternSliders: "{share} de sliders",
+
+  styles: { any: "Todos", jump: "Jump", stream: "Stream", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
+  status: {
+    ranked: "Clasificado",
+    approved: "Aprobado",
+    qualified: "Calificado",
+    loved: "Loved",
+    pending: "Pendiente",
+    graveyard: "Abandonado",
+    wip: "Borrador",
+    unknown: "Estado desconocido",
+  },
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es };
-const LANG_KEY = "osu-pp-lookup:lang";
+export const LANG_KEY = "osu-pp-lookup:lang";
 
 const LangContext = createContext<{ lang: Lang; setLang: (lang: Lang) => void; t: Copy }>({
   lang: "en",
@@ -386,23 +407,41 @@ const LangContext = createContext<{ lang: Lang; setLang: (lang: Lang) => void; t
 });
 
 function readLang(): Lang {
-  const saved = localStorage.getItem(LANG_KEY);
-  return saved === "fr" || saved === "es" ? saved : "en";
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (saved === "fr" || saved === "es" || saved === "en") return saved;
+  } catch {
+    // Storage can be blocked; fall back to the browser language.
+  }
+  const browser = navigator.language.slice(0, 2);
+  return browser === "fr" || browser === "es" ? browser : "en";
+}
+
+export function currentLang(): Lang {
+  return readLang();
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(readLang);
+  setNumberLocale(lang);
   const value = useMemo(() => ({ lang, setLang: setLangState, t: tables[lang] }), [lang]);
   useEffect(() => {
-    localStorage.setItem(LANG_KEY, lang);
+    try {
+      localStorage.setItem(LANG_KEY, lang);
+    } catch {
+      // Not saved; the choice still applies to this visit.
+    }
     document.documentElement.lang = lang;
-    document.title = "how much is it";
   }, [lang]);
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 
 export function useI18n() {
   return useContext(LangContext);
+}
+
+export function copyFor(lang: Lang): Copy {
+  return tables[lang];
 }
 
 export function fill(template: string, vars: Record<string, string | number>): string {

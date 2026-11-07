@@ -1,24 +1,5 @@
 import type { DiscoverSort, MapStyle } from "./types";
 
-export const STYLE_LABELS: Record<MapStyle, string> = {
-  any: "Tous types",
-  jump: "Jump",
-  stream: "Stream",
-  speed: "Speed",
-  tech: "Tech",
-  alt: "Alt",
-  fingercontrol: "Finger control",
-};
-
-export const STYLE_QUERY: Record<Exclude<MapStyle, "any">, string> = {
-  jump: "jump OR aim OR aimslop",
-  stream: "stream",
-  speed: "speed",
-  tech: "tech",
-  alt: "alternate",
-  fingercontrol: "fingercontrol",
-};
-
 export interface StyleSignals {
   tags: string;
   version: string;
@@ -142,9 +123,10 @@ export function styleMatches(wanted: MapStyle, actual: Exclude<MapStyle, "any">)
 
 export function compareDiscover(
   sort: DiscoverSort,
-  a: { pp: number; stars: number; lengthSeconds: number | null },
-  b: { pp: number; stars: number; lengthSeconds: number | null },
+  a: { pp: number; stars: number; lengthSeconds: number | null; farm?: number },
+  b: { pp: number; stars: number; lengthSeconds: number | null; farm?: number },
 ): number {
+  if (sort === "farm") return (b.farm ?? 0) - (a.farm ?? 0) || b.pp - a.pp;
   const desc = sort.endsWith("desc");
   let delta = 0;
   if (sort.startsWith("stars")) delta = a.stars - b.stars;
@@ -157,31 +139,4 @@ export function compareDiscover(
   const directed = desc ? -delta : delta;
   if (directed !== 0) return directed;
   return sort.startsWith("pp") ? b.stars - a.stars : b.pp - a.pp;
-}
-
-export function modPpFactor(mods: readonly string[], clockRate: number | null): number {
-  let factor = 1;
-  if (mods.includes("DT") || mods.includes("NC")) factor *= 1.85;
-  if (mods.includes("HT")) factor *= 0.4;
-  if (mods.includes("HR")) factor *= 1.12;
-  if (mods.includes("EZ")) factor *= 0.55;
-  if (mods.includes("HD")) factor *= 1.06;
-  if (mods.includes("FL")) factor *= 1.25;
-  if (clockRate != null) {
-    const base = mods.includes("HT") ? 0.75 : mods.includes("DT") || mods.includes("NC") ? 1.5 : 1;
-    if (Math.abs(clockRate - base) > 0.02) factor *= (clockRate / base) ** 2.2;
-  }
-  return factor;
-}
-
-/** Nomod star band likely to land in the requested modded PP range. Wide on purpose. */
-export function starWindow(ppMin: number, ppMax: number, mods: readonly string[], clockRate: number | null): [number, number] {
-  const factor = modPpFactor(mods, clockRate);
-  const starsFor = (pp: number) => (Math.max(pp, 1) / factor / 0.24) ** 0.25;
-  return [Math.max(0.4, starsFor(ppMin) - 1.5), Math.min(13, starsFor(ppMax) + 1.5)];
-}
-
-export function targetStars(ppMin: number, ppMax: number, mods: readonly string[], clockRate: number | null): number {
-  const factor = modPpFactor(mods, clockRate);
-  return (Math.max((ppMin + ppMax) / 2, 1) / factor / 0.24) ** 0.25;
 }

@@ -69,7 +69,7 @@ async function readDisk(id: number): Promise<{ bytes: Uint8Array; text: string }
   }
 }
 
-async function download(id: number): Promise<{ bytes: Uint8Array; text: string }> {
+async function download(id: number, store = true): Promise<{ bytes: Uint8Array; text: string }> {
   let response: Response;
   try {
     response = await fetch(`https://osu.ppy.sh/osu/${id}`, {
@@ -104,10 +104,26 @@ async function download(id: number): Promise<{ bytes: Uint8Array; text: string }
     throw new AppError("not_found", tr("map.missing"), 404);
   }
 
-  const path = cachePath(id);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, buffer);
+  if (store) {
+    const path = cachePath(id);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, buffer);
+  }
   return { bytes: buffer, text };
+}
+
+/**
+ * The .osu text for pattern analysis. Uses the lookup cache when the map was opened,
+ * otherwise downloads without keeping the file, so scanning a range does not fill the disk.
+ */
+export async function fetchBeatmapText(id: number): Promise<string> {
+  const cached = maps.get(String(id));
+  if (cached) return cached.text;
+  const disk = await readDisk(id);
+  if (disk) return disk.text;
+  const pending = inflight.get(id);
+  if (pending) return (await pending).text;
+  return (await download(id, false)).text;
 }
 
 export function primeBeatmap(id: number, bytes: Uint8Array): void {

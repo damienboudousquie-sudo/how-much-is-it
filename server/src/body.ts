@@ -142,7 +142,7 @@ export function parseDiscover(body: unknown): DiscoverRequest {
     offset = record.offset;
   }
   const legacy: Record<string, DiscoverSort> = { pp: "pp-desc", stars: "stars-desc", length: "length-desc" };
-  const raw = record.sort == null ? "pp-desc" : record.sort;
+  const raw = record.sort == null ? "farm" : record.sort;
   const sort = typeof raw === "string" && raw in legacy ? legacy[raw] : raw;
   if (typeof sort !== "string" || !DISCOVER_SORTS.includes(sort as DiscoverSort)) {
     throw new AppError("invalid", tr("request.invalid"), 400);

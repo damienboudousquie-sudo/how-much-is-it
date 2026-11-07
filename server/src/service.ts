@@ -1,11 +1,12 @@
 import {
-  STYLE_QUERY,
-  classifyStyle,
   compareDiscover,
+  farmScores,
+  guessedScores,
+  matchesStyleScores,
   matchingCombos,
   modsInCombo,
-  profileNote,
-  styleMatches,
+  primaryStyle,
+  styleScores,
   textMatches,
   type CalculateRequest,
   type CalculateResponse,
@@ -17,20 +18,15 @@ import {
   type LookupResponse,
   type MapMeta,
   type SearchResponse,
+  type StyleScores,
 } from "@osu-pp/shared";
 import { loadBeatmapFile } from "./beatmapCache";
 import { AppError } from "./errors";
 import { parseOsuText } from "./osuFile";
-import {
-  apiKeyConfigured,
-  chipsFrom,
-  getBeatmapset,
-  pickBeatmap,
-  searchBeatmaps,
-  type RemoteSet,
-} from "./osuApi";
+import { apiKeyConfigured, chipsFrom, getBeatmapset, pickBeatmap, searchBeatmaps, type RemoteSet } from "./osuApi";
 import { tr } from "./locale";
-import { loadRangeMaps, loadTextMaps, type PpDbMap } from "./ppDb";
+import { analyzeLater, analyzeNow, getProfile, rememberProfile } from "./patternStore";
+import { coverFor, loadRangeMaps, loadTextMaps, type PpDbMap } from "./ppDb";
 import { calculatePlay } from "./pp";
 
 export async function search(query: string, signal?: AbortSignal): Promise<SearchResponse> {
@@ -54,38 +50,47 @@ export async function search(query: string, signal?: AbortSignal): Promise<Searc
   }
 }
 
+async function remoteSet(id: number, warnings: string[]): Promise<RemoteSet | null> {
+  try {
+    return await getBeatmapset(id);
+  } catch (error) {
+    if (error instanceof AppError && (error.code === "rate_limited" || error.code === "unavailable" || error.code === "not_found")) {
+      warnings.push(error.code === "not_found" ? tr("map.missing") : error.message);
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function lookup(input: LookupRequest): Promise<LookupResponse> {
-  let beatmapId = input.beatmapId;
-  let remote: RemoteSet | null = null;
   const warnings: string[] = [];
+  let beatmapId = input.beatmapId;
+  let remotePromise: Promise<RemoteSet | null> | null = null;
 
   if (beatmapId == null) {
-    remote = await getBeatmapset(input.beatmapsetId as number);
+    const remote = await getBeatmapset(input.beatmapsetId as number);
     beatmapId = pickBeatmap(remote).id;
+    remotePromise = Promise.resolve(remote);
+  } else if (input.beatmapsetId != null) {
+    // The set id is known: fetch the set and the .osu file at the same time.
+    remotePromise = remoteSet(input.beatmapsetId, warnings);
   }
 
   const file = await loadBeatmapFile(beatmapId);
   const local = parseOsuText(file.text);
   const setId = input.beatmapsetId ?? local.beatmapsetId;
+  if (!remotePromise && setId) remotePromise = remoteSet(setId, warnings);
 
-  if (!remote && setId) {
-    try {
-      remote = await getBeatmapset(setId);
-    } catch (error) {
-      if (error instanceof AppError && (error.code === "rate_limited" || error.code === "unavailable" || error.code === "not_found")) {
-        warnings.push(error.code === "not_found" ? tr("map.missing") : error.message);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  const play = await calculatePlay({ ...input, beatmapId }, local.mode, local.endMs, true);
+  const [remote, play] = await Promise.all([
+    remotePromise ?? Promise.resolve(null),
+    calculatePlay({ ...input, beatmapId }, local.mode, local.endMs, true),
+  ]);
   const current = remote?.beatmaps.find((beatmap) => beatmap.id === beatmapId);
   if (current?.totalLength != null && play.clockRate > 0) {
     play.stats.lengthSeconds = current.totalLength / play.clockRate;
   }
 
+  const pattern = local.mode === "osu" ? rememberProfile(beatmapId, file.text) : null;
   const meta = buildMeta(beatmapId, local, remote, play.stats.stars, play.mode);
   return {
     meta,
@@ -93,7 +98,8 @@ export async function lookup(input: LookupRequest): Promise<LookupResponse> {
     curve: play.curve,
     score: play.score,
     warnings: [...play.warnings, ...warnings],
-    profileNote: profileNote(meta.status),
+    pattern,
+    styles: pattern ? styleScores(pattern, { version: meta.version }) : null,
     apiKeyConfigured: apiKeyConfigured(),
   };
 }
@@ -111,48 +117,66 @@ export async function calculate(input: CalculateRequest): Promise<CalculateRespo
   };
 }
 
-const PAGE = 200;
+/* ---------- discover ---------- */
 
-function matchesStyle(map: PpDbMap, input: DiscoverRequest, styleIgnored: boolean): boolean {
-  if (styleIgnored || input.style === "any") return true;
-  const style = classifyStyle({
-    tags: map.tags ?? "",
-    version: map.version,
-    bpm: map.bpm,
-    density: map.density,
-    circleRatio: map.circleRatio,
-    stars: map.stars,
+const PAGE = 60;
+/** Maps read before answering: the page asked for and the next one. */
+const REFINE_WINDOW = PAGE * 2;
+const REFINE_BUDGET_MS = 3500;
+/** Maps read in the background after answering, so scrolling and later searches are exact. */
+const BACKGROUND_WINDOW = 500;
+
+interface Candidate {
+  map: PpDbMap;
+  scores: StyleScores;
+  known: boolean;
+  farm: number;
+}
+
+function scoresFor(map: PpDbMap, osu: boolean): { scores: StyleScores; known: boolean } {
+  if (!osu) return { scores: guessedScores(null), known: false };
+  const profile = getProfile(map.beatmapId);
+  if (profile) return { scores: styleScores(profile, { version: map.version }), known: true };
+  if (profile === null) return { scores: guessedScores(map.guess), known: true };
+  return { scores: guessedScores(map.guess), known: false };
+}
+
+/**
+ * Known maps must really be of the type. Before reading, every unknown map is a candidate
+ * (metadata alone mistakes 1/2 jump maps for streams); once shown, an unknown map needs its
+ * metadata guess to agree.
+ */
+function keep(candidate: Candidate, input: DiscoverRequest, strict: boolean): boolean {
+  if (input.style === "any") return true;
+  if (candidate.known) return matchesStyleScores(candidate.scores, input.style);
+  return strict ? candidate.map.guess === input.style : true;
+}
+
+function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
+  const farms = farmScores(
+    list.map((item) => ({
+      pp: item.map.pp,
+      stars: item.map.stars,
+      lengthSeconds: item.map.lengthSeconds,
+      hint: item.map.hint,
+      scores: item.scores,
+    })),
+    input.style,
+  );
+  list.forEach((item, index) => {
+    item.farm = farms[index]!;
   });
-  return style != null && styleMatches(input.style, style);
+  return list.sort((a, b) =>
+    compareDiscover(
+      input.sort,
+      { pp: a.map.pp, stars: a.map.stars, lengthSeconds: a.map.lengthSeconds, farm: a.farm },
+      { pp: b.map.pp, stars: b.map.stars, lengthSeconds: b.map.lengthSeconds, farm: b.farm },
+    ),
+  );
 }
 
-async function collectByRange(mods: string, input: DiscoverRequest, styleIgnored: boolean, signal?: AbortSignal) {
-  if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
-  let maps: PpDbMap[];
-  try {
-    maps = await loadRangeMaps({ mode: input.mode, mods, ppMin: input.ppMin, ppMax: input.ppMax });
-  } catch (error) {
-    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
-    return null;
-  }
-  const matched = maps.filter((map) => map.pp >= input.ppMin && map.pp <= input.ppMax && matchesStyle(map, input, styleIgnored));
-  matched.sort((a, b) => compareDiscover(input.sort, a, b));
-  const start = input.offset;
-  const slice = matched.slice(start, start + PAGE);
-  return {
-    hits: slice.map((map) => toHit(map, input)),
-    scanned: maps.length,
-    total: matched.length,
-    nextOffset: start + slice.length,
-    hasMore: start + slice.length < matched.length,
-  };
-}
-
-function inRange(map: PpDbMap, input: DiscoverRequest): boolean {
-  return map.pp >= input.ppMin && map.pp <= input.ppMax && textMatches(input.query, [map.title, map.artist, map.creator, map.version]);
-}
-
-function toHit(map: PpDbMap, input: DiscoverRequest): DiscoverHit {
+function toHit(item: Candidate, input: DiscoverRequest): DiscoverHit {
+  const map = item.map;
   return {
     beatmapId: map.beatmapId,
     beatmapsetId: map.beatmapsetId,
@@ -162,94 +186,112 @@ function toHit(map: PpDbMap, input: DiscoverRequest): DiscoverHit {
     version: map.version,
     mode: input.mode,
     status: "ranked",
-    cover: map.cover,
+    cover: coverFor(map.beatmapsetId),
     stars: map.stars,
     pp: map.pp,
     lengthSeconds: map.lengthSeconds,
     mods: modsInCombo(map.mods),
-    style: input.mode === "osu" ? classifyStyle({
-      tags: map.tags ?? "",
-      version: map.version,
-      bpm: map.bpm,
-      density: map.density,
-      circleRatio: map.circleRatio,
-      stars: map.stars,
-    }) : null,
+    style: input.mode === "osu" ? (item.known ? primaryStyle(item.scores) : map.guess) : null,
+    farm: item.farm,
+    estimated: input.mode === "osu" && !item.known,
   };
 }
 
-async function collectByText(mods: string, input: DiscoverRequest, query: string, signal?: AbortSignal) {
-  if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
-  let maps: PpDbMap[];
-  try {
-    maps = await loadTextMaps({ query, mode: input.mode, mods });
-  } catch (error) {
-    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
-    return null;
-  }
-  const matched = maps.filter((map) => inRange(map, input)).sort((a, b) => compareDiscover(input.sort, a, b));
-  const start = input.offset;
-  const slice = matched.slice(start, start + 300);
-  return {
-    hits: slice.map((map) => toHit(map, input)),
-    scanned: maps.length,
-    total: matched.length,
-    nextOffset: start + slice.length,
-    hasMore: start + slice.length < matched.length,
-  };
-}
-
-export function warmFinderIndex(): void {
-  void Promise.all(
-    Object.values(STYLE_QUERY).map((query) => loadTextMaps({ query, mode: "osu", mods: "NM" }).catch(() => undefined)),
+async function loadCombos(input: DiscoverRequest, combos: string[]) {
+  const query = input.query.trim();
+  const settled = await Promise.allSettled(
+    combos.map(async (mods) => {
+      if (query) {
+        const maps = await loadTextMaps({ query, mode: input.mode, mods });
+        return { maps, limitedFrom: null as number | null };
+      }
+      return loadRangeMaps({ mode: input.mode, mods, ppMin: input.ppMin, ppMax: input.ppMax });
+    }),
   );
-}
-
-async function collectCombo(mods: string, input: DiscoverRequest, styleIgnored: boolean, signal?: AbortSignal) {
-  const userQuery = input.query.trim();
-  if (userQuery) return collectByText(mods, input, userQuery, signal);
-  return collectByRange(mods, input, styleIgnored, signal);
+  if (settled.every((result) => result.status === "rejected")) throw new AppError("unavailable", tr("ppdb.down"), 502);
+  const maps: PpDbMap[] = [];
+  let limitedFrom: number | null = null;
+  for (const result of settled) {
+    if (result.status !== "fulfilled") continue;
+    maps.push(...result.value.maps);
+    if (result.value.limitedFrom != null) limitedFrom = Math.max(limitedFrom ?? 0, result.value.limitedFrom);
+  }
+  return { maps, limitedFrom };
 }
 
 export async function discover(input: DiscoverRequest, signal?: AbortSignal): Promise<DiscoverResponse> {
-  const styleIgnored = input.mode !== "osu" && input.style !== "any";
+  const osu = input.mode === "osu";
+  const styleIgnored = !osu && input.style !== "any";
+  const effective: DiscoverRequest = styleIgnored ? { ...input, style: "any" } : input;
   const combos = matchingCombos(input.mods);
-  if (combos.length > 8) {
-    return { results: [], scanned: 0, total: 0, hasMore: false, nextOffset: 0, notice: "too_many", styleIgnored };
-  }
+  const empty = { results: [], scanned: 0, total: 0, hasMore: false, nextOffset: 0, styleIgnored, analyzing: 0, limitedFrom: null };
+  if (combos.length > 8) return { ...empty, notice: "too_many" };
 
-  const lists = await Promise.all(combos.map((mods) => collectCombo(mods, input, styleIgnored, signal)));
-  if (lists.every((list) => list == null)) throw new AppError("unavailable", tr("ppdb.down"), 502);
+  const { maps, limitedFrom } = await loadCombos(effective, combos);
+  if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
 
+  const query = effective.query.trim();
   const seen = new Set<string>();
-  const results: DiscoverHit[] = [];
-  let scanned = 0;
-  let total = 0;
-  let nextOffset = input.offset;
-  let hasMore = false;
-  for (const list of lists) {
-    if (!list) continue;
-    scanned += list.scanned;
-    total += list.total;
-    nextOffset = Math.max(nextOffset, list.nextOffset);
-    hasMore = hasMore || list.hasMore;
-    for (const hit of list.hits) {
-      const key = `${hit.beatmapId}:${hit.mods.join("")}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      results.push(hit);
-    }
+  let pool: Candidate[] = [];
+  for (const map of maps) {
+    if (map.pp < effective.ppMin || map.pp > effective.ppMax) continue;
+    if (query && !textMatches(query, [map.title, map.artist, map.creator, map.version])) continue;
+    const key = `${map.beatmapId}:${map.mods}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pool.push({ map, ...scoresFor(map, osu), farm: 0 });
   }
-  results.sort((a, b) => compareDiscover(input.sort, a, b));
+
+  // Exact types and farm ranking need the hit objects. Read the maps that would be shown first.
+  const refine = osu && (effective.style !== "any" || effective.sort === "farm");
+  let analyzing = 0;
+  if (refine) {
+    let ranked = rank(pool.filter((item) => keep(item, effective, false)), effective);
+    const unknownIds = (list: Candidate[]) => [...new Set(list.filter((item) => !item.known).map((item) => item.map.beatmapId))];
+    // Reading maps reorders the list and pulls new unknown maps into view: repeat while time remains.
+    const deadline = Date.now() + REFINE_BUDGET_MS;
+    for (let round = 0; round < 6; round += 1) {
+      const front = unknownIds(ranked.slice(0, effective.offset + REFINE_WINDOW));
+      const left = deadline - Date.now();
+      if (front.length === 0 || left < 150) break;
+      await analyzeNow(front, left, signal);
+      if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
+      pool = pool.map((item) => (item.known ? item : { ...item, ...scoresFor(item.map, osu) }));
+      ranked = rank(pool.filter((item) => keep(item, effective, false)), effective);
+    }
+    const window = ranked.slice(0, effective.offset + REFINE_WINDOW);
+    analyzing = unknownIds(window).length;
+    analyzeLater(unknownIds(ranked.slice(0, effective.offset + BACKGROUND_WINDOW)));
+  }
+
+  const matched = rank(pool.filter((item) => keep(item, effective, true)), effective);
+  const slice = matched.slice(effective.offset, effective.offset + PAGE);
+  const nextOffset = effective.offset + slice.length;
   return {
-    results,
-    scanned,
-    total,
-    hasMore,
+    results: slice.map((item) => toHit(item, effective)),
+    scanned: maps.length,
+    total: matched.length,
+    hasMore: nextOffset < matched.length,
     nextOffset,
-    notice: results.length === 0 && !hasMore ? "none" : "preview",
+    notice: matched.length === 0 ? (analyzing > 0 ? "preview" : "none") : "preview",
     styleIgnored,
+    analyzing,
+    limitedFrom,
   };
+}
+
+/** Fills the caches for the page shown on first visit. */
+export function warmFinderIndex(): void {
+  void discover({
+    query: "",
+    mode: "osu",
+    style: "any",
+    mods: { EZ: "off", HD: "off", HR: "off", DT: "off", HT: "off", FL: "off" },
+    ppMin: 500,
+    ppMax: 600,
+    offset: 0,
+    sort: "farm",
+  }).catch(() => undefined);
 }
 
 function buildMeta(
@@ -284,7 +326,7 @@ function buildMeta(
     version: fromApi?.version ?? local.version,
     mode,
     status,
-    cover: remote?.cover ?? (setId ? `https://assets.ppy.sh/beatmaps/${setId}/covers/cover.jpg` : null),
+    cover: remote?.cover ?? coverFor(setId, "cover"),
     difficulties,
   };
 }

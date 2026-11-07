@@ -1,4 +1,5 @@
 import type { ApiErrorBody, CalculateRequest, CalculateResponse, DiscoverRequest, DiscoverResponse, HealthResponse, LookupRequest, LookupResponse, SearchResponse } from "@osu-pp/shared";
+import { copyFor, currentLang } from "./i18n";
 
 export class ApiError extends Error {
   constructor(
@@ -10,23 +11,20 @@ export class ApiError extends Error {
   }
 }
 
-function langHeader(): string {
-  const saved = localStorage.getItem("osu-pp-lookup:lang");
-  return saved === "fr" || saved === "es" ? saved : "en";
-}
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, {
       ...init,
-      headers: { "Content-Type": "application/json", "x-lang": langHeader(), ...init?.headers },
+      headers: { "Content-Type": "application/json", "x-lang": currentLang(), ...init?.headers },
     });
-  } catch {
-    throw new ApiError("Le serveur local ne répond pas. Lance npm run dev.", "network");
+  } catch (error) {
+    if (init?.signal?.aborted) throw error;
+    throw new ApiError(copyFor(currentLang()).network, "network");
   }
   if (!response.ok) {
-    let message = "La requête a échoué.";
+    let message = copyFor(currentLang()).searchFailed;
     let code: ApiError["code"] = "unavailable";
     try {
       const body = (await response.json()) as ApiErrorBody;

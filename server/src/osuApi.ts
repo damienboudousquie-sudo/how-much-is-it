@@ -8,6 +8,7 @@ import {
 } from "@osu-pp/shared";
 import { AppError } from "./errors";
 import { tr } from "./locale";
+import { Lru } from "./lru";
 
 const API = "https://osu.ppy.sh/api/v2";
 const TOKEN_URL = "https://osu.ppy.sh/oauth/token";
@@ -40,9 +41,8 @@ interface Token {
 
 let token: Token | null = null;
 let limitedUntil = 0;
-const searchCache = new Map<string, { at: number; hits: SearchHit[] }>();
-const rankedCache = new Map<string, { at: number; sets: RemoteSet[] }>();
-const setCache = new Map<number, { at: number; set: RemoteSet }>();
+const searchCache = new Lru<{ at: number; hits: SearchHit[] }>(200);
+const setCache = new Lru<{ at: number; set: RemoteSet }>(500);
 
 const STATUS_RANK: Record<BeatmapStatus, number> = {
   ranked: 0,
@@ -53,13 +53,6 @@ const STATUS_RANK: Record<BeatmapStatus, number> = {
   wip: 5,
   unknown: 6,
   graveyard: 7,
-};
-
-const MODE_ID: Record<Mode, string> = {
-  osu: "0",
-  taiko: "1",
-  catch: "2",
-  mania: "3",
 };
 
 export function apiKeyConfigured(): boolean {
@@ -113,7 +106,7 @@ function readSet(value: unknown): RemoteSet | null {
 }
 
 function remember(set: RemoteSet): void {
-  setCache.set(set.id, { at: Date.now(), set });
+  setCache.set(String(set.id), { at: Date.now(), set });
 }
 
 function readSets(value: unknown): RemoteSet[] {
@@ -233,7 +226,7 @@ async function apiGet(path: string, signal?: AbortSignal): Promise<unknown> {
 }
 
 export async function getBeatmapset(id: number, signal?: AbortSignal): Promise<RemoteSet> {
-  const cached = setCache.get(id);
+  const cached = setCache.get(String(id));
   if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.set;
 
   if (apiKeyConfigured()) {
@@ -271,7 +264,8 @@ function toHits(sets: RemoteSet[], limit: number): SearchHit[] {
     artist: set.artist,
     creator: set.creator,
     status: set.status,
-    cover: set.cover,
+    // Small thumbnail for the dropdown; the beatmap page keeps the large cover.
+    cover: `https://assets.ppy.sh/beatmaps/${set.id}/covers/card.jpg`,
     beatmaps: set.beatmaps.map(toChip),
   }));
 }
@@ -299,19 +293,6 @@ export async function searchBeatmaps(query: string, signal?: AbortSignal): Promi
   const hits = toHits(sets, 8);
   searchCache.set(key, { at: Date.now(), hits });
   return hits;
-}
-
-export async function searchRankedSets(query: string, mode: Mode, signal?: AbortSignal): Promise<RemoteSet[]> {
-  const key = `${mode}|${query.trim().toLowerCase()}`;
-  const cached = rankedCache.get(key);
-  if (cached && Date.now() - cached.at < 20_000) return cached.sets;
-
-  const params = new URLSearchParams({ query: query.trim(), mode: MODE_ID[mode], status: "1" });
-  const sets = readSets(await mirrorGet(`/search?${params}`, signal))
-    .filter((set) => set.status === "ranked" || set.status === "approved")
-    .slice(0, 40);
-  rankedCache.set(key, { at: Date.now(), sets });
-  return sets;
 }
 
 function toChip(beatmap: RemoteBeatmap): DifficultyChip {
