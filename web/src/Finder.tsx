@@ -36,7 +36,7 @@ const MODES: { id: Mode; label: string }[] = [
   { id: "catch", label: "catch" },
   { id: "mania", label: "mania" },
 ];
-const MAX_POLLS = 10;
+const MAX_POLLS = 30;
 
 interface Settings {
   ppMin: string;
@@ -128,10 +128,10 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
         return [...previous, ...results.filter((hit) => !seen.has(`${hit.beatmapId}:${hit.mods.join("")}`))];
       });
       setStatus({ kind: "done" });
-      // Types near the top are still being read on the server: refresh the first page quietly.
+      // The catalogue is still arriving, or types near the top are still being read: refresh quietly.
       const polls = options.polls ?? 0;
-      if (!options.append && data.analyzing > 0 && polls < MAX_POLLS) {
-        pollTimer.current = window.setTimeout(() => void run({ silent: true, polls: polls + 1 }), polls < 3 ? 1500 : 3000);
+      if (!options.append && (data.analyzing > 0 || data.catalog) && polls < MAX_POLLS) {
+        pollTimer.current = window.setTimeout(() => void run({ silent: true, polls: polls + 1 }), polls < 8 ? 1200 : 2500);
       }
     } catch (caught) {
       if (current.signal.aborted || gen !== generation.current) return;
@@ -304,7 +304,13 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
               <strong>{fill(t.resultsCount, { total: formatCount(meta.total) })}</strong>
               <span className="muted"> · {t.ssNote}</span>
             </p>
-            {meta.analyzing > 0 && (
+            {meta.catalog && (
+              <p className="analyzing">
+                <span className="spinner" aria-hidden="true" />{" "}
+                {fill(t.loadingCatalog, { loaded: formatCount(meta.catalog.loaded), expected: formatCount(meta.catalog.expected) })}
+              </p>
+            )}
+            {!meta.catalog && meta.analyzing > 0 && (
               <p className="analyzing">
                 <span className="spinner" aria-hidden="true" /> {fill(t.analyzing, { count: formatCount(meta.analyzing) })}
               </p>
@@ -316,7 +322,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
             {notice}
           </p>
         ))}
-        {status.kind === "done" && meta && hits.length === 0 && meta.analyzing === 0 && (
+        {status.kind === "done" && meta && hits.length === 0 && meta.analyzing === 0 && !meta.catalog && (
           <p className="notice">{meta.notice === "too_many" ? t.noticeTooMany : t.noticeNone}</p>
         )}
       </div>

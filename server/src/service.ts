@@ -122,7 +122,8 @@ export async function calculate(input: CalculateRequest): Promise<CalculateRespo
 const PAGE = 60;
 /** Maps read before answering: the page asked for and the next one. */
 const REFINE_WINDOW = PAGE * 2;
-const REFINE_BUDGET_MS = 3500;
+/** Short: answers must stay fast. The client asks again while maps are being read. */
+const REFINE_BUDGET_MS = 600;
 /** Maps read in the background after answering, so scrolling and later searches are exact. */
 const BACKGROUND_WINDOW = 500;
 
@@ -203,7 +204,7 @@ async function loadCombos(input: DiscoverRequest, combos: string[]) {
     combos.map(async (mods) => {
       if (query) {
         const maps = await loadTextMaps({ query, mode: input.mode, mods });
-        return { maps, limitedFrom: null as number | null };
+        return { maps, limitedFrom: null as number | null, loaded: maps.length, expected: maps.length, complete: true };
       }
       return loadRangeMaps({ mode: input.mode, mods, ppMin: input.ppMin, ppMax: input.ppMax });
     }),
@@ -211,12 +212,18 @@ async function loadCombos(input: DiscoverRequest, combos: string[]) {
   if (settled.every((result) => result.status === "rejected")) throw new AppError("unavailable", tr("ppdb.down"), 502);
   const maps: PpDbMap[] = [];
   let limitedFrom: number | null = null;
+  let loaded = 0;
+  let expected = 0;
+  let complete = true;
   for (const result of settled) {
     if (result.status !== "fulfilled") continue;
     maps.push(...result.value.maps);
+    loaded += result.value.loaded;
+    expected += result.value.expected;
+    complete = complete && result.value.complete;
     if (result.value.limitedFrom != null) limitedFrom = Math.max(limitedFrom ?? 0, result.value.limitedFrom);
   }
-  return { maps, limitedFrom };
+  return { maps, limitedFrom, catalog: complete ? null : { loaded, expected: Math.max(expected, loaded) } };
 }
 
 export async function discover(input: DiscoverRequest, signal?: AbortSignal): Promise<DiscoverResponse> {
@@ -224,10 +231,10 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
   const styleIgnored = !osu && input.style !== "any";
   const effective: DiscoverRequest = styleIgnored ? { ...input, style: "any" } : input;
   const combos = matchingCombos(input.mods);
-  const empty = { results: [], scanned: 0, total: 0, hasMore: false, nextOffset: 0, styleIgnored, analyzing: 0, limitedFrom: null };
+  const empty = { results: [], scanned: 0, total: 0, hasMore: false, nextOffset: 0, styleIgnored, analyzing: 0, limitedFrom: null, catalog: null };
   if (combos.length > 8) return { ...empty, notice: "too_many" };
 
-  const { maps, limitedFrom } = await loadCombos(effective, combos);
+  const { maps, limitedFrom, catalog } = await loadCombos(effective, combos);
   if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
 
   const query = effective.query.trim();
@@ -250,7 +257,7 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
     const unknownIds = (list: Candidate[]) => [...new Set(list.filter((item) => !item.known).map((item) => item.map.beatmapId))];
     // Reading maps reorders the list and pulls new unknown maps into view: repeat while time remains.
     const deadline = Date.now() + REFINE_BUDGET_MS;
-    for (let round = 0; round < 6; round += 1) {
+    for (let round = 0; round < 2; round += 1) {
       const front = unknownIds(ranked.slice(0, effective.offset + REFINE_WINDOW));
       const left = deadline - Date.now();
       if (front.length === 0 || left < 150) break;
@@ -273,10 +280,11 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
     total: matched.length,
     hasMore: nextOffset < matched.length,
     nextOffset,
-    notice: matched.length === 0 ? (analyzing > 0 ? "preview" : "none") : "preview",
+    notice: matched.length === 0 ? (analyzing > 0 || catalog ? "preview" : "none") : "preview",
     styleIgnored,
     analyzing,
     limitedFrom,
+    catalog,
   };
 }
 

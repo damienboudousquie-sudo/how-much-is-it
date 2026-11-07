@@ -154,6 +154,8 @@ export interface DiscoverResponse {
   analyzing: number;
   /** Set when the range was too wide: maps below this PP were not loaded. */
   limitedFrom: number | null;
+  /** Set while the PP catalogue for this range is still arriving. Ask again shortly. */
+  catalog: { loaded: number; expected: number } | null;
 }
 
 export interface CalculateRequest {
