@@ -5,3 +5,7 @@ cache
 *.log
 *.tsbuildinfo
 .DS_Store
+
+# Netcup / Docker
+deploy/certs/*
+!deploy/certs/.gitkeep

@@ -1,0 +1,7 @@
+# Cloudflare sits in front (orange cloud) and talks to this server with its
+# free Origin Certificate, so SSL mode "Full (strict)" works without Let's Encrypt.
+{$DOMAIN}, www.{$DOMAIN} {
+	tls /certs/origin.pem /certs/origin.key
+	encode zstd gzip
+	reverse_proxy app:3001
+}
