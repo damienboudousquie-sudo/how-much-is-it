@@ -4,6 +4,7 @@ import {
   FINDER_MODS,
   MAIN_STYLES,
   MAP_STYLES,
+  PARENT_STYLE,
   SECONDARY_STYLES,
   MAX_SORT_RULES,
   RANGE_KEYS,
@@ -108,14 +109,20 @@ function readSort(value: unknown): SortRule[] {
   return rules.length > 0 ? rules.slice(0, MAX_SORT_RULES) : DEFAULT_SORT;
 }
 
-/** Adds or removes a type; a secondary tag picked alone brings no main type with it. */
+/** Tags that narrow Hybrid. Jump and Stream are not narrowed. */
+const HYBRID_TAGS = SECONDARY_STYLES.filter((style) => PARENT_STYLE[style] === "hybrid");
+
+/** Adds or removes a type. Removing Hybrid also drops its tags. */
 function toggleStyle(styles: ConcreteStyle[], item: ConcreteStyle): ConcreteStyle[] {
-  return styles.includes(item) ? styles.filter((style) => style !== item) : [...styles, item];
+  if (!styles.includes(item)) return [...styles, item];
+  const without = styles.filter((style) => style !== item);
+  return item === "hybrid" ? without.filter((style) => !(HYBRID_TAGS as readonly ConcreteStyle[]).includes(style)) : without;
 }
 
 function readStyles(saved: Partial<Settings> & { style?: unknown }): ConcreteStyle[] {
   const valid = (value: unknown): value is ConcreteStyle => typeof value === "string" && value !== "any" && MAP_STYLES.includes(value as MapStyle);
-  if (Array.isArray(saved.styles)) return [...new Set(saved.styles.filter(valid))];
+  // Speed is no longer a filter (only Hybrid can be narrowed); older saved settings may hold it.
+  if (Array.isArray(saved.styles)) return [...new Set(saved.styles.filter(valid))].filter((style) => style !== "speed");
   return valid(saved.style) ? [saved.style] : [];
 }
 
@@ -447,9 +454,10 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
                   );
                 })}
               </div>
+              {mode === "osu" && styles.includes("hybrid") && (
               <div className="tabs wrap sub" role="group" aria-label={t.typeTags} data-testid="finder-tags">
                 <span className="sub-label">{t.typeTags}</span>
-                {SECONDARY_STYLES.map((item) => {
+                {HYBRID_TAGS.map((item) => {
                   const selected = mode === "osu" && styles.includes(item);
                   return (
                     <button
@@ -466,6 +474,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
                   );
                 })}
               </div>
+              )}
               <p className="help">
                 {mode === "osu" && styles.length > 0 ? styles.map((style) => t.typeHelp[style]).join(" ") : t.typeHelp.any}{" "}
                 {mode === "osu" ? `${t.typeMulti} ${t.typeTagsHelp}` : ""}

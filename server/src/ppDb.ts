@@ -36,7 +36,8 @@ function previousBand(low: number): number {
 /** Widest range loaded at once, so a 0 to 2000 request does not pull the whole catalogue. */
 export const MAX_BANDS = 24;
 const MAX_PAGES_PER_BAND = 50;
-const TTL_MS = 24 * 60 * 60 * 1000;
+/** Ranked maps change slowly; the background warmer refreshes lists before they expire. */
+const TTL_MS = 4 * 24 * 60 * 60 * 1000;
 const SCHEMA = 6;
 const DIR = join(repoRoot, "cache", "pp-bands");
 
@@ -347,6 +348,53 @@ function startBand(mode: Mode, mods: string, low: number): Band {
   })();
   bands.set(key, band);
   return band;
+}
+
+/** Every band edge from 0 to `max` pp, highest first. */
+function allBandLows(max: number): number[] {
+  const lows: number[] = [];
+  for (let low = bandLow(max); ; low = previousBand(low)) {
+    lows.push(low);
+    if (low === 0) break;
+  }
+  return lows;
+}
+
+/** Combos loaded ahead of time: the ones people search with most. */
+const WARM_COMBOS = ["NM", "DT", "HD", "HR", "HDDT", "HDHR"];
+const WARM_EVERY_MS = 2 * 24 * 60 * 60 * 1000;
+const warmStatus = { combo: null as string | null, bandsDone: 0, bandsTotal: 0, lastPass: null as string | null };
+
+export function warmerStatus() {
+  return { ...warmStatus };
+}
+
+/**
+ * Loads every PP band of the common mod combos in the background, one band at a time
+ * and only while searches leave the mirror idle, so every range is already on disk
+ * when someone asks for it. Runs again every few days to pick up newly ranked maps.
+ */
+export function startCatalogueWarmer(): void {
+  if (process.env.WARM_CATALOGUE === "0") return;
+  void (async () => {
+    for (;;) {
+      const lows = allBandLows(4000);
+      warmStatus.bandsTotal = lows.length * WARM_COMBOS.length;
+      warmStatus.bandsDone = 0;
+      for (const combo of WARM_COMBOS) {
+        warmStatus.combo = combo;
+        for (const low of lows) {
+          // Searches first: wait while the mirror queue is busy.
+          while (active > 4 || waiting.length > 0) await pause(2000);
+          await startBand("osu", combo, low).ready;
+          warmStatus.bandsDone += 1;
+        }
+      }
+      warmStatus.combo = null;
+      warmStatus.lastPass = new Date().toISOString();
+      await pause(WARM_EVERY_MS);
+    }
+  })();
 }
 
 export interface RangeProgress extends RangeLoad {

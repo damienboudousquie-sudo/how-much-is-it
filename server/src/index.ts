@@ -12,7 +12,7 @@ import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
-import { catalogHealth } from "./ppDb";
+import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
 
@@ -65,7 +65,7 @@ function abortOnClose(reply: FastifyReply): AbortController {
 app.get("/api/health", async () => ({ ok: true as const, apiKeyConfigured: apiKeyConfigured() }));
 
 /** Requests to the pp catalogue mirror, for troubleshooting. */
-app.get("/api/health/catalog", async () => catalogHealth());
+app.get("/api/health/catalog", async () => ({ ...catalogHealth(), warmer: warmerStatus() }));
 
 /** Progress of the full catalogue scan. */
 app.get("/api/scan", async () => scanStatus());
@@ -162,3 +162,4 @@ await app.listen({ port, host });
 void rm(join(repoRoot, "cache", "pp-index"), { recursive: true, force: true }).catch(() => undefined);
 warmFinderIndex();
 startFullScan();
+startCatalogueWarmer();
