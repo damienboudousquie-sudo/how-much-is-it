@@ -15,7 +15,44 @@ const API = "https://osu.ppy.sh/api/v2";
 const TOKEN_URL = "https://osu.ppy.sh/oauth/token";
 /** Beatmap mirrors, tried in order. catboy refuses some cloud hosts, so osu.direct comes first. */
 const MIRRORS = ["https://osu.direct/api/v2", "https://catboy.best/api/v2"];
-let preferredMirror = 0;
+
+interface MirrorHealth {
+  /** Last answer: an HTTP status, or 0 when the mirror did not answer. */
+  status: number | null;
+  ms: number | null;
+  at: number | null;
+  okCount: number;
+  failCount: number;
+  /** A failing mirror is skipped until then, so requests do not wait on it. */
+  downUntil: number;
+}
+
+const health: MirrorHealth[] = MIRRORS.map(() => ({ status: null, ms: null, at: null, okCount: 0, failCount: 0, downUntil: 0 }));
+
+export function mirrorHealth() {
+  return MIRRORS.map((base, index) => ({ base, ...health[index]!, down: health[index]!.downUntil > Date.now() }));
+}
+
+function note(index: number, status: number, ms: number): void {
+  const entry = health[index]!;
+  entry.status = status;
+  entry.ms = Math.round(ms);
+  entry.at = Date.now();
+  if (status >= 200 && status < 300) {
+    entry.okCount += 1;
+    entry.downUntil = 0;
+  } else if (status !== 404) {
+    entry.failCount += 1;
+    entry.downUntil = Date.now() + (status === 429 ? 30_000 : 120_000);
+  }
+}
+
+/** Mirrors to try, healthy ones first, in their usual order. */
+function mirrorOrder(): number[] {
+  const now = Date.now();
+  const all = MIRRORS.map((_, index) => index);
+  return [...all.filter((index) => health[index]!.downUntil <= now), ...all.filter((index) => health[index]!.downUntil > now)];
+}
 
 export interface RemoteBeatmap {
   id: number;
@@ -145,49 +182,82 @@ function readSets(value: unknown): RemoteSet[] {
   return sets;
 }
 
-async function mirrorOnce(base: string, path: string, signal?: AbortSignal): Promise<Response | null> {
-  const timeout = AbortSignal.timeout(8_000);
+async function mirrorOnce(index: number, path: string, signal?: AbortSignal): Promise<unknown | number> {
+  const base = MIRRORS[index]!;
+  const timeout = AbortSignal.timeout(6_000);
   const signals = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  const start = performance.now();
+  let response: Response;
   try {
-    return await fetch(`${base}${path}`, {
+    response = await fetch(`${base}${path}`, {
       headers: { Accept: "application/json", "User-Agent": "how-much-is-it (osu! pp finder)" },
       signal: signals,
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    return null;
+    note(index, 0, performance.now() - start);
+    console.warn(`[mirror] ${base}${path} did not answer`);
+    return 0;
+  }
+  if (!response.ok) {
+    note(index, response.status, performance.now() - start);
+    if (response.status !== 404) console.warn(`[mirror] ${base}${path} answered ${response.status}`);
+    return response.status;
+  }
+  try {
+    const json = await response.json();
+    note(index, response.status, performance.now() - start);
+    return json;
+  } catch {
+    note(index, 502, performance.now() - start);
+    return 502;
   }
 }
 
-/** Asks each mirror in turn, starting with the last one that answered. */
+function failure(statuses: number[]): AppError {
+  if (statuses.includes(404)) return new AppError("not_found", tr("map.missing"), 404);
+  if (statuses.includes(429)) return new AppError("rate_limited", tr("search.limited"), 429);
+  return new AppError("unavailable", tr("search.unavailable"), 502);
+}
+
+/** Asks each mirror in turn, healthy ones first. */
 async function mirrorGet(path: string, signal?: AbortSignal): Promise<unknown> {
-  let missing = 0;
-  let limited = 0;
-  for (let step = 0; step < MIRRORS.length; step += 1) {
-    const index = (preferredMirror + step) % MIRRORS.length;
+  const statuses: number[] = [];
+  for (const index of mirrorOrder()) {
+    const result = await mirrorOnce(index, path, signal);
+    if (typeof result !== "number") return result;
+    statuses.push(result);
+  }
+  throw failure(statuses);
+}
+
+/**
+ * Text search. catboy lists graveyard sets first, so it is also asked for ranked,
+ * approved and loved sets alone; the answers are merged.
+ */
+async function mirrorSearch(query: string, signal?: AbortSignal): Promise<RemoteSet[]> {
+  const statuses: number[] = [];
+  for (const index of mirrorOrder()) {
     const base = MIRRORS[index]!;
-    const response = await mirrorOnce(base, path, signal);
-    if (!response) {
-      console.warn(`[mirror] ${base}${path} did not answer`);
+    const paths = base.includes("catboy")
+      ? [
+          `/search?${new URLSearchParams({ query, limit: "100" })}`,
+          `/search?${new URLSearchParams({ query, status: "1", limit: "100" })}`,
+          `/search?${new URLSearchParams({ query, status: "2", limit: "50" })}`,
+          `/search?${new URLSearchParams({ query, status: "4", limit: "50" })}`,
+        ]
+      : [`/search?${new URLSearchParams({ query, amount: "100" })}`];
+    const results = await Promise.all(paths.map((path) => mirrorOnce(index, path, signal)));
+    const answers = results.filter((result) => typeof result !== "number");
+    if (answers.length === 0) {
+      statuses.push(...(results as number[]));
       continue;
     }
-    if (response.ok) {
-      try {
-        const json = await response.json();
-        preferredMirror = index;
-        return json;
-      } catch {
-        console.warn(`[mirror] ${base}${path} sent invalid JSON`);
-        continue;
-      }
-    }
-    if (response.status === 404) missing += 1;
-    else if (response.status === 429) limited += 1;
-    else console.warn(`[mirror] ${base}${path} answered ${response.status}`);
+    const byId = new Map<number, RemoteSet>();
+    for (const answer of answers) for (const set of readSets(answer)) byId.set(set.id, set);
+    return [...byId.values()];
   }
-  if (missing > 0) throw new AppError("not_found", tr("map.missing"), 404);
-  if (limited > 0) throw new AppError("rate_limited", tr("search.limited"), 429);
-  throw new AppError("unavailable", tr("search.unavailable"), 502);
+  throw failure(statuses);
 }
 
 async function getToken(): Promise<string> {
@@ -364,8 +434,7 @@ export async function searchBeatmaps(query: string, signal?: AbortSignal, ranked
     }
   }
   if (sets.length === 0) {
-    const params = new URLSearchParams({ query: query.trim(), amount: "50" });
-    sets = readSets(await mirrorGet(`/search?${params}`, signal));
+    sets = await mirrorSearch(query.trim(), signal);
   }
   const hits = toHits(bestFirst(ranked ? rankedOnly(sets) : sets, query), 8);
   searchCache.set(key, { at: Date.now(), hits });

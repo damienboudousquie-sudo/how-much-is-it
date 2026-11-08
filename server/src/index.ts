@@ -6,7 +6,7 @@ import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyReply } from "fastify";
-import { apiKeyConfigured } from "./osuApi";
+import { apiKeyConfigured, mirrorHealth } from "./osuApi";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
@@ -60,6 +60,9 @@ function abortOnClose(reply: FastifyReply): AbortController {
 }
 
 app.get("/api/health", async () => ({ ok: true as const, apiKeyConfigured: apiKeyConfigured() }));
+
+/** Which beatmap mirrors answer from this host, for troubleshooting. */
+app.get("/api/health/mirrors", async () => ({ mirrors: mirrorHealth() }));
 
 app.get("/api/search", async (request, reply) => {
   const params = request.query as { q?: unknown; ranked?: unknown };
