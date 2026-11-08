@@ -11,6 +11,8 @@ import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
 import { bindLang, tr } from "./locale";
+import { exportPacked } from "./patternStore";
+import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, disableRequestLogging: true });
@@ -60,6 +62,22 @@ function abortOnClose(reply: FastifyReply): AbortController {
 }
 
 app.get("/api/health", async () => ({ ok: true as const, apiKeyConfigured: apiKeyConfigured() }));
+
+/** Progress of the full catalogue scan. */
+app.get("/api/scan", async () => scanStatus());
+
+/**
+ * Every map type known so far, compact and gzipped. Saved as data/patterns-seed.json.gz in
+ * the repository, it lets a fresh server know the whole catalogue from the start.
+ */
+app.get("/api/patterns-seed.json.gz", async (_request, reply) => {
+  const body = await exportPacked();
+  return reply
+    .header("content-type", "application/gzip")
+    .header("content-disposition", 'attachment; filename="patterns-seed.json.gz"')
+    .header("cache-control", "no-store")
+    .send(body);
+});
 
 /** Which beatmap mirrors answer from this host, for troubleshooting. */
 app.get("/api/health/mirrors", async () => ({ mirrors: mirrorHealth() }));
@@ -139,3 +157,4 @@ await app.listen({ port, host });
 // The old index format kept whole ranges with tags and covers; bands replace it.
 void rm(join(repoRoot, "cache", "pp-index"), { recursive: true, force: true }).catch(() => undefined);
 warmFinderIndex();
+startFullScan();

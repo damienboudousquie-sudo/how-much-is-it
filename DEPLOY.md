@@ -122,6 +122,14 @@ cd /opt/how-much-is-it
 ./deploy/update.sh
 ```
 
+## Analyse complète du catalogue
+
+Au démarrage, le serveur lit en tâche de fond **toutes** les maps ranked osu! (environ 150 000 difficultés), en laissant la priorité aux recherches. Il retient où il en est, même après un redémarrage, et refait un passage chaque jour pour les nouvelles maps classées.
+
+- Suivre l'avancement : `https://tondomaine.eu/api/scan` (`known` = maps analysées, `catalogue` = total).
+- Quand `finishedAt` est rempli, télécharge `https://tondomaine.eu/api/patterns-seed.json.gz` et range-le dans `data/patterns-seed.json.gz` du projet (puis push sur GitHub). Tout nouveau serveur connaîtra alors le type de chaque map dès le démarrage.
+- Réglages facultatifs dans `.env` : `ANALYSIS_CONCURRENCY=8` (téléchargements en parallèle), `FULL_SCAN=0` pour couper l'analyse complète.
+
 ## Bon à savoir
 
 - **Cache** : les analyses de maps et les plages de PP sont gardées dans un volume Docker. Elles survivent aux redémarrages et aux mises à jour, donc le site devient plus rapide au fil du temps.

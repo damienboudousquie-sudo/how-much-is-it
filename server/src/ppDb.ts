@@ -150,6 +150,13 @@ async function fetchPage(path: string, mods: string, signal?: AbortSignal): Prom
   });
 }
 
+/** One page of the whole osu! ranked catalogue (every difficulty, nomod), for the full scan. */
+export async function fetchCatalogPage(offset: number, signal?: AbortSignal): Promise<{ ids: number[]; total: number }> {
+  const params = new URLSearchParams({ mods: "", game_mode: "0", min_pp: "0", max_pp: "100000", limit: String(PAGE_SIZE), offset: String(offset) });
+  const { maps, total } = await fetchPage(`/v3/osu/pp-maps?${params}`, "", signal);
+  return { ids: maps.map((map) => map.beatmapId), total };
+}
+
 async function fetchAll(pathFor: (offset: number) => string, mods: string, maxPages: number): Promise<{ maps: PpDbMap[]; complete: boolean }> {
   const first = await fetchPage(pathFor(0), mods);
   const pages = Math.max(1, Math.ceil(first.total / PAGE_SIZE));
