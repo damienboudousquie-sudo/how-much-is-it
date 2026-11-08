@@ -19,6 +19,7 @@ import {
 } from "@osu-pp/shared";
 import { ApiError, fetchCalculate, fetchLookup } from "./api";
 import { formatBpm, formatLength, formatPercent, formatPp, formatRate, formatStars, formatStat, osuDirectUrl, osuMapUrl } from "./format";
+import { StarPill } from "./Badges";
 import { fill, useI18n, type Copy } from "./i18n";
 
 export interface PlayPreset {
@@ -323,7 +324,7 @@ export function BeatmapView(props: {
               className={chip.id === meta.beatmapId ? "chip on" : "chip"}
               onClick={() => chip.id !== meta.beatmapId && props.onOpen(chip.id, chip.mode, meta.beatmapsetId)}
             >
-              {chip.stars != null && <b>{formatStars(chip.stars)}★</b>}
+              {chip.stars != null && <StarPill stars={chip.stars} />}
               {chip.version}
               {chip.mode !== meta.mode && <small>{modeLabel(chip.mode)}</small>}
             </button>

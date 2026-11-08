@@ -1,4 +1,4 @@
-import { PP_COMBOS, classifyStyle, compareDiscover, emptyFilters, matchingCombos, modsInCombo, styleMatches, textMatches } from "@osu-pp/shared";
+import { PP_COMBOS, classifyStyle, compareDiscover, emptyFilters, inRange, legacySort, matchingCombos, modsInCombo, styleMatches, textMatches } from "@osu-pp/shared";
 import { describe, expect, it } from "vitest";
 
 describe("map styles", () => {
@@ -59,17 +59,51 @@ describe("map styles", () => {
     const short = { pp: 500, stars: 6, lengthSeconds: 90 };
     const long = { pp: 510, stars: 5.5, lengthSeconds: 400 };
     const hard = { pp: 505, stars: 8, lengthSeconds: 120 };
-    expect([long, short, hard].sort((a, b) => compareDiscover("pp-desc", a, b)).map((map) => map.pp)).toEqual([510, 505, 500]);
-    expect([long, short, hard].sort((a, b) => compareDiscover("pp-asc", a, b)).map((map) => map.pp)).toEqual([500, 505, 510]);
-    expect([long, short, hard].sort((a, b) => compareDiscover("stars-desc", a, b)).map((map) => map.stars)).toEqual([8, 6, 5.5]);
-    expect([long, short, hard].sort((a, b) => compareDiscover("stars-asc", a, b)).map((map) => map.stars)).toEqual([5.5, 6, 8]);
-    expect([long, short, hard].sort((a, b) => compareDiscover("length-desc", a, b)).map((map) => map.lengthSeconds)).toEqual([400, 120, 90]);
-    expect([long, short, hard].sort((a, b) => compareDiscover("length-asc", a, b)).map((map) => map.lengthSeconds)).toEqual([90, 120, 400]);
+    expect([long, short, hard].sort((a, b) => compareDiscover(legacySort("pp-desc"), a, b)).map((map) => map.pp)).toEqual([510, 505, 500]);
+    expect([long, short, hard].sort((a, b) => compareDiscover(legacySort("pp-asc"), a, b)).map((map) => map.pp)).toEqual([500, 505, 510]);
+    expect([long, short, hard].sort((a, b) => compareDiscover(legacySort("stars-desc"), a, b)).map((map) => map.stars)).toEqual([8, 6, 5.5]);
+    expect([long, short, hard].sort((a, b) => compareDiscover(legacySort("stars-asc"), a, b)).map((map) => map.stars)).toEqual([5.5, 6, 8]);
+    expect([long, short, hard].sort((a, b) => compareDiscover(legacySort("length-desc"), a, b)).map((map) => map.lengthSeconds)).toEqual([400, 120, 90]);
+    expect([long, short, hard].sort((a, b) => compareDiscover(legacySort("length-asc"), a, b)).map((map) => map.lengthSeconds)).toEqual([90, 120, 400]);
   });
 
   it("puts the farm score first when sorting for farm", () => {
     const a = { pp: 500, stars: 6, lengthSeconds: 90, farm: 40 };
     const b = { pp: 480, stars: 6, lengthSeconds: 90, farm: 80 };
-    expect([a, b].sort((x, y) => compareDiscover("farm", x, y))[0]).toBe(b);
+    expect([a, b].sort((x, y) => compareDiscover(legacySort("farm"), x, y))[0]).toBe(b);
+  });
+
+  it("sorts by several rules, the first one winning", () => {
+    const maps = [
+      { pp: 400, stars: 6, lengthSeconds: 90, bpm: 200, ar: 9.3 },
+      { pp: 420, stars: 6, lengthSeconds: 80, bpm: 180, ar: 9.3 },
+      { pp: 410, stars: 6, lengthSeconds: 70, bpm: 200, ar: 9.7 },
+    ];
+    const sorted = [...maps].sort((a, b) =>
+      compareDiscover(
+        [
+          { key: "bpm", dir: "desc" },
+          { key: "ar", dir: "asc" },
+        ],
+        a,
+        b,
+      ),
+    );
+    expect(sorted.map((map) => map.pp)).toEqual([400, 410, 420]);
+  });
+
+  it("puts maps without a value last, whatever the direction", () => {
+    const known = { pp: 400, stars: 6, lengthSeconds: 90, ar: 9 };
+    const unknown = { pp: 500, stars: 6, lengthSeconds: 90, ar: null };
+    expect([unknown, known].sort((a, b) => compareDiscover([{ key: "ar", dir: "asc" }], a, b))[0]).toBe(known);
+    expect([unknown, known].sort((a, b) => compareDiscover([{ key: "ar", dir: "desc" }], a, b))[0]).toBe(known);
+  });
+
+  it("checks open and closed ranges", () => {
+    expect(inRange(9.3, { min: 9, max: 9.5 })).toBe(true);
+    expect(inRange(9.8, { min: 9, max: 9.5 })).toBe(false);
+    expect(inRange(250, { min: 240, max: null })).toBe(true);
+    expect(inRange(null, { min: null, max: null })).toBe(true);
+    expect(inRange(null, { min: 1, max: null })).toBe(false);
   });
 });

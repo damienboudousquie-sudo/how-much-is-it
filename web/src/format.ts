@@ -58,3 +58,38 @@ export function osuDirectUrl(beatmapsetId: number | null, beatmapId: number): st
 export function plainClick(event: { button: number; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean }): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
+
+/* Star rating colours: the difficulty spectrum used by osu! (blue → green → yellow → red → purple → black). */
+const STAR_STOPS: [number, [number, number, number]][] = [
+  [0.1, [66, 144, 251]],
+  [1.25, [79, 192, 255]],
+  [2, [79, 255, 213]],
+  [2.5, [124, 255, 79]],
+  [3.3, [246, 240, 92]],
+  [4.2, [255, 128, 104]],
+  [4.9, [255, 78, 111]],
+  [5.8, [198, 69, 184]],
+  [6.7, [101, 99, 222]],
+  [7.7, [24, 21, 142]],
+  [9, [0, 0, 0]],
+];
+
+export function starColors(stars: number): { background: string; text: string } {
+  const value = Math.max(0.1, Math.min(9, stars));
+  let rgb = STAR_STOPS[STAR_STOPS.length - 1]![1];
+  for (let index = 1; index < STAR_STOPS.length; index += 1) {
+    const [high, to] = STAR_STOPS[index]!;
+    if (value <= high) {
+      const [low, from] = STAR_STOPS[index - 1]!;
+      // osu! blends in gamma space; a plain blend is close enough at this size.
+      const ratio = (value - low) / (high - low);
+      rgb = [0, 1, 2].map((channel) => Math.round(from[channel]! + (to[channel]! - from[channel]!) * ratio)) as [number, number, number];
+      break;
+    }
+  }
+  return {
+    background: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`,
+    // Dark text on light colours; osu!'s pale gold on the dark end of the scale.
+    text: stars >= 6.5 ? "#ffd966" : "rgba(0, 0, 0, 0.78)",
+  };
+}

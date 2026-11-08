@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { modeLabel, parseInput, type Mode, type SearchHit } from "@osu-pp/shared";
 import { fetchSearch, prefetchMap } from "./api";
-import { formatStars } from "./format";
+import { StarPill } from "./Badges";
 import { useI18n } from "./i18n";
 
 export interface OpenTarget {
@@ -181,7 +181,7 @@ export function SearchBox(props: {
                         }}
                         onClick={() => choose({ id: beatmap.id, mode: beatmap.mode, setId: hit.beatmapsetId })}
                       >
-                        {beatmap.stars != null && <b>{formatStars(beatmap.stars)}★</b>}
+                        {beatmap.stars != null && <StarPill stars={beatmap.stars} />}
                         {beatmap.version}
                         {beatmap.mode !== "osu" && <small>{modeLabel(beatmap.mode)}</small>}
                       </button>

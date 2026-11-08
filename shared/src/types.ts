@@ -100,8 +100,28 @@ export interface SearchResponse {
 export const MAP_STYLES = ["any", "jump", "stream", "speed", "tech", "alt", "fingercontrol"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
+/** Single sorts from before sorts could be combined. Still accepted by the API. */
 export const DISCOVER_SORTS = ["farm", "pp-desc", "pp-asc", "stars-desc", "stars-asc", "length-desc", "length-asc"] as const;
 export type DiscoverSort = (typeof DISCOVER_SORTS)[number];
+
+export const SORT_KEYS = ["farm", "pp", "stars", "length", "bpm", "ar"] as const;
+export type SortKey = (typeof SORT_KEYS)[number];
+export type SortDir = "asc" | "desc";
+/** One sort criterion. A list of them sorts by the first, then breaks ties with the next. */
+export interface SortRule {
+  key: SortKey;
+  dir: SortDir;
+}
+export const MAX_SORT_RULES = 4;
+
+/** Inclusive bounds; null means open on that side. */
+export interface NumRange {
+  min: number | null;
+  max: number | null;
+}
+export const RANGE_KEYS = ["stars", "bpm", "ar", "length"] as const;
+export type RangeKey = (typeof RANGE_KEYS)[number];
+export type RangeFilters = Record<RangeKey, NumRange>;
 
 export interface HealthResponse {
   ok: true;
@@ -119,7 +139,10 @@ export interface DiscoverRequest {
   ppMin: number;
   ppMax: number;
   offset: number;
-  sort: DiscoverSort;
+  /** Sort criteria, most important first. */
+  sort: SortRule[];
+  /** Stars, BPM and AR as played with the mods; length in seconds, with DT/HT applied. */
+  ranges: RangeFilters;
 }
 
 export interface DiscoverHit {
@@ -135,6 +158,9 @@ export interface DiscoverHit {
   stars: number;
   pp: number;
   lengthSeconds: number | null;
+  /** BPM and AR with the mods applied. */
+  bpm: number | null;
+  ar: number | null;
   mods: string[];
   style: Exclude<MapStyle, "any"> | null;
   /** 0 to 100. Higher means more pp for the effort. */

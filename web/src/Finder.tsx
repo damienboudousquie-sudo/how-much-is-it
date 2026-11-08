@@ -3,8 +3,12 @@ import {
   DISCOVER_SORTS,
   FINDER_MODS,
   MAP_STYLES,
+  MAX_SORT_RULES,
+  RANGE_KEYS,
+  SORT_KEYS,
   cycleChoice,
   emptyFilters,
+  legacySort,
   type ConcreteStyle,
   type DiscoverHit,
   type DiscoverResponse,
@@ -13,9 +17,15 @@ import {
   type MapStyle,
   type ModChoice,
   type Mode,
+  type NumRange,
+  type RangeFilters,
+  type RangeKey,
+  type SortKey,
+  type SortRule,
 } from "@osu-pp/shared";
 import { fetchDiscover, prefetchMap } from "./api";
-import { formatCount, formatLength, formatPp, formatStars, plainClick } from "./format";
+import { ModBadges, StarPill } from "./Badges";
+import { formatBpm, formatCount, formatLength, formatPp, formatStat, plainClick } from "./format";
 import { fill, useI18n } from "./i18n";
 import { beatmapPath } from "./route";
 import { readJson, writeJson } from "./storage";
@@ -38,6 +48,11 @@ const MODES: { id: Mode; label: string }[] = [
   { id: "mania", label: "mania" },
 ];
 const MAX_POLLS = 30;
+/** Direction a sort starts with when first picked. */
+const DEFAULT_DIR: Record<SortKey, SortRule["dir"]> = { farm: "desc", pp: "desc", stars: "desc", length: "asc", bpm: "desc", ar: "desc" };
+const DEFAULT_SORT: SortRule[] = [{ key: "farm", dir: "desc" }];
+
+type RangeText = Record<RangeKey, { min: string; max: string }>;
 
 interface Settings {
   ppMin: string;
@@ -45,31 +60,54 @@ interface Settings {
   query: string;
   /** Types to show, any of them. Empty means every type. */
   styles: ConcreteStyle[];
-  sort: DiscoverSort;
+  /** Sort criteria, most important first. */
+  sort: SortRule[];
+  /** Raw text of the optional ranges, so a half-typed value is kept as typed. */
+  ranges: RangeText;
   filters: Record<FinderMod, ModChoice>;
 }
 
+function emptyRangeText(): RangeText {
+  return { stars: { min: "", max: "" }, bpm: { min: "", max: "" }, ar: { min: "", max: "" }, length: { min: "", max: "" } };
+}
+
 function readSettings(): Settings {
-  const saved = readJson<Partial<Settings>>(SETTINGS_KEY, {});
+  const saved = readJson<Partial<Settings> & { sort?: unknown }>(SETTINGS_KEY, {});
   const filters = emptyFilters();
   for (const mod of FINDER_MODS) {
     const choice = saved.filters?.[mod];
     if (choice === "off" || choice === "on" || choice === "any") filters[mod] = choice;
+  }
+  const ranges = emptyRangeText();
+  for (const key of RANGE_KEYS) {
+    const value = saved.ranges?.[key];
+    if (value && typeof value.min === "string" && typeof value.max === "string") ranges[key] = { min: value.min, max: value.max };
   }
   return {
     ppMin: typeof saved.ppMin === "string" ? saved.ppMin : "400",
     ppMax: typeof saved.ppMax === "string" ? saved.ppMax : "500",
     query: typeof saved.query === "string" ? saved.query : "",
     styles: readStyles(saved),
-    sort: DISCOVER_SORTS.includes(saved.sort as DiscoverSort) ? (saved.sort as DiscoverSort) : "farm",
+    sort: readSort(saved.sort),
+    ranges,
     filters,
   };
+}
+
+function readSort(value: unknown): SortRule[] {
+  // Settings saved before sorts could be combined held a single name.
+  if (typeof value === "string" && DISCOVER_SORTS.includes(value as DiscoverSort)) return legacySort(value as DiscoverSort);
+  if (!Array.isArray(value)) return DEFAULT_SORT;
+  const rules = value.filter(
+    (rule): rule is SortRule =>
+      Boolean(rule) && SORT_KEYS.includes((rule as SortRule).key) && ((rule as SortRule).dir === "asc" || (rule as SortRule).dir === "desc"),
+  );
+  return rules.length > 0 ? rules.slice(0, MAX_SORT_RULES) : DEFAULT_SORT;
 }
 
 function readStyles(saved: Partial<Settings> & { style?: unknown }): ConcreteStyle[] {
   const valid = (value: unknown): value is ConcreteStyle => typeof value === "string" && value !== "any" && MAP_STYLES.includes(value as MapStyle);
   if (Array.isArray(saved.styles)) return [...new Set(saved.styles.filter(valid))];
-  // Settings saved before several types could be picked.
   return valid(saved.style) ? [saved.style] : [];
 }
 
@@ -79,6 +117,40 @@ function parseRange(min: string, max: string): [number, number] | null {
   if (min.trim() === "" || max.trim() === "" || !Number.isFinite(low) || !Number.isFinite(high)) return null;
   if (low < 0 || high > 2000 || low > high) return null;
   return [low, high];
+}
+
+const RANGE_LIMIT: Record<RangeKey, number> = { stars: 20, bpm: 2000, ar: 13, length: 3600 };
+
+/** "1:30" or "90" for lengths, plain numbers otherwise. Empty is "no bound". Undefined means invalid. */
+function parseBound(key: RangeKey, text: string): number | null | undefined {
+  const value = text.trim().replace(",", ".");
+  if (value === "") return null;
+  let parsed: number;
+  if (key === "length" && value.includes(":")) {
+    const match = /^(\d{1,3}):([0-5]?\d)$/.exec(value);
+    if (!match) return undefined;
+    parsed = Number(match[1]) * 60 + Number(match[2]);
+  } else {
+    parsed = Number(value);
+  }
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= RANGE_LIMIT[key] ? parsed : undefined;
+}
+
+/** The ranges to send, or the keys that cannot be read. */
+function parseRanges(text: RangeText): { ranges: RangeFilters; invalid: RangeKey[] } {
+  const ranges = {} as RangeFilters;
+  const invalid: RangeKey[] = [];
+  for (const key of RANGE_KEYS) {
+    const min = parseBound(key, text[key].min);
+    const max = parseBound(key, text[key].max);
+    if (min === undefined || max === undefined || (min != null && max != null && min > max)) {
+      invalid.push(key);
+      ranges[key] = { min: null, max: null };
+    } else {
+      ranges[key] = { min, max } satisfies NumRange;
+    }
+  }
+  return { ranges, invalid };
 }
 
 type Status = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string } | { kind: "invalid" } | { kind: "done" };
@@ -97,14 +169,21 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
   const firstRun = useRef(true);
 
   const { ppMin, ppMax, query, styles, sort, filters } = settings;
-  const stylesKey = styles.join(",");
   const mode = props.mode;
+  const parsedRanges = useMemo(() => parseRanges(settings.ranges), [settings.ranges]);
+  const stylesKey = styles.join(",");
   const filtersKey = FINDER_MODS.map((mod) => filters[mod]).join(",");
+  const sortKey = sort.map((rule) => `${rule.key}:${rule.dir}`).join(",");
+  const rangesKey = JSON.stringify(parsedRanges.ranges);
 
   useEffect(() => writeJson(SETTINGS_KEY, settings), [settings]);
 
   function update(patch: Partial<Settings>) {
     setSettings((current) => ({ ...current, ...patch }));
+  }
+
+  function setBound(key: RangeKey, side: "min" | "max", value: string) {
+    setSettings((current) => ({ ...current, ranges: { ...current.ranges, [key]: { ...current.ranges[key], [side]: value } } }));
   }
 
   async function run(options: { append?: boolean; silent?: boolean; polls?: number } = {}) {
@@ -126,7 +205,17 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
     else if (!options.silent) setStatus({ kind: "loading" });
     try {
       const data = await fetchDiscover(
-        { query: query.trim(), mode, styles: mode === "osu" ? styles : [], mods: filters, ppMin: range[0], ppMax: range[1], offset, sort },
+        {
+          query: query.trim(),
+          mode,
+          styles: mode === "osu" ? styles : [],
+          mods: filters,
+          ppMin: range[0],
+          ppMax: range[1],
+          offset,
+          sort: sort.length > 0 ? sort : DEFAULT_SORT,
+          ranges: parsedRanges.ranges,
+        },
         current.signal,
       );
       if (current.signal.aborted || gen !== generation.current) return;
@@ -163,7 +252,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
     return () => window.clearTimeout(timer);
     // run reads the settings of this render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ppMin, ppMax, query, mode, stylesKey, sort, filtersKey]);
+  }, [ppMin, ppMax, query, mode, stylesKey, sortKey, filtersKey, rangesKey]);
 
   useEffect(
     () => () => {
@@ -178,138 +267,223 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
   useEffect(() => {
     const node = sentinel.current;
     if (!node || !canLoadMore) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) void run({ append: true });
-    }, { rootMargin: "600px" });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void run({ append: true });
+      },
+      { rootMargin: "600px" },
+    );
     observer.observe(node);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canLoadMore, meta?.nextOffset]);
 
+  function toggleSort(key: SortKey) {
+    const index = sort.findIndex((rule) => rule.key === key);
+    if (index < 0) {
+      if (sort.length >= MAX_SORT_RULES) return;
+      update({ sort: [...sort, { key, dir: DEFAULT_DIR[key] }] });
+    } else {
+      update({ sort: sort.map((rule, at) => (at === index ? { ...rule, dir: rule.dir === "asc" ? "desc" : "asc" } : rule)) });
+    }
+  }
+
+  function removeSort(key: SortKey) {
+    const next = sort.filter((rule) => rule.key !== key);
+    update({ sort: next.length > 0 ? next : DEFAULT_SORT });
+  }
+
   const activePreset = useMemo(() => PRESETS.findIndex(([low, high]) => String(low) === ppMin.trim() && String(high) === ppMax.trim()), [ppMin, ppMax]);
+  const rangesActive = RANGE_KEYS.some((key) => settings.ranges[key].min.trim() !== "" || settings.ranges[key].max.trim() !== "");
   const notices: string[] = [];
   if (meta?.styleIgnored) notices.push(t.styleIgnored);
   if (meta?.limitedFrom != null) notices.push(fill(t.limitedFrom, { pp: formatPp(meta.limitedFrom) }));
+  if (parsedRanges.invalid.length > 0) notices.push(fill(t.rangeIgnored, { names: parsedRanges.invalid.map((key) => t.rangeLabels[key]).join(", ") }));
 
   return (
     <section className="finder" aria-labelledby="finder-title">
-      <div className="finder-head">
-        <div>
+      <div className="panel listing">
+        <header className="listing-head">
           <h2 id="finder-title">{t.finderTitle}</h2>
-          <p className="muted">{t.finderLede}</p>
-        </div>
-        <div className="segmented small" role="radiogroup" aria-label={t.mode}>
-          {MODES.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              role="radio"
-              aria-checked={mode === item.id}
-              className={mode === item.id ? "on" : ""}
-              onClick={() => props.onMode(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="controls">
-        <div className="control">
-          <span className="label">{t.range}</span>
-          <div className="range">
-            <label>
-              <span className="sr-only">{t.ppMin}</span>
-              <input data-testid="pp-min" inputMode="decimal" value={ppMin} placeholder={t.ppMin} onChange={(event) => update({ ppMin: event.target.value })} />
-            </label>
-            <span className="range-dash" aria-hidden="true">–</span>
-            <label>
-              <span className="sr-only">{t.ppMax}</span>
-              <input data-testid="pp-max" inputMode="decimal" value={ppMax} placeholder={t.ppMax} onChange={(event) => update({ ppMax: event.target.value })} />
-            </label>
-            <span className="range-unit">pp</span>
-          </div>
-          <div className="presets">
-            {PRESETS.map(([low, high], index) => (
+          <div className="tabs" role="radiogroup" aria-label={t.mode}>
+            {MODES.map((item) => (
               <button
                 type="button"
-                key={low}
-                className={index === activePreset ? "preset on" : "preset"}
-                onClick={() => update({ ppMin: String(low), ppMax: String(high) })}
+                key={item.id}
+                role="radio"
+                aria-checked={mode === item.id}
+                className={mode === item.id ? "tab on" : "tab"}
+                onClick={() => props.onMode(item.id)}
               >
-                {low}–{high}
+                {item.label}
               </button>
             ))}
           </div>
-        </div>
+        </header>
 
-        <div className="control">
-          <span className="label">{t.type}</span>
-          <div className="types" role="group" aria-label={t.type} data-testid="finder-style">
-            {MAP_STYLES.map((item) => {
-              const selected = item === "any" ? styles.length === 0 || mode !== "osu" : mode === "osu" && styles.includes(item);
-              return (
-                <button
-                  type="button"
-                  key={item}
-                  aria-pressed={selected}
-                  disabled={mode !== "osu" && item !== "any"}
-                  className={`type type-${item}${selected ? " on" : ""}`}
-                  title={t.typeHelp[item]}
-                  onClick={() =>
-                    update({
-                      styles:
-                        item === "any" ? [] : styles.includes(item) ? styles.filter((style) => style !== item) : [...styles, item],
-                    })
-                  }
-                >
-                  {t.styles[item]}
-                </button>
-              );
-            })}
-          </div>
-          <p className="help">
-            {mode === "osu" && styles.length > 0 ? styles.map((style) => t.typeHelp[style]).join(" ") : t.typeHelp.any} {mode === "osu" ? t.typeMulti : ""}
-          </p>
-        </div>
+        <label className="listing-search">
+          <span className="sr-only">{t.keyword}</span>
+          <input data-testid="finder-query" value={query} placeholder={t.keywordPlaceholder} onChange={(event) => update({ query: event.target.value })} />
+        </label>
 
-        <div className="control-row">
-          <div className="control">
-            <span className="label">
-              {t.mods} <span className="help inline">{t.modHelp}</span>
-            </span>
-            <div className="mod-filters">
-              {FINDER_MODS.map((mod) => {
-                const choice = filters[mod];
-                return (
+        <div className="rows">
+          <div className="row">
+            <span className="row-label">{t.range}</span>
+            <div className="row-body">
+              <div className="range">
+                <input data-testid="pp-min" aria-label={t.ppMin} inputMode="decimal" value={ppMin} onChange={(event) => update({ ppMin: event.target.value })} />
+                <span className="range-dash" aria-hidden="true">–</span>
+                <input data-testid="pp-max" aria-label={t.ppMax} inputMode="decimal" value={ppMax} onChange={(event) => update({ ppMax: event.target.value })} />
+                <span className="range-unit">pp</span>
+              </div>
+              <div className="tabs wrap">
+                {PRESETS.map(([low, high], index) => (
                   <button
                     type="button"
-                    key={mod}
-                    className={`mod-filter mod-${mod} ${choice}`}
-                    aria-label={fill(t.modAria[choice], { mod })}
-                    onClick={() => update({ filters: { ...filters, [mod]: cycleChoice(filters[mod]) } })}
+                    key={low}
+                    className={index === activePreset ? "tab on" : "tab"}
+                    onClick={() => update({ ppMin: String(low), ppMax: String(high) })}
                   >
-                    <strong>{mod}</strong>
-                    <small>{t.modState[choice]}</small>
+                    {low}–{high}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
-          <label className="control grow">
-            <span className="label">{t.keyword}</span>
-            <input data-testid="finder-query" value={query} placeholder={t.keywordPlaceholder} onChange={(event) => update({ query: event.target.value })} />
-          </label>
-          <label className="control">
-            <span className="label">{t.sort}</span>
-            <select data-testid="finder-sort" value={sort} onChange={(event) => update({ sort: event.target.value as DiscoverSort })}>
-              {DISCOVER_SORTS.map((item) => (
-                <option key={item} value={item}>
-                  {t.sorts[item]}
-                </option>
-              ))}
-            </select>
-          </label>
+
+          <div className="row">
+            <span className="row-label">{t.filters}</span>
+            <div className="row-body">
+              <div className="ranges">
+                {RANGE_KEYS.map((key) => {
+                  const bad = parsedRanges.invalid.includes(key);
+                  const placeholder = key === "length" ? t.lengthPlaceholder : undefined;
+                  return (
+                    <div className={bad ? "mini-range bad" : "mini-range"} key={key}>
+                      <span className="mini-label">{t.rangeLabels[key]}</span>
+                      <input
+                        aria-label={`${t.rangeLabels[key]} ${t.min}`}
+                        inputMode={key === "length" ? "text" : "decimal"}
+                        placeholder={placeholder ?? t.min}
+                        aria-invalid={bad}
+                        value={settings.ranges[key].min}
+                        onChange={(event) => setBound(key, "min", event.target.value)}
+                      />
+                      <span className="range-dash" aria-hidden="true">–</span>
+                      <input
+                        aria-label={`${t.rangeLabels[key]} ${t.max}`}
+                        inputMode={key === "length" ? "text" : "decimal"}
+                        placeholder={placeholder ?? t.max}
+                        aria-invalid={bad}
+                        value={settings.ranges[key].max}
+                        onChange={(event) => setBound(key, "max", event.target.value)}
+                      />
+                    </div>
+                  );
+                })}
+                {rangesActive && (
+                  <button type="button" className="tab clear" onClick={() => update({ ranges: emptyRangeText() })}>
+                    {t.clearFilters}
+                  </button>
+                )}
+              </div>
+              <p className="help">{t.rangesHelp}</p>
+            </div>
+          </div>
+
+          <div className="row">
+            <span className="row-label">{t.type}</span>
+            <div className="row-body">
+              <div className="tabs wrap" role="group" aria-label={t.type} data-testid="finder-style">
+                {MAP_STYLES.map((item) => {
+                  const selected = item === "any" ? styles.length === 0 || mode !== "osu" : mode === "osu" && styles.includes(item);
+                  return (
+                    <button
+                      type="button"
+                      key={item}
+                      aria-pressed={selected}
+                      disabled={mode !== "osu" && item !== "any"}
+                      className={`tab type type-${item}${selected ? " on" : ""}`}
+                      title={t.typeHelp[item]}
+                      onClick={() =>
+                        update({
+                          styles: item === "any" ? [] : styles.includes(item) ? styles.filter((style) => style !== item) : [...styles, item],
+                        })
+                      }
+                    >
+                      {t.styles[item]}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="help">
+                {mode === "osu" && styles.length > 0 ? styles.map((style) => t.typeHelp[style]).join(" ") : t.typeHelp.any} {mode === "osu" ? t.typeMulti : ""}
+              </p>
+            </div>
+          </div>
+
+          <div className="row">
+            <span className="row-label">{t.mods}</span>
+            <div className="row-body">
+              <div className="mod-filters">
+                {FINDER_MODS.map((mod) => {
+                  const choice = filters[mod];
+                  return (
+                    <button
+                      type="button"
+                      key={mod}
+                      className={`mod-filter mod-${mod} ${choice}`}
+                      aria-label={fill(t.modAria[choice], { mod })}
+                      title={fill(t.modAria[choice], { mod })}
+                      onClick={() => update({ filters: { ...filters, [mod]: cycleChoice(filters[mod]) } })}
+                    >
+                      <strong>{mod}</strong>
+                      <small>{t.modState[choice]}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="help">{t.modHelp}</p>
+            </div>
+          </div>
+
+          <div className="row">
+            <span className="row-label">{t.sort}</span>
+            <div className="row-body">
+              <div className="sorts" data-testid="finder-sort">
+                {SORT_KEYS.map((key) => {
+                  const index = sort.findIndex((rule) => rule.key === key);
+                  const rule = sort[index];
+                  return (
+                    <span key={key} className={rule ? "sort on" : "sort"}>
+                      <button
+                        type="button"
+                        className="sort-main"
+                        aria-pressed={Boolean(rule)}
+                        title={rule ? t.sortFlip : t.sortAdd}
+                        disabled={!rule && sort.length >= MAX_SORT_RULES}
+                        onClick={() => toggleSort(key)}
+                      >
+                        {rule && sort.length > 1 && <span className="sort-rank">{index + 1}</span>}
+                        {t.sortKeys[key]}
+                        {rule && (
+                          <span className="sort-dir" aria-label={rule.dir === "asc" ? t.ascending : t.descending}>
+                            {rule.dir === "asc" ? "↑" : "↓"}
+                          </span>
+                        )}
+                      </button>
+                      {rule && (sort.length > 1 || key !== "farm") && (
+                        <button type="button" className="sort-remove" aria-label={fill(t.sortRemove, { name: t.sortKeys[key] })} onClick={() => removeSort(key)}>
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="help">{t.sortHelp}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -361,7 +535,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
           // While a new search runs, the previous results stay in place, slightly dimmed.
           <div className={status.kind === "loading" ? "map-list stale" : "map-list"} aria-busy={status.kind === "loading"} data-testid="finder-results">
             {hits.map((hit, index) => (
-              <MapCard key={`${hit.beatmapId}-${hit.mods.join("")}`} hit={hit} rank={index + 1} sort={sort} onOpen={props.onOpen} />
+              <MapCard key={`${hit.beatmapId}-${hit.mods.join("")}`} hit={hit} rank={index + 1} showRank={sort[0]?.key === "farm"} onOpen={props.onOpen} />
             ))}
           </div>
         )
@@ -384,7 +558,7 @@ function farmTier(score: number): string {
   return "";
 }
 
-function MapCard(props: { hit: DiscoverHit; rank: number; sort: DiscoverSort; onOpen: (hit: DiscoverHit) => void }) {
+function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onOpen: (hit: DiscoverHit) => void }) {
   const { t } = useI18n();
   const { hit } = props;
   const [coverFailed, setCoverFailed] = useState(false);
@@ -406,6 +580,8 @@ function MapCard(props: { hit: DiscoverHit; rank: number; sort: DiscoverSort; on
       observer.disconnect();
     };
   }, [hit.beatmapId, hit.beatmapsetId]);
+
+  const cover = hit.cover && !coverFailed ? hit.cover : null;
   return (
     <a
       ref={cardRef}
@@ -420,9 +596,10 @@ function MapCard(props: { hit: DiscoverHit; rank: number; sort: DiscoverSort; on
         props.onOpen(hit);
       }}
     >
+      {cover && <span className="map-bg" style={{ backgroundImage: `url(${cover})` }} aria-hidden="true" />}
       <span className="map-cover">
-        {hit.cover && !coverFailed ? <img src={hit.cover} alt="" loading="lazy" decoding="async" onError={() => setCoverFailed(true)} /> : null}
-        {props.sort === "farm" && <span className="map-rank">#{props.rank}</span>}
+        {cover ? <img src={cover} alt="" loading="lazy" decoding="async" onError={() => setCoverFailed(true)} /> : null}
+        {props.showRank && <span className="map-rank">#{props.rank}</span>}
       </span>
       <span className="map-main">
         <span className="map-title">{hit.title}</span>
@@ -430,15 +607,23 @@ function MapCard(props: { hit: DiscoverHit; rank: number; sort: DiscoverSort; on
           {hit.artist} · <em>{hit.version}</em> · {hit.creator}
         </span>
         <span className="map-tags">
-          <span className="tag stars">★ {formatStars(hit.stars)}</span>
-          <span className="tag">{formatLength(hit.lengthSeconds)}</span>
-          <span className={hit.mods.length > 0 ? "tag mods" : "tag"}>{hit.mods.length > 0 ? hit.mods.join("") : t.nm}</span>
+          <StarPill stars={hit.stars} />
+          <ModBadges mods={hit.mods} nm={t.nm} />
           {hit.style && (
             <span className={`tag type-${hit.style}${hit.estimated ? " estimated" : ""}`} title={hit.estimated ? t.estimated : t.typeHelp[hit.style]}>
               {t.styles[hit.style]}
               {hit.estimated ? " ?" : ""}
             </span>
           )}
+        </span>
+        <span className="map-stats">
+          <span title={t.length}>{formatLength(hit.lengthSeconds)}</span>
+          <span>
+            {hit.bpm != null ? formatBpm(hit.bpm) : "—"} <small>BPM</small>
+          </span>
+          <span>
+            <small>AR</small> {formatStat(hit.ar)}
+          </span>
         </span>
       </span>
       <span className="map-side">

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { classifyStyle, farmHint, type ConcreteStyle, type Mode } from "@osu-pp/shared";
+import { classifyStyle, farmHint, modRate, modsInCombo, type ConcreteStyle, type Mode } from "@osu-pp/shared";
 import { AppError } from "./errors";
 import { repoRoot } from "./env";
 import { tr } from "./locale";
@@ -17,7 +17,7 @@ export const BAND = 25;
 export const MAX_BANDS = 24;
 const MAX_PAGES_PER_BAND = 50;
 const TTL_MS = 24 * 60 * 60 * 1000;
-const SCHEMA = 2;
+const SCHEMA = 3;
 const DIR = join(repoRoot, "cache", "pp-bands");
 
 export interface PpDbMap {
@@ -29,8 +29,11 @@ export interface PpDbMap {
   version: string;
   stars: number;
   pp: number;
+  /** Drain time as played: the mirror gives it without DT/HT, so it is divided by the clock rate. */
   lengthSeconds: number | null;
+  /** BPM and AR as played with the mods (the mirror applies them). */
   bpm: number | null;
+  ar: number | null;
   mods: string;
   /** Type guessed from tags, name and density, before the .osu file is read. */
   guess: ConcreteStyle | null;
@@ -92,6 +95,8 @@ function toMap(row: Record<string, unknown>, mods: string): PpDbMap | null {
   const creator = readText(row.creator, "Unknown creator");
   const version = readText(row.version, "Difficulty");
   const tags = readTags(row.tags);
+  const comboMods = typeof row.mods === "string" ? row.mods : mods;
+  const rate = modRate(modsInCombo(comboMods));
   return {
     beatmapId,
     beatmapsetId: readId(row.beatmapset_id),
@@ -101,13 +106,15 @@ function toMap(row: Record<string, unknown>, mods: string): PpDbMap | null {
     version,
     stars,
     pp,
-    lengthSeconds: seconds != null && seconds > 0 ? seconds : null,
+    lengthSeconds: seconds != null && seconds > 0 ? Math.round(seconds / rate) : null,
     bpm,
-    mods: typeof row.mods === "string" ? row.mods : mods,
+    ar: readNumber(row.ar),
+    mods: comboMods,
     guess: classifyStyle({
       tags,
       version,
-      bpm,
+      // Density below is nomod, so the BPM must be too.
+      bpm: bpm != null ? bpm / rate : null,
       stars,
       density: objects != null && drain != null && drain > 0 ? objects / drain : null,
       circleRatio: objects != null && circles != null && objects > 0 ? circles / objects : null,

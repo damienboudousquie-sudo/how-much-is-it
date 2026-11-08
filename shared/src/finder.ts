@@ -1,4 +1,4 @@
-import type { DiscoverSort, MapStyle } from "./types";
+import type { DiscoverSort, MapStyle, NumRange, RangeFilters, SortRule } from "./types";
 
 export interface StyleSignals {
   tags: string;
@@ -121,22 +121,64 @@ export function styleMatches(wanted: MapStyle, actual: Exclude<MapStyle, "any">)
   return wanted === "any" || wanted === actual;
 }
 
-export function compareDiscover(
-  sort: DiscoverSort,
-  a: { pp: number; stars: number; lengthSeconds: number | null; farm?: number },
-  b: { pp: number; stars: number; lengthSeconds: number | null; farm?: number },
-): number {
-  if (sort === "farm") return (b.farm ?? 0) - (a.farm ?? 0) || b.pp - a.pp;
-  const desc = sort.endsWith("desc");
-  let delta = 0;
-  if (sort.startsWith("stars")) delta = a.stars - b.stars;
-  else if (sort.startsWith("length")) {
-    if (a.lengthSeconds == null || b.lengthSeconds == null) {
-      if (a.lengthSeconds == null && b.lengthSeconds == null) delta = 0;
-      else return a.lengthSeconds == null ? 1 : -1;
-    } else delta = a.lengthSeconds - b.lengthSeconds;
-  } else delta = a.pp - b.pp;
-  const directed = desc ? -delta : delta;
-  if (directed !== 0) return directed;
-  return sort.startsWith("pp") ? b.stars - a.stars : b.pp - a.pp;
+export interface Sortable {
+  pp: number;
+  stars: number;
+  lengthSeconds: number | null;
+  bpm?: number | null;
+  ar?: number | null;
+  farm?: number;
+}
+
+function sortValue(item: Sortable, key: SortRule["key"]): number | null {
+  switch (key) {
+    case "farm":
+      return item.farm ?? null;
+    case "pp":
+      return item.pp;
+    case "stars":
+      return item.stars;
+    case "length":
+      return item.lengthSeconds;
+    case "bpm":
+      return item.bpm ?? null;
+    case "ar":
+      return item.ar ?? null;
+  }
+}
+
+/** Sorts by each rule in turn. Missing values go last, whatever the direction. Ties end on PP. */
+export function compareDiscover(rules: readonly SortRule[], a: Sortable, b: Sortable): number {
+  for (const rule of rules) {
+    const left = sortValue(a, rule.key);
+    const right = sortValue(b, rule.key);
+    if (left == null || right == null) {
+      if (left == null && right == null) continue;
+      return left == null ? 1 : -1;
+    }
+    const delta = rule.dir === "asc" ? left - right : right - left;
+    // Values within a hair of each other (AR 9.3 vs 9.30001) count as equal.
+    if (Math.abs(delta) > 1e-6) return delta;
+  }
+  return b.pp - a.pp;
+}
+
+/** Old single-sort names, kept for saved settings and older clients. */
+export function legacySort(sort: DiscoverSort): SortRule[] {
+  if (sort === "farm") return [{ key: "farm", dir: "desc" }];
+  const [key, dir] = sort.split("-") as [SortRule["key"], SortRule["dir"]];
+  return [{ key, dir }];
+}
+
+export function emptyRanges(): RangeFilters {
+  return { stars: { min: null, max: null }, bpm: { min: null, max: null }, ar: { min: null, max: null }, length: { min: null, max: null } };
+}
+
+export function inRange(value: number | null | undefined, range: NumRange): boolean {
+  if (range.min == null && range.max == null) return true;
+  if (value == null || !Number.isFinite(value)) return false;
+  // Small tolerance so "AR 9.3" keeps a map stored as 9.299999.
+  if (range.min != null && value < range.min - 1e-6) return false;
+  if (range.max != null && value > range.max + 1e-6) return false;
+  return true;
 }

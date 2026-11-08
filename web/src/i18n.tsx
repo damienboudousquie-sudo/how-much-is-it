@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { BeatmapStatus, DiscoverSort, Lang, MapStyle } from "@osu-pp/shared";
+import type { BeatmapStatus, Lang, MapStyle, RangeKey, SortKey } from "@osu-pp/shared";
 import { setNumberLocale } from "./format";
 
 export type Copy = {
@@ -33,7 +33,21 @@ export type Copy = {
   keyword: string;
   keywordPlaceholder: string;
   sort: string;
-  sorts: Record<DiscoverSort, string>;
+  sortKeys: Record<SortKey, string>;
+  sortHelp: string;
+  sortAdd: string;
+  sortFlip: string;
+  sortRemove: string;
+  ascending: string;
+  descending: string;
+  filters: string;
+  rangeLabels: Record<RangeKey, string>;
+  rangesHelp: string;
+  rangeIgnored: string;
+  lengthPlaceholder: string;
+  min: string;
+  max: string;
+  clearFilters: string;
   resultsCount: string;
   analyzing: string;
   loadingCatalog: string;
@@ -121,17 +135,23 @@ const en: Copy = {
   modState: { off: "without", on: "with", any: "either" },
   modAria: { off: "{mod}: without", on: "{mod}: with", any: "{mod}: with or without" },
   keyword: "Title, artist or mapper",
-  keywordPlaceholder: "optional",
+  keywordPlaceholder: "Filter by title, artist or mapper (optional)",
   sort: "Sort",
-  sorts: {
-    farm: "Farm first",
-    "pp-desc": "PP, high to low",
-    "pp-asc": "PP, low to high",
-    "stars-desc": "Stars, high to low",
-    "stars-asc": "Stars, low to high",
-    "length-desc": "Longest first",
-    "length-asc": "Shortest first",
-  },
+  sortKeys: { farm: "Farm", pp: "PP", stars: "Stars", length: "Length", bpm: "BPM", ar: "AR" },
+  sortHelp: "Click to add a sort, click again to flip it. The first one wins, the next ones break ties.",
+  sortAdd: "Add this sort",
+  sortFlip: "Flip the order",
+  sortRemove: "Remove the {name} sort",
+  ascending: "low to high",
+  descending: "high to low",
+  filters: "Filters",
+  rangeLabels: { stars: "Stars", bpm: "BPM", ar: "AR", length: "Length" },
+  rangesHelp: "With the mods applied (DT raises BPM and AR and shortens the map). Leave a box empty for no limit. Length: 1:30 or 90.",
+  rangeIgnored: "Ignored until fixed: {names}.",
+  lengthPlaceholder: "m:ss",
+  min: "min",
+  max: "max",
+  clearFilters: "Clear filters",
   resultsCount: "{total} maps",
   analyzing: "Reading the patterns of {count} maps…",
   loadingCatalog: "Loading maps in this range: {loaded} / {expected}…",
@@ -228,17 +248,23 @@ const fr: Copy = {
   modState: { off: "sans", on: "avec", any: "les deux" },
   modAria: { off: "{mod} : sans", on: "{mod} : avec", any: "{mod} : avec ou sans" },
   keyword: "Titre, artiste ou mappeur",
-  keywordPlaceholder: "optionnel",
+  keywordPlaceholder: "Filtrer par titre, artiste ou mappeur (optionnel)",
   sort: "Tri",
-  sorts: {
-    farm: "Farm d'abord",
-    "pp-desc": "PP décroissant",
-    "pp-asc": "PP croissant",
-    "stars-desc": "Étoiles décroissantes",
-    "stars-asc": "Étoiles croissantes",
-    "length-desc": "Plus longues d'abord",
-    "length-asc": "Plus courtes d'abord",
-  },
+  sortKeys: { farm: "Farm", pp: "PP", stars: "Étoiles", length: "Durée", bpm: "BPM", ar: "AR" },
+  sortHelp: "Clique pour ajouter un tri, reclique pour inverser. Le premier compte d'abord, les suivants départagent.",
+  sortAdd: "Ajouter ce tri",
+  sortFlip: "Inverser l'ordre",
+  sortRemove: "Retirer le tri {name}",
+  ascending: "croissant",
+  descending: "décroissant",
+  filters: "Filtres",
+  rangeLabels: { stars: "Étoiles", bpm: "BPM", ar: "AR", length: "Durée" },
+  rangesHelp: "Avec les mods appliqués (le DT monte le BPM et l'AR et raccourcit la map). Laisse une case vide pour ne pas limiter. Durée : 1:30 ou 90.",
+  rangeIgnored: "Ignoré tant que ce n'est pas corrigé : {names}.",
+  lengthPlaceholder: "m:ss",
+  min: "min",
+  max: "max",
+  clearFilters: "Effacer les filtres",
   resultsCount: "{total} maps",
   analyzing: "Lecture des patterns de {count} maps…",
   loadingCatalog: "Chargement des maps de la fourchette : {loaded} / {expected}…",
@@ -335,17 +361,23 @@ const es: Copy = {
   modState: { off: "sin", on: "con", any: "ambos" },
   modAria: { off: "{mod}: sin", on: "{mod}: con", any: "{mod}: con o sin" },
   keyword: "Título, artista o mapper",
-  keywordPlaceholder: "opcional",
+  keywordPlaceholder: "Filtrar por título, artista o mapper (opcional)",
   sort: "Orden",
-  sorts: {
-    farm: "Farm primero",
-    "pp-desc": "PP, de mayor a menor",
-    "pp-asc": "PP, de menor a mayor",
-    "stars-desc": "Estrellas, de más a menos",
-    "stars-asc": "Estrellas, de menos a más",
-    "length-desc": "Más largos primero",
-    "length-asc": "Más cortos primero",
-  },
+  sortKeys: { farm: "Farm", pp: "PP", stars: "Estrellas", length: "Duración", bpm: "BPM", ar: "AR" },
+  sortHelp: "Pulsa para añadir un orden, otra vez para invertirlo. Manda el primero; los siguientes desempatan.",
+  sortAdd: "Añadir este orden",
+  sortFlip: "Invertir el orden",
+  sortRemove: "Quitar el orden {name}",
+  ascending: "ascendente",
+  descending: "descendente",
+  filters: "Filtros",
+  rangeLabels: { stars: "Estrellas", bpm: "BPM", ar: "AR", length: "Duración" },
+  rangesHelp: "Con los mods aplicados (DT sube el BPM y el AR y acorta el mapa). Deja una casilla vacía para no limitar. Duración: 1:30 o 90.",
+  rangeIgnored: "Ignorado hasta corregirlo: {names}.",
+  lengthPlaceholder: "m:ss",
+  min: "mín.",
+  max: "máx.",
+  clearFilters: "Borrar filtros",
   resultsCount: "{total} mapas",
   analyzing: "Leyendo los patrones de {count} mapas…",
   loadingCatalog: "Cargando los mapas del rango: {loaded} / {expected}…",

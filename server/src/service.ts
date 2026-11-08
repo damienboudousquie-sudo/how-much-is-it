@@ -1,6 +1,8 @@
 import {
   compareDiscover,
+  emptyRanges,
   farmScores,
+  inRange,
   guessedScores,
   matchesAnyStyle,
   modRate,
@@ -190,11 +192,7 @@ function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
     item.farm = farms[index]!;
   });
   return list.sort((a, b) =>
-    compareDiscover(
-      input.sort,
-      { pp: a.map.pp, stars: a.map.stars, lengthSeconds: a.map.lengthSeconds, farm: a.farm },
-      { pp: b.map.pp, stars: b.map.stars, lengthSeconds: b.map.lengthSeconds, farm: b.farm },
-    ),
+    compareDiscover(input.sort, { ...a.map, farm: a.farm }, { ...b.map, farm: b.farm }),
   );
 }
 
@@ -213,6 +211,8 @@ function toHit(item: Candidate, input: DiscoverRequest): DiscoverHit {
     stars: map.stars,
     pp: map.pp,
     lengthSeconds: map.lengthSeconds,
+    bpm: map.bpm,
+    ar: map.ar,
     mods: modsInCombo(map.mods),
     style: input.mode === "osu" ? (item.known ? primaryStyle(item.scores) : map.guess) : null,
     farm: item.farm,
@@ -265,6 +265,8 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
   for (const map of maps) {
     if (map.pp < effective.ppMin || map.pp > effective.ppMax) continue;
     if (query && !textMatches(query, [map.title, map.artist, map.creator, map.version])) continue;
+    const ranges = effective.ranges;
+    if (!inRange(map.stars, ranges.stars) || !inRange(map.bpm, ranges.bpm) || !inRange(map.ar, ranges.ar) || !inRange(map.lengthSeconds, ranges.length)) continue;
     const key = `${map.beatmapId}:${map.mods}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -272,7 +274,7 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
   }
 
   // Exact types and farm ranking need the hit objects. Read the maps that would be shown first.
-  const refine = osu && (effective.styles.length > 0 || effective.sort === "farm");
+  const refine = osu && (effective.styles.length > 0 || effective.sort.some((rule) => rule.key === "farm"));
   let analyzing = 0;
   if (refine) {
     let ranked = rank(pool.filter((item) => keep(item, effective, false)), effective);
@@ -320,7 +322,8 @@ export function warmFinderIndex(): void {
     ppMin: 500,
     ppMax: 600,
     offset: 0,
-    sort: "farm",
+    sort: [{ key: "farm", dir: "desc" }],
+    ranges: emptyRanges(),
   }).catch(() => undefined);
 }
 

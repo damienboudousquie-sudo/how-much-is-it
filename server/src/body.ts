@@ -2,7 +2,12 @@ import {
   FINDER_MODS,
   DISCOVER_SORTS,
   MAP_STYLES,
+  MAX_SORT_RULES,
+  RANGE_KEYS,
+  SORT_KEYS,
   emptyFilters,
+  emptyRanges,
+  legacySort,
   validId,
   type CalculateRequest,
   type DiscoverRequest,
@@ -12,6 +17,9 @@ import {
   type MapStyle,
   type ModChoice,
   type Mode,
+  type RangeFilters,
+  type SortKey,
+  type SortRule,
 } from "@osu-pp/shared";
 import { AppError } from "./errors";
 import { tr } from "./locale";
@@ -150,12 +158,6 @@ export function parseDiscover(body: unknown): DiscoverRequest {
     }
     offset = record.offset;
   }
-  const legacy: Record<string, DiscoverSort> = { pp: "pp-desc", stars: "stars-desc", length: "length-desc" };
-  const raw = record.sort == null ? "farm" : record.sort;
-  const sort = typeof raw === "string" && raw in legacy ? legacy[raw] : raw;
-  if (typeof sort !== "string" || !DISCOVER_SORTS.includes(sort as DiscoverSort)) {
-    throw new AppError("invalid", tr("request.invalid"), 400);
-  }
   return {
     query,
     mode,
@@ -164,8 +166,62 @@ export function parseDiscover(body: unknown): DiscoverRequest {
     ppMin,
     ppMax,
     offset,
-    sort: sort as DiscoverSort,
+    sort: readSort(record.sort),
+    ranges: readRanges(record.ranges),
   };
+}
+
+/** A list of {key, dir} rules, or one of the old single sort names. */
+function readSort(value: unknown): SortRule[] {
+  if (value == null) return [{ key: "farm", dir: "desc" }];
+  if (typeof value === "string") {
+    const legacy: Record<string, DiscoverSort> = { pp: "pp-desc", stars: "stars-desc", length: "length-desc" };
+    const name = legacy[value] ?? value;
+    if (!DISCOVER_SORTS.includes(name as DiscoverSort)) throw new AppError("invalid", tr("request.invalid"), 400);
+    return legacySort(name as DiscoverSort);
+  }
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_SORT_RULES) {
+    throw new AppError("invalid", tr("request.invalid"), 400);
+  }
+  const seen = new Set<SortKey>();
+  const rules: SortRule[] = [];
+  for (const item of value) {
+    const rule = item as { key?: unknown; dir?: unknown } | null;
+    if (!rule || typeof rule !== "object" || !SORT_KEYS.includes(rule.key as SortKey) || (rule.dir !== "asc" && rule.dir !== "desc")) {
+      throw new AppError("invalid", tr("request.invalid"), 400);
+    }
+    if (seen.has(rule.key as SortKey)) continue;
+    seen.add(rule.key as SortKey);
+    rules.push({ key: rule.key as SortKey, dir: rule.dir });
+  }
+  return rules;
+}
+
+const RANGE_LIMITS: Record<(typeof RANGE_KEYS)[number], number> = { stars: 20, bpm: 2000, ar: 13, length: 3600 };
+
+/** Optional bounds; each side may be null. */
+function readRanges(value: unknown): RangeFilters {
+  const ranges = emptyRanges();
+  if (value == null) return ranges;
+  if (typeof value !== "object" || Array.isArray(value)) throw new AppError("invalid", tr("request.invalid"), 400);
+  const record = value as Record<string, unknown>;
+  for (const key of RANGE_KEYS) {
+    const raw = record[key];
+    if (raw == null) continue;
+    const range = raw as { min?: unknown; max?: unknown };
+    const bound = (side: unknown): number | null => {
+      if (side == null) return null;
+      if (typeof side !== "number" || !Number.isFinite(side) || side < 0 || side > RANGE_LIMITS[key]) {
+        throw new AppError("invalid", tr("request.filterRange"), 400);
+      }
+      return side;
+    };
+    const min = bound(range.min);
+    const max = bound(range.max);
+    if (min != null && max != null && min > max) throw new AppError("invalid", tr("request.filterRange"), 400);
+    ranges[key] = { min, max };
+  }
+  return ranges;
 }
 
 export function parseLookup(body: unknown): LookupRequest {
