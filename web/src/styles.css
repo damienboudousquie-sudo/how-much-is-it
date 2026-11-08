@@ -1740,6 +1740,13 @@ button:disabled {
   height: 18px;
 }
 
+/* The Torus font sits a little high in its line box: nudge the text to the optical centre. */
+.account-name,
+.account-pp {
+  position: relative;
+  top: 1.5px;
+}
+
 .account-name {
   max-width: 140px;
   overflow: hidden;
