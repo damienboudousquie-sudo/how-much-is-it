@@ -9,7 +9,6 @@ import {
 import { AppError } from "./errors";
 import { tr } from "./locale";
 import { Lru } from "./lru";
-import { recordPlays } from "./popularity";
 
 const API = "https://osu.ppy.sh/api/v2";
 const TOKEN_URL = "https://osu.ppy.sh/oauth/token";
@@ -162,7 +161,6 @@ function readSet(value: unknown): RemoteSet | null {
 
 function remember(set: RemoteSet): void {
   setCache.set(String(set.id), { at: Date.now(), set });
-  recordPlays(set.id, set.beatmaps);
 }
 
 function readSets(value: unknown): RemoteSet[] {

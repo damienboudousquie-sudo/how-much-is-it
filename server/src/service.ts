@@ -27,7 +27,6 @@ import {
 import { loadBeatmapFile } from "./beatmapCache";
 import { AppError } from "./errors";
 import { parseOsuText } from "./osuFile";
-import { popularityOf, readPopularity, setPopularityFetcher } from "./popularity";
 import { apiKeyConfigured, chipsFrom, getBeatmapset, pickBeatmap, searchBeatmaps, type RemoteSet } from "./osuApi";
 import { tr } from "./locale";
 import { analyzeLater, analyzeNow, getProfile, rememberProfile } from "./patternStore";
@@ -145,8 +144,6 @@ export async function calculate(input: CalculateRequest): Promise<CalculateRespo
 
 /* ---------- discover ---------- */
 
-setPopularityFetcher((setId) => getBeatmapset(setId));
-
 const PAGE = 60;
 /** Maps read before answering: the page asked for and the next one. */
 const REFINE_WINDOW = PAGE * 2;
@@ -196,7 +193,6 @@ function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
       scores: item.scores,
       known: item.known,
       purity: purityOf(item.map.beatmapId),
-      popularity: popularityOf(item.map.beatmapId),
     })),
     input.styles,
   );
@@ -303,9 +299,7 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
       ranked = rank(pool.filter((item) => keep(item, effective, false)), effective);
     }
     const window = ranked.slice(0, effective.offset + REFINE_WINDOW);
-    // Play counts for the maps in view; the client polls while they arrive.
-    const unread = readPopularity(new Set(window.flatMap((item) => (item.map.beatmapsetId ? [item.map.beatmapsetId] : []))));
-    analyzing = unknownIds(window).length + unread;
+    analyzing = unknownIds(window).length;
     analyzeLater(unknownIds(ranked.slice(0, effective.offset + BACKGROUND_WINDOW)));
   }
 
