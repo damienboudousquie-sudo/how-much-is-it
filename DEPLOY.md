@@ -8,6 +8,16 @@ Compte environ 30 minutes. À la fin, le site tourne sur ton propre serveur, en 
 - Un nom de domaine (par exemple un `.eu` ou un `.fr`).
 - Un compte Cloudflare gratuit : https://dash.cloudflare.com/sign-up
 
+## Installation express (une seule commande)
+
+Connecte-toi au serveur (`ssh root@TON_IP`), puis :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/damienboudousquie-sudo/how-much-is-it/master/deploy/install.sh | sh -s -- tondomaine.eu
+```
+
+Sans domaine pour l'instant, enlève `-- tondomaine.eu` : le site répond sur `http://TON_IP`. Relance la même commande avec le domaine quand il est prêt. Le détail des étapes suit, pour comprendre ou faire à la main.
+
 ## 1. Commander le VPS
 
 1. Va sur https://www.netcup.com/en/server/vps et prends le **VPS 1000** (4 vCPU, 8 Go de RAM). L'emplacement Nuremberg ou Vienne est le plus proche de la France.
@@ -60,7 +70,7 @@ Crée le fichier de réglages (remplace `tondomaine.eu` par ton vrai domaine) :
 
 ```bash
 cat > .env <<'EOF'
-DOMAIN=tondomaine.eu
+SITE_ADDRESS=tondomaine.eu, www.tondomaine.eu
 # Facultatif : clés de l'API osu! si tu en as
 # OSU_CLIENT_ID=
 # OSU_CLIENT_SECRET=

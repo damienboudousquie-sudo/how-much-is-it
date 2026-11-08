@@ -19,7 +19,8 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAIN: ${DOMAIN:?Mets DOMAIN=tondomaine.eu dans le fichier .env}
+      # "tondomaine.eu, www.tondomaine.eu" for HTTPS, or ":80" to answer on the IP.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./deploy/certs:/certs:ro

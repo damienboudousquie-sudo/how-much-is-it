@@ -2,7 +2,7 @@
 # Works with the domain behind Cloudflare (orange cloud) in SSL mode "Full (strict)",
 # as long as Cloudflare's "Always Use HTTPS" stays off (Caddy redirects to HTTPS itself,
 # and Let's Encrypt checks the domain over plain HTTP).
-{$DOMAIN}, www.{$DOMAIN} {
+{$SITE_ADDRESS} {
 	encode zstd gzip
 	reverse_proxy app:3001
 }
