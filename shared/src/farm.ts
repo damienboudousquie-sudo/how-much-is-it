@@ -47,7 +47,12 @@ export interface FarmCandidate {
   lengthSeconds: number | null;
   hint: number;
   scores: StyleScores;
+  /** 0 to 1 from play counts, or null when unknown. A hidden nudge, never the main reason. */
+  popularity?: number | null;
 }
+
+/** Share of the farm score given to popularity. Small, so farm qualities always lead. */
+export const POPULARITY_WEIGHT = 0.1;
 
 /** log(pp) minus what stars and length usually give. Positive means cheap pp. */
 function residual(map: FarmCandidate): number {
@@ -65,8 +70,11 @@ export function farmScores(maps: readonly FarmCandidate[], wanted: readonly Conc
   const spread = Math.max(0.02, 1.4826 * deviations[Math.floor(deviations.length / 2)]!);
   return maps.map((map, index) => {
     const efficiency = 1 / (1 + Math.exp(-(values[index]! - median) / spread));
-    const score =
+    const farm =
       0.35 * typeFit(map.scores, wanted) + 0.25 * lengthScore(map.lengthSeconds) + 0.25 * efficiency + 0.15 * map.hint;
+    // Unknown popularity counts as average, so a map is not held back before its plays are read.
+    const popularity = map.popularity ?? 0.5;
+    const score = (1 - POPULARITY_WEIGHT) * farm + POPULARITY_WEIGHT * popularity;
     return Math.round(score * 100);
   });
 }

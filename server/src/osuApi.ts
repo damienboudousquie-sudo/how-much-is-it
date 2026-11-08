@@ -9,10 +9,13 @@ import {
 import { AppError } from "./errors";
 import { tr } from "./locale";
 import { Lru } from "./lru";
+import { recordPlays } from "./popularity";
 
 const API = "https://osu.ppy.sh/api/v2";
 const TOKEN_URL = "https://osu.ppy.sh/oauth/token";
-const MIRROR = "https://catboy.best/api/v2";
+/** Beatmap mirrors, tried in order. catboy refuses some cloud hosts, so osu.direct comes first. */
+const MIRRORS = ["https://osu.direct/api/v2", "https://catboy.best/api/v2"];
+let preferredMirror = 0;
 
 export interface RemoteBeatmap {
   id: number;
@@ -21,6 +24,8 @@ export interface RemoteBeatmap {
   stars: number | null;
   status: BeatmapStatus;
   totalLength: number | null;
+  /** Plays on this difficulty, when the source gives it. */
+  playcount: number | null;
 }
 
 export interface RemoteSet {
@@ -31,6 +36,7 @@ export interface RemoteSet {
   status: BeatmapStatus;
   cover: string | null;
   tags: string;
+  playCount: number | null;
   beatmaps: RemoteBeatmap[];
 }
 
@@ -93,6 +99,7 @@ function readBeatmaps(value: unknown): RemoteBeatmap[] {
       stars: typeof row.difficulty_rating === "number" ? row.difficulty_rating : null,
       status: readStatus(row),
       totalLength: typeof row.total_length === "number" ? row.total_length : null,
+      playcount: typeof row.playcount === "number" ? row.playcount : null,
     });
   }
   beatmaps.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
@@ -111,12 +118,14 @@ function readSet(value: unknown): RemoteSet | null {
     status: readStatus(row),
     cover: coverFor(row.id, row.covers),
     tags: typeof row.tags === "string" ? row.tags : "",
+    playCount: typeof row.play_count === "number" ? row.play_count : null,
     beatmaps: readBeatmaps(row.beatmaps),
   };
 }
 
 function remember(set: RemoteSet): void {
   setCache.set(String(set.id), { at: Date.now(), set });
+  recordPlays(set.id, set.beatmaps);
 }
 
 function readSets(value: unknown): RemoteSet[] {
@@ -136,25 +145,49 @@ function readSets(value: unknown): RemoteSet[] {
   return sets;
 }
 
-async function mirrorGet(path: string, signal?: AbortSignal): Promise<unknown> {
-  const timeout = AbortSignal.timeout(12_000);
+async function mirrorOnce(base: string, path: string, signal?: AbortSignal): Promise<Response | null> {
+  const timeout = AbortSignal.timeout(8_000);
   const signals = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  let response: Response;
   try {
-    response = await fetch(`${MIRROR}${path}`, {
-      headers: { Accept: "application/json", "User-Agent": "osu-pp-lookup" },
+    return await fetch(`${base}${path}`, {
+      headers: { Accept: "application/json", "User-Agent": "how-much-is-it (osu! pp finder)" },
       signal: signals,
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new AppError("unavailable", tr("search.unavailable"), 502);
+    return null;
   }
-  if (response.status === 429) {
-    throw new AppError("rate_limited", tr("search.limited"), 429);
+}
+
+/** Asks each mirror in turn, starting with the last one that answered. */
+async function mirrorGet(path: string, signal?: AbortSignal): Promise<unknown> {
+  let missing = 0;
+  let limited = 0;
+  for (let step = 0; step < MIRRORS.length; step += 1) {
+    const index = (preferredMirror + step) % MIRRORS.length;
+    const base = MIRRORS[index]!;
+    const response = await mirrorOnce(base, path, signal);
+    if (!response) {
+      console.warn(`[mirror] ${base}${path} did not answer`);
+      continue;
+    }
+    if (response.ok) {
+      try {
+        const json = await response.json();
+        preferredMirror = index;
+        return json;
+      } catch {
+        console.warn(`[mirror] ${base}${path} sent invalid JSON`);
+        continue;
+      }
+    }
+    if (response.status === 404) missing += 1;
+    else if (response.status === 429) limited += 1;
+    else console.warn(`[mirror] ${base}${path} answered ${response.status}`);
   }
-  if (response.status === 404) throw new AppError("not_found", tr("map.missing"), 404);
-  if (!response.ok) throw new AppError("unavailable", tr("search.unavailable"), 502);
-  return response.json();
+  if (missing > 0) throw new AppError("not_found", tr("map.missing"), 404);
+  if (limited > 0) throw new AppError("rate_limited", tr("search.limited"), 429);
+  throw new AppError("unavailable", tr("search.unavailable"), 502);
 }
 
 async function getToken(): Promise<string> {
@@ -275,6 +308,22 @@ export function pickBeatmap(set: RemoteSet): RemoteBeatmap {
   return picked;
 }
 
+/**
+ * Ranked sets first, then the ones whose title or artist holds every word typed,
+ * then the most played: "freedom dive" should open on the set everybody plays.
+ */
+function bestFirst(sets: RemoteSet[], query: string): RemoteSet[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const fits = (set: RemoteSet) => {
+    const text = `${set.title} ${set.artist}`.toLowerCase();
+    return words.every((word) => text.includes(word)) ? 0 : 1;
+  };
+  const tier = (set: RemoteSet) => (STATUS_RANK[set.status] <= 1 ? 0 : STATUS_RANK[set.status] <= 3 ? 1 : 2);
+  return [...sets].sort(
+    (a, b) => tier(a) - tier(b) || fits(a) - fits(b) || (b.playCount ?? 0) - (a.playCount ?? 0),
+  );
+}
+
 function toHits(sets: RemoteSet[], limit: number): SearchHit[] {
   return sets.slice(0, limit).map((set) => ({
     beatmapsetId: set.id,
@@ -315,10 +364,10 @@ export async function searchBeatmaps(query: string, signal?: AbortSignal, ranked
     }
   }
   if (sets.length === 0) {
-    const params = new URLSearchParams({ query: query.trim() });
+    const params = new URLSearchParams({ query: query.trim(), amount: "50" });
     sets = readSets(await mirrorGet(`/search?${params}`, signal));
   }
-  const hits = toHits(ranked ? rankedOnly(sets) : sets, 8);
+  const hits = toHits(bestFirst(ranked ? rankedOnly(sets) : sets, query), 8);
   searchCache.set(key, { at: Date.now(), hits });
   return hits;
 }
