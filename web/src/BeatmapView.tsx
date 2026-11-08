@@ -19,7 +19,7 @@ import {
   type ScoreResult,
 } from "@osu-pp/shared";
 import { ApiError, fetchCalculate, fetchLookup } from "./api";
-import { formatBpm, formatLength, formatPercent, formatPp, formatRate, formatStars, formatStat, osuDirectUrl, osuMapUrl } from "./format";
+import { formatBpm, formatLength, formatPercent, formatPp, formatRate, formatStars, formatStat, numberLocaleOf, osuDirectUrl, osuMapUrl } from "./format";
 import { StarPill } from "./Badges";
 import { fill, useI18n, type Copy } from "./i18n";
 
@@ -276,7 +276,7 @@ export function BeatmapView(props: {
   const main = scored ? primaryStyle(scored) : null;
   const types = scored && main ? [main, ...secondaryStyles(scored, main)] : [];
   const best = curve[0]?.pp ?? 1;
-  const numberLocale = lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
+  const numberLocale = numberLocaleOf(lang);
 
   return (
     <main className={calculating ? "sheet busy" : "sheet"}>

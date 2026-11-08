@@ -1,11 +1,12 @@
-import { AccountButton, LoginError } from "./Marks";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
-import type { DiscoverHit, Lang, LookupResponse, MapMeta, Mode } from "@osu-pp/shared";
+import type { DiscoverHit, LookupResponse, MapMeta, Mode } from "@osu-pp/shared";
 import { fetchLookup } from "./api";
 import { BeatmapView, type MapPreview, type PlayPreset } from "./BeatmapView";
 import { Finder } from "./Finder";
 import { plainClick } from "./format";
 import { useI18n } from "./i18n";
+import { LangMenu } from "./LangMenu";
+import { AccountButton, LoginError } from "./Marks";
 import { beatmapPath, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
 import { PinnedMaps } from "./Pinned";
 import { SearchBox, type OpenTarget } from "./SearchBox";
@@ -22,7 +23,6 @@ interface RecentMap {
 }
 
 const RECENT_KEY = "osu-pp-lookup:recent";
-const LANGS: Lang[] = ["en", "fr", "es"];
 
 function readRecent(): RecentMap[] {
   const parsed = readJson<unknown>(RECENT_KEY, []);
@@ -42,7 +42,7 @@ interface Navigation {
 }
 
 export function App() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [route, setRoute] = useState<AppRoute>(() => parseRoute(window.location.hash, window.location.search));
   const [recent, setRecent] = useState<RecentMap[]>(readRecent);
   const [resolving, setResolving] = useState(false);
@@ -180,13 +180,7 @@ export function App() {
           </span>
         </a>
         <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} />
-        <div className="langs" role="group" aria-label="Language">
-          {LANGS.map((code) => (
-            <button key={code} type="button" className={lang === code ? "on" : ""} aria-pressed={lang === code} onClick={() => setLang(code)}>
-              {code.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        <LangMenu />
       </header>
 
       <LoginError />

@@ -2,8 +2,25 @@ import type { Lang, Mode } from "@osu-pp/shared";
 
 let locale = "en-US";
 
+const LOCALES: Record<Lang, string> = {
+  en: "en-US",
+  fr: "fr-FR",
+  es: "es-ES",
+  de: "de-DE",
+  pt: "pt-BR",
+  pl: "pl-PL",
+  ru: "ru-RU",
+  ko: "ko-KR",
+  ja: "ja-JP",
+  zh: "zh-CN",
+};
+
+export function numberLocaleOf(lang: Lang): string {
+  return LOCALES[lang];
+}
+
 export function setNumberLocale(lang: Lang): void {
-  locale = lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
+  locale = LOCALES[lang];
 }
 
 export function formatPp(value: number, digits = 0): string {
