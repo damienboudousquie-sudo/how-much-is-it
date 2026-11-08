@@ -3,7 +3,7 @@ import type { ConcreteStyle, StyleScores } from "./styles";
 /**
  * Farm maps give more pp than they cost. In practice:
  * - aim-heavy jump maps, because star rating and pp reward spaced movement more than it feels,
- * - short drain (about 45 s to 2 min 10), so a run is cheap to retry,
+ * - a drain cheap to retry: under about 2 min 40 for jump maps, up to 5 min for stream maps,
  * - a lower star rating than other maps worth the same pp,
  * - often anime TV sizes and cuts, and mappers known for farm sets.
  */
@@ -20,14 +20,37 @@ export function farmHint(input: { title: string; creator: string; tags: string }
   return Math.min(1, hint);
 }
 
-export function lengthScore(seconds: number | null): number {
+/** Points (seconds, score) joined by straight lines; flat before the first and after the last. */
+type Curve = readonly (readonly [number, number])[];
+
+/**
+ * How cheap a map is to retry, by drain time, for each type. Stream and stamina maps are
+ * long by nature, so their sweet spot reaches much further than for jump maps.
+ */
+const LENGTH_CURVES: Record<ConcreteStyle, Curve> = {
+  jump: [[20, 0.3], [40, 1], [160, 1], [260, 0.6], [400, 0.3], [600, 0.2]],
+  stream: [[30, 0.3], [60, 1], [300, 1], [480, 0.7], [720, 0.4], [900, 0.3]],
+  speed: [[30, 0.3], [45, 1], [210, 1], [360, 0.6], [540, 0.3]],
+  tech: [[20, 0.3], [40, 1], [200, 1], [320, 0.6], [480, 0.3]],
+  alt: [[30, 0.3], [50, 1], [240, 1], [400, 0.6], [600, 0.3]],
+  fingercontrol: [[20, 0.3], [40, 1], [200, 1], [320, 0.6], [480, 0.3]],
+};
+
+function onCurve(curve: Curve, x: number): number {
+  if (x <= curve[0]![0]) return curve[0]![1];
+  for (let index = 1; index < curve.length; index += 1) {
+    const [x1, y1] = curve[index]!;
+    const [x0, y0] = curve[index - 1]!;
+    if (x <= x1) return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+  }
+  return curve[curve.length - 1]![1];
+}
+
+/** 0 to 1. With several types, the most lenient one counts; with none, jump maps set the pace. */
+export function lengthScore(seconds: number | null, wanted: readonly ConcreteStyle[] = []): number {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return 0.5;
-  if (seconds < 20) return 0.3;
-  if (seconds < 45) return 0.3 + (0.7 * (seconds - 20)) / 25;
-  if (seconds <= 130) return 1;
-  if (seconds <= 200) return 1 - (0.45 * (seconds - 130)) / 70;
-  if (seconds <= 300) return 0.55 - (0.35 * (seconds - 200)) / 100;
-  return 0.1;
+  const styles = wanted.length > 0 ? wanted : (["jump"] as const);
+  return Math.max(...styles.map((style) => onCurve(LENGTH_CURVES[style], seconds)));
 }
 
 function clamp(value: number): number {
@@ -70,8 +93,12 @@ export function farmScores(maps: readonly FarmCandidate[], wanted: readonly Conc
   const spread = Math.max(0.02, 1.4826 * deviations[Math.floor(deviations.length / 2)]!);
   return maps.map((map, index) => {
     const efficiency = 1 / (1 + Math.exp(-(values[index]! - median) / spread));
+    // Type first, then cheap pp, then how cheap a retry is, then the hints.
     const farm =
-      0.35 * typeFit(map.scores, wanted) + 0.25 * lengthScore(map.lengthSeconds) + 0.25 * efficiency + 0.15 * map.hint;
+      0.35 * typeFit(map.scores, wanted) +
+      0.3 * efficiency +
+      0.2 * lengthScore(map.lengthSeconds, wanted) +
+      0.15 * map.hint;
     // Unknown popularity counts as average, so a map is not held back before its plays are read.
     const popularity = map.popularity ?? 0.5;
     const score = (1 - POPULARITY_WEIGHT) * farm + POPULARITY_WEIGHT * popularity;

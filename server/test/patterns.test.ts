@@ -94,6 +94,12 @@ describe("farm", () => {
     expect(lengthScore(400)).toBeLessThan(lengthScore(180));
   });
 
+  it("allows much longer stream maps than jump maps", () => {
+    expect(lengthScore(339, ["stream"])).toBeGreaterThan(0.9);
+    expect(lengthScore(339)).toBeLessThan(0.5);
+    expect(lengthScore(339, ["jump", "stream"])).toBe(lengthScore(339, ["stream"]));
+  });
+
   it("ranks a short low-star jump map above a long stream map worth the same pp", () => {
     const jump = { pp: 400, stars: 6.2, lengthSeconds: 85, hint: 0.5, scores: { ...guessedScores(null), jump: 1, stream: 0 } };
     const stream = { pp: 400, stars: 6.8, lengthSeconds: 280, hint: 0, scores: { ...guessedScores(null), jump: 0.1, stream: 1 } };
