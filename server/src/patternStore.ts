@@ -270,6 +270,14 @@ export function analyzeEventually(ids: Iterable<number>): number {
   return enqueue(ids, "scan").length;
 }
 
+export function analysisConcurrency(): number {
+  return CONCURRENCY;
+}
+
+export function analysisRunning(): number {
+  return running;
+}
+
 /** Maps waiting in the scan lane. */
 export function scanBacklog(): number {
   return scan.length;

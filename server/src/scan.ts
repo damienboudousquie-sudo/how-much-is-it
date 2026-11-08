@@ -2,7 +2,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { repoRoot } from "./env";
-import { analyzeEventually, knownCount, scanBacklog, seedSize } from "./patternStore";
+import { downloadStats } from "./beatmapCache";
+import { analysisConcurrency, analysisRunning, analyzeEventually, knownCount, scanBacklog, seedSize } from "./patternStore";
 import { fetchCatalogPage } from "./ppDb";
 
 /**
@@ -81,6 +82,19 @@ async function run(): Promise<void> {
   }
 }
 
+const samples: { at: number; known: number }[] = [];
+
+function rate(): number | null {
+  const now = Date.now();
+  samples.push({ at: now, known: knownCount() });
+  while (samples.length > 2 && now - samples[0]!.at > 60_000) samples.shift();
+  const first = samples[0]!;
+  const seconds = (now - first.at) / 1000;
+  return seconds >= 5 ? Math.round(((knownCount() - first.known) / seconds) * 10) / 10 : null;
+}
+
+setInterval(rate, 10_000).unref?.();
+
 export function startFullScan(): void {
   if (started || process.env.FULL_SCAN === "0") return;
   started = true;
@@ -100,5 +114,8 @@ export function scanStatus() {
     waiting: scanBacklog(),
     finishedAt: state.finishedAt ? new Date(state.finishedAt).toISOString() : null,
     lastError,
+    /** Maps read per second over the last minute. */
+    perSecond: rate(),
+    downloads: { concurrency: analysisConcurrency(), running: analysisRunning(), sources: downloadStats() },
   };
 }

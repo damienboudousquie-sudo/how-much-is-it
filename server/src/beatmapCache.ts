@@ -80,6 +80,24 @@ const SOURCES = [
   (id: number) => `https://osu.direct/api/osu/${id}`,
 ];
 const restUntil = SOURCES.map(() => 0);
+const stats = SOURCES.map(() => ({ ok: 0, limited: 0, missing: 0, failed: 0, ms: 0 }));
+
+/** Per-source download counts, for /api/scan. */
+export function downloadStats() {
+  const now = Date.now();
+  return SOURCES.map((source, index) => {
+    const entry = stats[index]!;
+    return {
+      source: new URL(source(1)).host,
+      ok: entry.ok,
+      limited: entry.limited,
+      missing: entry.missing,
+      failed: entry.failed,
+      averageMs: entry.ok > 0 ? Math.round(entry.ms / entry.ok) : null,
+      resting: restUntil[index]! > now,
+    };
+  });
+}
 let turn = 0;
 
 function sourceOrder(): number[] {
@@ -90,6 +108,17 @@ function sourceOrder(): number[] {
 }
 
 async function fetchFrom(index: number, id: number): Promise<Uint8Array | number> {
+  const result = await fetchFromSource(index, id);
+  const entry = stats[index]!;
+  if (typeof result !== "number") entry.ok += 1;
+  else if (result === 429) entry.limited += 1;
+  else if (result === 404) entry.missing += 1;
+  else entry.failed += 1;
+  return result;
+}
+
+async function fetchFromSource(index: number, id: number): Promise<Uint8Array | number> {
+  const started = Date.now();
   let response: Response;
   try {
     response = await fetch(SOURCES[index]!(id), {
@@ -114,6 +143,7 @@ async function fetchFrom(index: number, id: number): Promise<Uint8Array | number
   if (buffer.byteLength > MAX_BYTES) return 413;
   // A mirror may answer with a page instead of the file: that counts as missing there.
   if (!looksLikeOsu(decodeOsu(buffer))) return 404;
+  stats[index]!.ms += Date.now() - started;
   return buffer;
 }
 
