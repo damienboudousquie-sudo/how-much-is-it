@@ -194,6 +194,7 @@ function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
       lengthSeconds: item.map.lengthSeconds,
       hint: item.map.hint,
       scores: item.scores,
+      known: item.known,
       purity: purityOf(item.map.beatmapId),
       popularity: popularityOf(item.map.beatmapId),
     })),

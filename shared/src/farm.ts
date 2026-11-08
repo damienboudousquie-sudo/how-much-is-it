@@ -77,11 +77,20 @@ export interface FarmCandidate {
   lengthSeconds: number | null;
   hint: number;
   scores: StyleScores;
+  /** False while the .osu file is not read yet: its type is only a guess. */
+  known?: boolean;
   /** 0 to 1, see streamPurity; null when the map is not read yet. */
   purity?: number | null;
   /** 0 to 1 from play counts, or null when unknown. A hidden nudge, never the main reason. */
   popularity?: number | null;
 }
+
+/**
+ * Type fit given to a map whose file is not read yet. Generous on purpose: unread maps
+ * then sit high enough to be read first, and drop if they turn out not to fit.
+ * A low guess kept them at the bottom, never read, behind maps that happened to be read.
+ */
+export const UNREAD_TYPE_FIT = 0.75;
 
 /** Share of the farm score given to popularity. Small, so farm qualities always lead. */
 export const POPULARITY_WEIGHT = 0.1;
@@ -104,7 +113,7 @@ export function farmScores(maps: readonly FarmCandidate[], wanted: readonly Conc
     const efficiency = 1 / (1 + Math.exp(-(values[index]! - median) / spread));
     // Type first, then cheap pp, then how cheap a retry is, then the hints.
     const farm =
-      0.35 * typeFit(map.scores, wanted, map.purity ?? null) +
+      0.35 * (map.known === false ? UNREAD_TYPE_FIT : typeFit(map.scores, wanted, map.purity ?? null)) +
       0.3 * efficiency +
       0.2 * lengthScore(map.lengthSeconds, wanted) +
       0.15 * map.hint;
