@@ -143,30 +143,63 @@ function toMap(row: Record<string, unknown>, mods: string): PpDbMap | null {
   };
 }
 
+const catalogStats = { ok: 0, retried: 0, failed: 0, lastError: null as string | null, lastErrorAt: null as string | null };
+
+/** Catalogue mirror requests, for /api/health/catalog. */
+export function catalogHealth() {
+  return { ...catalogStats, active, waiting: waiting.length };
+}
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** One page of the pp catalogue. Retries twice on a slow, busy or failing mirror. */
 async function fetchPage(path: string, mods: string, signal?: AbortSignal): Promise<{ maps: PpDbMap[]; total: number }> {
   return slot(async () => {
-    const timeout = AbortSignal.timeout(15_000);
-    const signals = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    let response: Response;
-    try {
-      response = await fetch(`${MIRROR}${path}`, {
-        headers: { Accept: "application/json", "User-Agent": "osu-pp-lookup/0.2 (+local)" },
-        signal: signals,
-      });
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      throw new AppError("unavailable", tr("ppdb.down"), 502);
+    let problem = "";
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (attempt > 0) catalogStats.retried += 1;
+      const timeout = AbortSignal.timeout(20_000);
+      const signals = signal ? AbortSignal.any([signal, timeout]) : timeout;
+      let response: Response;
+      try {
+        response = await fetch(`${MIRROR}${path}`, {
+          headers: { Accept: "application/json", "User-Agent": "how-much-is-it (osu! pp finder)" },
+          signal: signals,
+        });
+      } catch (error) {
+        if (signal?.aborted) throw error;
+        problem = error instanceof Error ? `${error.name}: ${error.message}` : "network error";
+        await pause(1500 * (attempt + 1));
+        continue;
+      }
+      if (!response.ok) {
+        problem = `HTTP ${response.status}`;
+        if (response.status === 404) break;
+        const retry = Number(response.headers.get("retry-after"));
+        await pause(Number.isFinite(retry) && retry > 0 ? Math.min(retry, 10) * 1000 : 1500 * (attempt + 1));
+        continue;
+      }
+      try {
+        const json = (await response.json()) as { maps?: unknown; total?: unknown };
+        if (!Array.isArray(json.maps)) throw new Error("no maps in the answer");
+        const maps: PpDbMap[] = [];
+        for (const item of json.maps) {
+          if (!item || typeof item !== "object") continue;
+          const map = toMap(item as Record<string, unknown>, mods);
+          if (map) maps.push(map);
+        }
+        catalogStats.ok += 1;
+        return { maps, total: typeof json.total === "number" ? json.total : maps.length };
+      } catch (error) {
+        problem = error instanceof Error ? error.message : "invalid answer";
+        await pause(1500 * (attempt + 1));
+      }
     }
-    if (!response.ok) throw new AppError("unavailable", tr("ppdb.down"), 502);
-    const json = (await response.json()) as { maps?: unknown; total?: unknown };
-    if (!Array.isArray(json.maps)) throw new AppError("unavailable", tr("ppdb.down"), 502);
-    const maps: PpDbMap[] = [];
-    for (const item of json.maps) {
-      if (!item || typeof item !== "object") continue;
-      const map = toMap(item as Record<string, unknown>, mods);
-      if (map) maps.push(map);
-    }
-    return { maps, total: typeof json.total === "number" ? json.total : maps.length };
+    catalogStats.failed += 1;
+    catalogStats.lastError = `${problem} (${path.slice(0, 120)})`;
+    catalogStats.lastErrorAt = new Date().toISOString();
+    console.warn(`[catalogue] ${catalogStats.lastError}`);
+    throw new AppError("unavailable", tr("ppdb.down"), 502);
   });
 }
 
