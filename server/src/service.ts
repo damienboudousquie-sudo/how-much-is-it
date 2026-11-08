@@ -8,7 +8,6 @@ import {
   modRate,
   matchingCombos,
   modsInCombo,
-  effectiveStyles,
   isMainStyle,
   parentOf,
   primaryStyle,
@@ -177,16 +176,15 @@ function scoresFor(map: PpDbMap, osu: boolean): { scores: StyleScores; known: bo
 }
 
 /**
- * Known maps must really be of the type. Before reading, every unknown map is a candidate
- * (metadata alone mistakes 1/2 jump maps for streams); once shown, an unknown map needs its
- * metadata guess to agree.
+ * Known maps must really be of the type. Unread maps are candidates for reading (`strict`
+ * false), but a typed list only shows maps whose file was read: metadata alone mistakes
+ * fast 1/2 jump maps for streams (Time to Say Goodbye at 250 BPM). The client keeps asking
+ * while maps are read, so the list fills in with checked maps only.
  */
 function keep(candidate: Candidate, input: DiscoverRequest, strict: boolean): boolean {
   if (input.styles.length === 0) return true;
   if (candidate.known) return matchesAnyStyle(candidate.scores, input.styles);
-  const guess = candidate.map.guess;
-  if (!strict) return true;
-  return guess != null && effectiveStyles(input.styles).some((style) => style === guess || style === parentOf(guess));
+  return !strict;
 }
 
 function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
