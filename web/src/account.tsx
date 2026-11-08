@@ -12,6 +12,9 @@ const LOCAL_MARKS = "osu-pp-lookup:marks";
 
 interface AccountState {
   ready: boolean;
+  /** Why the last sign-in failed, shown once. */
+  loginError: string | null;
+  dismissLoginError(): void;
   loginAvailable: boolean;
   profile: UserProfile | null;
   marks: Record<string, MapMark>;
@@ -45,6 +48,16 @@ export function AccountProvider(props: { children: ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [localMarks, setLocalMarks] = useState<Record<string, MapMark>>(() => readJson(LOCAL_MARKS, {}));
   const merged = useRef(false);
+  const [loginError, setLoginError] = useState<string | null>(() => {
+    const match = /(?:^|;\s*)hmi_login_error=([^;]*)/.exec(document.cookie);
+    if (!match) return null;
+    document.cookie = "hmi_login_error=; Path=/; Max-Age=0";
+    try {
+      return decodeURIComponent(match[1] ?? "");
+    } catch {
+      return match[1] ?? null;
+    }
+  });
 
   useEffect(() => {
     let alive = true;
@@ -121,6 +134,8 @@ export function AccountProvider(props: { children: ReactNode }) {
   const value = useMemo<AccountState>(
     () => ({
       ready: me != null,
+      loginError,
+      dismissLoginError: () => setLoginError(null),
       loginAvailable: Boolean(me?.loginAvailable),
       profile: signedIn ? (me?.profile ?? null) : null,
       marks,
@@ -131,7 +146,7 @@ export function AccountProvider(props: { children: ReactNode }) {
       gainFor: (beatmapId, pp) => ppGain(top, beatmapId, pp),
       logout,
     }),
-    [me, signedIn, marks, top, topById, setMark, logout],
+    [me, signedIn, marks, top, topById, setMark, logout, loginError],
   );
 
   return <AccountContext.Provider value={value}>{props.children}</AccountContext.Provider>;

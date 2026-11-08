@@ -153,7 +153,16 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenAnswer> 
   } catch {
     throw new AppError("unavailable", "osu! did not answer. Try again.", 502);
   }
-  if (!response.ok) throw new AppError("login_failed", "osu! refused the sign-in. Try again.", 401);
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const body = (await response.json()) as { error?: string; message?: string; hint?: string; error_description?: string };
+      detail = [body.error, body.error_description ?? body.message, body.hint].filter(Boolean).join(" - ");
+    } catch {
+      // No details.
+    }
+    throw new AppError("login_failed", `osu! refused the sign-in (HTTP ${response.status}${detail ? `: ${detail}` : ""}).`, 401);
+  }
   return (await response.json()) as TokenAnswer;
 }
 
@@ -168,7 +177,7 @@ async function apiGet<T>(path: string, accessToken: string): Promise<T> {
     throw new AppError("unavailable", "osu! did not answer. Try again.", 502);
   }
   if (response.status === 401) throw new AppError("signed_out", "Your osu! sign-in expired. Sign in again.", 401);
-  if (!response.ok) throw new AppError("unavailable", "osu! did not answer. Try again.", 502);
+  if (!response.ok) throw new AppError("unavailable", `osu! answered HTTP ${response.status} to ${path}.`, 502);
   return (await response.json()) as T;
 }
 
@@ -336,3 +345,9 @@ export function sessionCookie(value: string, maxAgeSeconds: number): string {
 }
 
 export const SESSION_MAX_AGE = SESSION_DAYS * 86_400;
+
+/** Short-lived, readable by the page: why the last sign-in failed. */
+export function loginErrorCookie(message: string): string {
+  const secure = publicUrl().startsWith("https://") ? "; Secure" : "";
+  return `hmi_login_error=${encodeURIComponent(message.slice(0, 300))}; Path=/; SameSite=Lax; Max-Age=120${secure}`;
+}

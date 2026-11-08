@@ -31,6 +31,7 @@ export type Copy = {
   typeTagsHelp: string;
   login: string;
   logout: string;
+  loginFailed: string;
   profileHelp: string;
   marks: string;
   markFarm: string;
@@ -152,6 +153,7 @@ const en: Copy = {
   typeTagsHelp: "With Hybrid, narrow it: Jump, Stream, Tech, Alt, Finger control (a hybrid map can carry several).",
   login: "Sign in with osu!",
   logout: "Sign out",
+  loginFailed: "Sign-in with osu! failed:",
   profileHelp: "Your osu! profile",
   marks: "Mark this map",
   markFarm: "To farm",
@@ -282,6 +284,7 @@ const fr: Copy = {
   typeTagsHelp: "Avec Hybrid, tu peux préciser : Jump, Stream, Tech, Alt, Finger control (une map hybrid peut en avoir plusieurs).",
   login: "Se connecter avec osu!",
   logout: "Déconnexion",
+  loginFailed: "La connexion avec osu! a échoué :",
   profileHelp: "Ton profil osu!",
   marks: "Marquer cette map",
   markFarm: "À farmer",
@@ -412,6 +415,7 @@ const es: Copy = {
   typeTagsHelp: "Con Hybrid, puedes precisar: Jump, Stream, Tech, Alt, Finger control (un mapa hybrid puede tener varias).",
   login: "Entrar con osu!",
   logout: "Salir",
+  loginFailed: "Falló el inicio de sesión con osu!:",
   profileHelp: "Tu perfil de osu!",
   marks: "Marcar este mapa",
   markFarm: "Para farmear",

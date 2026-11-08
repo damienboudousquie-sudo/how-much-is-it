@@ -95,3 +95,18 @@ export function AccountButton() {
     </a>
   );
 }
+
+/** Shown once after a failed sign-in, with osu!'s reason. */
+export function LoginError() {
+  const { t } = useI18n();
+  const account = useAccount();
+  if (!account.loginError) return null;
+  return (
+    <p className="notice error" role="alert">
+      {t.loginFailed} {account.loginError}{" "}
+      <button type="button" className="link" onClick={account.dismissLoginError}>
+        ×
+      </button>
+    </p>
+  );
+}

@@ -10,7 +10,7 @@ import { apiKeyConfigured, mirrorHealth } from "./osuApi";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
-import { completeLogin, loginRedirect, logout, me, SESSION_MAX_AGE, sessionCookie, sessionFromCookie, setMarks } from "./account";
+import { completeLogin, loginErrorCookie, loginRedirect, logout, me, SESSION_MAX_AGE, sessionCookie, sessionFromCookie, setMarks } from "./account";
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
@@ -141,14 +141,19 @@ app.get("/api/auth/login", async (_request, reply) => {
 
 app.get("/api/auth/callback", async (request, reply) => {
   const params = request.query as { code?: unknown; state?: unknown; error?: unknown };
-  if (typeof params.code !== "string" || typeof params.state !== "string") return reply.redirect("/#/login-cancelled");
+  if (typeof params.code !== "string" || typeof params.state !== "string") {
+    reply.header("set-cookie", loginErrorCookie(typeof params.error === "string" ? `osu!: ${params.error}` : "Sign-in cancelled."));
+    return reply.redirect("/");
+  }
   try {
     const session = await completeLogin(params.code, params.state);
     reply.header("set-cookie", sessionCookie(session, SESSION_MAX_AGE));
     return reply.redirect("/");
   } catch (error) {
-    request.log.warn(error);
-    return reply.redirect("/#/login-failed");
+    request.log.warn({ err: error }, "osu! sign-in failed");
+    const message = error instanceof Error ? error.message : "Sign-in failed.";
+    reply.header("set-cookie", loginErrorCookie(message));
+    return reply.redirect("/");
   }
 });
 

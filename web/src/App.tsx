@@ -1,4 +1,4 @@
-import { AccountButton } from "./Marks";
+import { AccountButton, LoginError } from "./Marks";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import type { DiscoverHit, Lang, LookupResponse, MapMeta, Mode } from "@osu-pp/shared";
 import { fetchLookup } from "./api";
@@ -175,6 +175,7 @@ export function App() {
         </div>
       </header>
 
+      <LoginError />
       <SearchBox compact={route.page === "beatmap"} busy={resolving} onOpen={(target) => open(target)} onOpenSet={(setId) => void openSet(setId)} />
       {resolveError && (
         <p className="notice error" role="alert">

@@ -1710,14 +1710,6 @@ button:disabled {
   transition: filter 0.15s, transform 0.15s;
 }
 
-.login-osu::before {
-  content: "";
-  width: 14px;
-  height: 14px;
-  border: 2.5px solid #fff;
-  border-radius: 50%;
-}
-
 .login-osu:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
@@ -1960,4 +1952,14 @@ button:disabled {
   .account-who {
     padding-right: 3px;
   }
+}
+
+.notice .link {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }
