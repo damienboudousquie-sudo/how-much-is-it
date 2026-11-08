@@ -53,10 +53,12 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
  * `rate` is the clock rate of the mods (DT 1.5, HT 0.75): a 180 BPM stream map
  * played with DT is a 270 BPM speed map.
  *
- * - stream: long 1/4 chains carry the map (bursts count a little).
+ * - stream: long 1/4 chains carry the map (bursts count a little), with few jumps
+ *   and tight spacing: Tower of Heaven, not stream-jump aim maps.
  * - speed: those streams, fast: about 240 BPM and up, mods counted.
  *   Fast 1/2 jumps are not speed: DT aim maps stay jump maps.
- * - jump: spaced 1/2 and 1/1 movement, few streams, at any speed.
+ * - jump: spaced 1/2 and 1/1 movement, few streams, at any speed; with DT this is
+ *   "speed aim". Fast maps mixing jumps with complex rhythm and sliders are tech.
  * - alt: short 1/4 bursts and doubles mixed into patterns, too fast to single-tap.
  * - fingercontrol: uneven rhythm (1/3, 1/6, 3/4 gaps) and short chains at moderate BPM.
  * - tech: slider-heavy, frequent SV changes, varied rhythm.
@@ -65,15 +67,31 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   const p = profile;
   const bpm = p.bpm * (rate > 0 ? rate : 1);
   const streamMass = p.streamShare + 0.4 * p.burstShare;
-  const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7));
+  // Stream means streams to tap through, not aim: jumps between them and widely spaced
+  // streams push a map out of the type (those are found with jump, or jump + DT).
+  const streamCore =
+    ramp(streamMass, 0.25, 0.55) *
+    (1 - 0.8 * ramp(p.jumpShare, 0.2, 0.42)) *
+    (1 - 0.5 * ramp(p.streamSpacing, 2.2, 3.5));
   // Speed starts around 240 BPM: 200 BPM streams are plain streams.
   const fast = ramp(bpm, 228, 248);
 
   const speed = streamCore * fast;
   const stream = streamCore * (1 - 0.25 * fast);
 
+  // Fast maps (nomod BPM, so DT aim maps are not affected) whose jumps come with complex
+  // rhythm, slider-heavy sections and streams are tech / mixed maps, not jump maps
+  // (IMAGE -MATERIAL- for instance).
+  const mixed =
+    ramp(p.bpm, 210, 245) *
+    (0.45 * ramp(p.rhythmEntropy, 1.9, 2.15) +
+      0.35 * ramp(p.sliderShare, 0.45, 0.62) +
+      0.3 * ramp(p.streamShare + 0.4 * p.burstShare, 0.1, 0.25));
   const jump =
-    ramp(p.jumpShare, 0.22, 0.5) * (1 - ramp(p.streamShare, 0.22, 0.5)) * (0.85 + 0.15 * ramp(p.jumpSpacing, 4.5, 6.5));
+    ramp(p.jumpShare, 0.22, 0.5) *
+    (1 - ramp(p.streamShare, 0.22, 0.5)) *
+    (0.85 + 0.15 * ramp(p.jumpSpacing, 4.5, 6.5)) *
+    clamp(1 - mixed);
 
   const shortChains = p.burstShare + 0.5 * p.doubleShare;
   const alt = ramp(shortChains, 0.2, 0.4) * ramp(bpm, 160, 190) * (1 - ramp(p.streamShare, 0.35, 0.6));
@@ -82,9 +100,11 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   const fingercontrol =
     unevenRhythm * ramp(p.burstShare + p.doubleShare, 0.15, 0.35) * (1 - ramp(bpm, 200, 230)) * (1 - 0.5 * ramp(p.streamShare, 0.4, 0.7));
 
-  const tech =
+  const tech = clamp(
     (0.4 * ramp(p.sliderShare, 0.3, 0.5) + 0.3 * ramp(p.svChanges, 15, 60) + 0.3 * ramp(p.rhythmEntropy, 1.8, 2.2)) *
-    (1 - 0.7 * ramp(p.streamShare, 0.3, 0.6));
+      (1 - 0.7 * ramp(p.streamShare, 0.3, 0.6)) +
+      0.3 * mixed * ramp(p.jumpShare, 0.3, 0.5),
+  );
 
   const scores: StyleScores = { jump, stream, speed, tech, alt, fingercontrol };
   const text = `${names?.version ?? ""} ${names?.tags ?? ""}`;

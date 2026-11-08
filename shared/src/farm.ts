@@ -8,8 +8,11 @@ import type { ConcreteStyle, StyleScores } from "./styles";
  * - often anime TV sizes and cuts, and mappers known for farm sets.
  */
 
-const FARM_MAPPERS = new Set(["sotarks", "fieryrage", "log off now", "taeyang", "akitoshi", "kroytz"]);
-const SHORT_CUT = /\b(?:tv[\s.-]*(?:size|ver(?:sion)?)|cut[\s.-]*ver(?:sion)?|short[\s.-]*ver(?:sion)?|game[\s.-]*ver(?:sion)?|sped[\s-]*up)\b/i;
+const FARM_MAPPERS = new Set([
+  "sotarks", "fieryrage", "log off now", "taeyang", "akitoshi", "kroytz",
+  "reform", "kuki", "nevo", "kumocha", "parad0xa", "my angel ram", "ajt",
+]);
+const SHORT_CUT = /\b(?:tv[\s.-]*(?:size|ver(?:sion)?)|cut[\s.-]*ver(?:sion)?|short[\s.-]*ver(?:sion)?|game[\s.-]*ver(?:sion)?|sped[\s-]*up|nightcore)\b/i;
 
 /** 0 to 1, from title, mapper and tags. Computed once when a map enters the index. */
 export function farmHint(input: { title: string; creator: string; tags: string }): number {
@@ -28,12 +31,12 @@ type Curve = readonly (readonly [number, number])[];
  * long by nature, so their sweet spot reaches much further than for jump maps.
  */
 const LENGTH_CURVES: Record<ConcreteStyle, Curve> = {
-  jump: [[20, 0.3], [40, 1], [160, 1], [260, 0.6], [400, 0.3], [600, 0.2]],
-  stream: [[30, 0.3], [60, 1], [300, 1], [480, 0.7], [720, 0.4], [900, 0.3]],
-  speed: [[30, 0.3], [45, 1], [210, 1], [360, 0.6], [540, 0.3]],
-  tech: [[20, 0.3], [40, 1], [200, 1], [320, 0.6], [480, 0.3]],
-  alt: [[30, 0.3], [50, 1], [240, 1], [400, 0.6], [600, 0.3]],
-  fingercontrol: [[20, 0.3], [40, 1], [200, 1], [320, 0.6], [480, 0.3]],
+  jump: [[10, 0.4], [22, 1], [160, 1], [260, 0.6], [400, 0.3], [600, 0.2]],
+  stream: [[15, 0.4], [35, 1], [300, 1], [480, 0.7], [720, 0.4], [900, 0.3]],
+  speed: [[15, 0.4], [30, 1], [210, 1], [360, 0.6], [540, 0.3]],
+  tech: [[10, 0.4], [22, 1], [200, 1], [320, 0.6], [480, 0.3]],
+  alt: [[15, 0.4], [30, 1], [240, 1], [400, 0.6], [600, 0.3]],
+  fingercontrol: [[10, 0.4], [22, 1], [200, 1], [320, 0.6], [480, 0.3]],
 };
 
 function onCurve(curve: Curve, x: number): number {

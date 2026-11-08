@@ -94,6 +94,11 @@ describe("farm", () => {
     expect(lengthScore(400)).toBeLessThan(lengthScore(180));
   });
 
+  it("does not hold back short DT cuts", () => {
+    expect(lengthScore(30)).toBe(1);
+    expect(lengthScore(5)).toBeLessThan(lengthScore(15));
+  });
+
   it("allows much longer stream maps than jump maps", () => {
     expect(lengthScore(339, ["stream"])).toBeGreaterThan(0.9);
     expect(lengthScore(339)).toBeLessThan(0.5);
