@@ -218,7 +218,41 @@ export interface ApiErrorBody {
       | "api_key_missing"
       | "suspicious"
       | "invalid"
-      | "rate_limited";
+      | "rate_limited"
+      | "login_off"
+      | "login_failed"
+      | "signed_out";
     message: string;
   };
+}
+
+/* ---------- signed-in player ---------- */
+
+/** How a player marked a map: to farm later, or already done. */
+export type MapMark = "farm" | "done";
+
+export interface UserProfile {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+  country: string | null;
+  pp: number | null;
+  rank: number | null;
+}
+
+/** One of the player's top 100 plays. */
+export interface TopPlay {
+  beatmapId: number;
+  pp: number;
+  accuracy: number | null;
+  mods: string[];
+}
+
+export interface MeResponse {
+  signedIn: boolean;
+  /** False when the server has no osu! OAuth application set up. */
+  loginAvailable: boolean;
+  profile: UserProfile | null;
+  marks: Record<string, MapMark>;
+  top: TopPlay[];
 }

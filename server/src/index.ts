@@ -10,6 +10,7 @@ import { apiKeyConfigured, mirrorHealth } from "./osuApi";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
+import { completeLogin, loginRedirect, logout, me, SESSION_MAX_AGE, sessionCookie, sessionFromCookie, setMarks } from "./account";
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
@@ -126,6 +127,57 @@ app.post("/api/prefetch", async (request, reply) => {
   const setId = typeof body.beatmapsetId === "number" && Number.isInteger(body.beatmapsetId) && body.beatmapsetId > 0 ? body.beatmapsetId : null;
   if (id != null) prefetch(id, setId);
   reply.status(204).send();
+});
+
+/* ---------- sign in with osu!, marks, top plays ---------- */
+
+app.get("/api/auth/login", async (_request, reply) => {
+  try {
+    return reply.redirect(loginRedirect());
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+app.get("/api/auth/callback", async (request, reply) => {
+  const params = request.query as { code?: unknown; state?: unknown; error?: unknown };
+  if (typeof params.code !== "string" || typeof params.state !== "string") return reply.redirect("/#/login-cancelled");
+  try {
+    const session = await completeLogin(params.code, params.state);
+    reply.header("set-cookie", sessionCookie(session, SESSION_MAX_AGE));
+    return reply.redirect("/");
+  } catch (error) {
+    request.log.warn(error);
+    return reply.redirect("/#/login-failed");
+  }
+});
+
+app.post("/api/auth/logout", async (request, reply) => {
+  logout(sessionFromCookie(request.headers.cookie));
+  reply.header("set-cookie", sessionCookie("", 0));
+  return { ok: true };
+});
+
+app.get("/api/me", async (request, reply) => {
+  reply.header("cache-control", "no-store");
+  try {
+    return await me(sessionFromCookie(request.headers.cookie));
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+app.put("/api/me/marks", async (request, reply) => {
+  try {
+    const body = (request.body ?? {}) as { marks?: unknown };
+    if (!body.marks || typeof body.marks !== "object" || Array.isArray(body.marks)) {
+      throw new AppError("invalid", "Send { marks: { beatmapId: \"farm\" | \"done\" | null } }.", 400);
+    }
+    const marks = await setMarks(sessionFromCookie(request.headers.cookie), body.marks as Record<string, "farm" | "done" | null>);
+    return { marks };
+  } catch (error) {
+    sendError(reply, error);
+  }
 });
 
 app.post("/api/calculate", async (request, reply) => {

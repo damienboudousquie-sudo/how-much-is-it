@@ -41,6 +41,9 @@
   --t-alt: #4fe0bd;
   --t-fingercontrol: #f2df5e;
   --t-hybrid: #ff8c7a;
+  --mark-farm: #ffc94d;
+  --mark-done: #5fdc96;
+  --osu: #ff66aa;
 
   /* osu!lazer mod families. */
   --mod-reduction: #b2ff66;
@@ -1685,6 +1688,181 @@ button:disabled {
   font-weight: 500;
 }
 
+/* ---------- account (sign in with osu!) ---------- */
+
+.account,
+.login-osu {
+  margin-left: auto;
+}
+
+.login-osu {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--osu);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(255, 102, 170, 0.35);
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.login-osu::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+}
+
+.login-osu:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.account-who img {
+  border-radius: 50%;
+}
+
+.account-pp {
+  color: var(--pink);
+  font-weight: 800;
+}
+
+.account-out {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.account-out:hover {
+  color: var(--text);
+  background: var(--bg-3);
+}
+
+/* ---------- map marks: to farm / done ---------- */
+
+.marks {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.mark-btn {
+  --c: var(--mark-farm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mark-btn.done {
+  --c: var(--mark-done);
+}
+
+.mark-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--c) 70%, transparent);
+  border-radius: 50%;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.mark-btn:hover .mark-dot {
+  transform: scale(1.15);
+  background: color-mix(in srgb, var(--c) 35%, transparent);
+}
+
+.mark-btn.on .mark-dot {
+  border-color: var(--c);
+  background: var(--c);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+.marks.large .mark-btn {
+  padding: 5px 12px 5px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+}
+
+.marks.large .mark-btn.on {
+  background: color-mix(in srgb, var(--c) 22%, rgba(0, 0, 0, 0.35));
+  color: var(--c);
+}
+
+/* A marked card carries its colour on the left edge. */
+.map.marked-farm,
+.map.marked-done {
+  box-shadow: inset 4px 0 0 var(--mc);
+}
+
+.map.marked-farm {
+  --mc: var(--mark-farm);
+}
+
+.map.marked-done {
+  --mc: var(--mark-done);
+}
+
+.map.marked-done .map-title {
+  opacity: 0.75;
+}
+
+.map.marked-farm:hover,
+.map.marked-done:hover {
+  box-shadow: inset 4px 0 0 var(--mc), 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.tag.top-play {
+  color: #8fd3ff;
+  background: rgba(102, 204, 255, 0.14);
+}
+
+.tag.gain {
+  color: var(--mark-done);
+  background: rgba(95, 220, 150, 0.14);
+}
+
+.hero-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
 /* ---------- small screens ---------- */
 
 @media (max-width: 760px) {
@@ -1771,5 +1949,15 @@ button:disabled {
   *::after {
     animation-duration: 0.01ms !important;
     transition: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .account-name,
+  .account-pp {
+    display: none;
+  }
+  .account-who {
+    padding-right: 3px;
   }
 }

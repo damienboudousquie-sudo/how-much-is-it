@@ -29,6 +29,16 @@ export type Copy = {
   typeMulti: string;
   typeTags: string;
   typeTagsHelp: string;
+  login: string;
+  logout: string;
+  profileHelp: string;
+  marks: string;
+  markFarm: string;
+  markDone: string;
+  markClear: string;
+  inTop: string;
+  inTopHelp: string;
+  gainHelp: string;
   mode: string;
   mods: string;
   modHelp: string;
@@ -140,6 +150,16 @@ const en: Copy = {
   typeMulti: "Pick several to mix them.",
   typeTags: "Narrow",
   typeTagsHelp: "With Hybrid, narrow it: Jump, Stream, Tech, Alt, Finger control (a hybrid map can carry several).",
+  login: "Sign in with osu!",
+  logout: "Sign out",
+  profileHelp: "Your osu! profile",
+  marks: "Mark this map",
+  markFarm: "To farm",
+  markDone: "Done",
+  markClear: "Remove the mark",
+  inTop: "Top · {pp} pp",
+  inTopHelp: "In your top 100: {pp} pp on this map.",
+  gainHelp: "What an SS with these mods would add to your total pp.",
   mode: "Mode",
   mods: "Mods",
   modHelp: "Click to cycle: without → with → either.",
@@ -260,6 +280,16 @@ const fr: Copy = {
   typeMulti: "Tu peux en choisir plusieurs.",
   typeTags: "Préciser",
   typeTagsHelp: "Avec Hybrid, tu peux préciser : Jump, Stream, Tech, Alt, Finger control (une map hybrid peut en avoir plusieurs).",
+  login: "Se connecter avec osu!",
+  logout: "Déconnexion",
+  profileHelp: "Ton profil osu!",
+  marks: "Marquer cette map",
+  markFarm: "À farmer",
+  markDone: "Déjà fait",
+  markClear: "Enlever la marque",
+  inTop: "Top · {pp} pp",
+  inTopHelp: "Dans ton top 100 : {pp} pp sur cette map.",
+  gainHelp: "Ce qu'un SS avec ces mods ajouterait à ton total de pp.",
   mode: "Mode",
   mods: "Mods",
   modHelp: "Clique pour changer : sans → avec → les deux.",
@@ -380,6 +410,16 @@ const es: Copy = {
   typeMulti: "Puedes elegir varios.",
   typeTags: "Precisar",
   typeTagsHelp: "Con Hybrid, puedes precisar: Jump, Stream, Tech, Alt, Finger control (un mapa hybrid puede tener varias).",
+  login: "Entrar con osu!",
+  logout: "Salir",
+  profileHelp: "Tu perfil de osu!",
+  marks: "Marcar este mapa",
+  markFarm: "Para farmear",
+  markDone: "Hecho",
+  markClear: "Quitar la marca",
+  inTop: "Top · {pp} pp",
+  inTopHelp: "En tu top 100: {pp} pp en este mapa.",
+  gainHelp: "Lo que un SS con estos mods sumaría a tu pp total.",
   mode: "Modo",
   mods: "Mods",
   modHelp: "Pulsa para cambiar: sin → con → ambos.",

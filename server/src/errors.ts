@@ -4,7 +4,10 @@ export type ErrorCode =
   | "api_key_missing"
   | "suspicious"
   | "invalid"
-  | "rate_limited";
+  | "rate_limited"
+  | "login_off"
+  | "login_failed"
+  | "signed_out";
 
 export class AppError extends Error {
   constructor(

@@ -1,3 +1,4 @@
+import { AccountButton } from "./Marks";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import type { DiscoverHit, Lang, LookupResponse, MapMeta, Mode } from "@osu-pp/shared";
 import { fetchLookup } from "./api";
@@ -164,6 +165,7 @@ export function App() {
             much is it <span className="brand-q">?</span>
           </span>
         </a>
+        <AccountButton />
         <div className="langs" role="group" aria-label="Language">
           {LANGS.map((code) => (
             <button key={code} type="button" className={lang === code ? "on" : ""} aria-pressed={lang === code} onClick={() => setLang(code)}>

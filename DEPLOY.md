@@ -123,6 +123,42 @@ Au démarrage, le serveur lit en tâche de fond **toutes** les maps ranked osu! 
 - Quand `finishedAt` est rempli, télécharge `https://tondomaine.eu/api/patterns-seed.json.gz` et range-le dans `data/patterns-seed.json.gz` du projet (puis push sur GitHub). Tout nouveau serveur connaîtra alors le type de chaque map dès le démarrage.
 - Réglages facultatifs dans `.env` : `ANALYSIS_CONCURRENCY=16` (téléchargements en parallèle), `FULL_SCAN=0` pour couper l'analyse complète.
 
+## Connexion avec osu!
+
+1. Sur osu! : **Paramètres du compte → OAuth → Nouvelle application OAuth**.
+   - Nom : `how much is it ?`
+   - Callback URL : `https://how-much-is-it.com/api/auth/callback`
+2. osu! affiche un **Client ID** (un nombre) et un **Client Secret**. Sur le serveur :
+   ```bash
+   cd /opt/how-much-is-it
+   nano .env
+   ```
+   Ajoute ces deux lignes avec tes valeurs, puis enregistre (`Ctrl+O`, `Entrée`, `Ctrl+X`) :
+   ```
+   OSU_CLIENT_ID=123456
+   OSU_CLIENT_SECRET=ton_secret
+   ```
+3. `docker compose up -d` pour relancer avec la clé. Le bouton « Se connecter avec osu! » apparaît en haut du site.
+
+La même clé sert aussi à la recherche par nom, qui passe alors par l'API officielle d'osu! (plus fiable que les miroirs).
+
+## Sauvegardes et surveillance
+
+`install.sh` et `update.sh` installent deux tâches automatiques (`deploy/setup-jobs.sh`) :
+
+- **Sauvegarde chaque nuit à 4 h 17** des types de maps, des comptes et des marques, dans `/opt/how-much-is-it-backups` (14 jours gardés). Lancer à la main : `sh /opt/how-much-is-it/deploy/backup.sh`.
+- **Surveillance toutes les 5 minutes** : si le site ne répond plus deux fois de suite, il est relancé. Journal : `/var/log/how-much-is-it-watchdog.log`.
+- **Alerte par mail si le site tombe** : crée un compte gratuit sur https://uptimerobot.com, puis *Add New Monitor* → type **HTTP(s)**, URL `https://how-much-is-it.com/api/health`, intervalle 5 minutes. Tu reçois un mail à chaque panne et à chaque retour.
+
+Restaurer une sauvegarde :
+```bash
+cd /opt/how-much-is-it
+docker compose stop app
+VOLUME=$(docker volume ls -q --filter label=com.docker.compose.volume=app-cache)
+docker run --rm -v "$VOLUME":/data -v /opt/how-much-is-it-backups:/backup alpine:3 tar xzf /backup/how-much-is-it-AAAA-MM-JJ.tar.gz -C /data
+docker compose start app
+```
+
 ## Bon à savoir
 
 - **Cache** : les analyses de maps et les plages de PP sont gardées dans un volume Docker. Elles survivent aux redémarrages et aux mises à jour, donc le site devient plus rapide au fil du temps.

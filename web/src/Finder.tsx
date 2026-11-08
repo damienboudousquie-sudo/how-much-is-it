@@ -28,6 +28,8 @@ import {
   type SortRule,
 } from "@osu-pp/shared";
 import { fetchDiscover, prefetchMap } from "./api";
+import { useAccount } from "./account";
+import { MarkButtons, PlayerBadges } from "./Marks";
 import { ModBadges, StarPill } from "./Badges";
 import { formatBpm, formatCount, formatLength, formatPp, formatStat, plainClick } from "./format";
 import { fill, useI18n } from "./i18n";
@@ -621,6 +623,7 @@ function farmTier(score: number): string {
 function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onOpen: (hit: DiscoverHit) => void }) {
   const { t } = useI18n();
   const { hit } = props;
+  const account = useAccount();
   const [coverFailed, setCoverFailed] = useState(false);
   const tier = farmTier(hit.farm);
   const cardRef = useRef<HTMLAnchorElement>(null);
@@ -642,10 +645,11 @@ function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onO
   }, [hit.beatmapId, hit.beatmapsetId]);
 
   const cover = hit.cover && !coverFailed ? hit.cover : null;
+  const mark = account.markOf(hit.beatmapId);
   return (
     <a
       ref={cardRef}
-      className={`map${tier ? ` farm-${tier}` : ""}`}
+      className={`map${tier ? ` farm-${tier}` : ""}${mark ? ` marked-${mark}` : ""}`}
       href={beatmapPath(hit.mode, hit.beatmapId)}
       onPointerEnter={() => prefetchMap(hit.beatmapId, hit.beatmapsetId)}
       onFocus={() => prefetchMap(hit.beatmapId, hit.beatmapsetId)}
@@ -681,6 +685,7 @@ function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onO
                 {t.styles[tag]}
               </span>
             ))}
+          <PlayerBadges beatmapId={hit.beatmapId} pp={hit.pp} />
         </span>
         <span className="map-stats">
           <span title={t.length}>{formatLength(hit.lengthSeconds)}</span>
@@ -693,6 +698,7 @@ function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onO
         </span>
       </span>
       <span className="map-side">
+        <MarkButtons beatmapId={hit.beatmapId} />
         <span className="map-pp">
           {formatPp(hit.pp)}
           <small>pp</small>

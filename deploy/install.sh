@@ -45,6 +45,7 @@ fi
 echo "==> Build and start (first time: 2 to 4 minutes)"
 docker compose up -d --build
 docker image prune -f >/dev/null
+sh deploy/setup-jobs.sh
 
 IP=$(curl -fsS -4 https://ifconfig.me 2>/dev/null || hostname -I | cut -d' ' -f1)
 echo

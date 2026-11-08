@@ -6,3 +6,4 @@ export * from "./modFilters";
 export * from "./messages";
 export * from "./styles";
 export * from "./farm";
+export * from "./gain";

@@ -1,3 +1,4 @@
+import { MarkButtons, PlayerBadges } from "./Marks";
 import { useEffect, useRef, useState } from "react";
 import {
   MODS_BY_MODE,
@@ -295,6 +296,12 @@ export function BeatmapView(props: {
           <p className="hero-sub">
             {meta.artist} · <strong>{meta.version}</strong> · {meta.creator}
           </p>
+          {meta.mode === "osu" && (
+            <p className="hero-marks">
+              <MarkButtons beatmapId={meta.beatmapId} large />
+              {score && <PlayerBadges beatmapId={meta.beatmapId} pp={curve[0]?.pp ?? score.pp} />}
+            </p>
+          )}
           {pattern && (
             <p className="pattern">
               {[
