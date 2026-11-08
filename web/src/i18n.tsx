@@ -27,6 +27,8 @@ export type Copy = {
   type: string;
   typeHelp: Record<MapStyle, string>;
   typeMulti: string;
+  typeTags: string;
+  typeTagsHelp: string;
   mode: string;
   mods: string;
   modHelp: string;
@@ -125,14 +127,17 @@ const en: Copy = {
   type: "Type",
   typeHelp: {
     any: "Every type. Farm order favours short jump maps.",
-    jump: "Spaced 1/2 and 1/1 movement, fast DT aim included. The classic farm.",
-    stream: "Long 1/4 chains: streams and deathstreams.",
-    speed: "Fast streams, about 240 BPM and up (mods counted).",
-    tech: "Sliders, SV changes, unusual rhythms.",
-    alt: "Short 1/4 bursts mixed in, you have to alternate.",
-    fingercontrol: "Uneven rhythms and short chains at moderate BPM.",
+    jump: "At least 60 % spaced 1/2 and 1/1 jumps, fast DT aim included. The classic farm.",
+    stream: "Streams and bursts carry the map: streams and deathstreams.",
+    hybrid: "Jumps mixed with streams, bursts or sliders: neither pure jump nor pure stream.",
+    speed: "Stream tag: fast streams, about 240 BPM and up (mods counted).",
+    tech: "Hybrid tag: sliders, SV changes, unusual rhythms.",
+    alt: "Hybrid tag: short 1/4 bursts mixed in, you have to alternate.",
+    fingercontrol: "Hybrid tag: uneven rhythms and short chains at moderate BPM.",
   },
   typeMulti: "Pick several to mix them.",
+  typeTags: "Narrow",
+  typeTagsHelp: "A tag narrows its main type: Speed for streams; Tech, Alt and Finger control for hybrids.",
   mode: "Mode",
   mods: "Mods",
   modHelp: "Click to cycle: without → with → either.",
@@ -202,7 +207,7 @@ const en: Copy = {
   patternLongest: "longest stream {count}",
   patternSliders: "{share} sliders",
 
-  styles: { any: "All", jump: "Jump", stream: "Stream", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
+  styles: { any: "All", jump: "Jump", stream: "Stream", hybrid: "Hybrid", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
   status: {
     ranked: "Ranked",
     approved: "Approved",
@@ -240,14 +245,17 @@ const fr: Copy = {
   type: "Type",
   typeHelp: {
     any: "Tous les types. Le tri farm favorise les maps jump courtes.",
-    jump: "Déplacements espacés en 1/2 et 1/1, aim rapide en DT compris. Le farm classique.",
-    stream: "Longues chaînes en 1/4 : streams et deathstreams.",
-    speed: "Streams rapides, à partir de 240 BPM environ (mods compris).",
-    tech: "Sliders, changements de SV, rythmes inhabituels.",
-    alt: "Petits bursts en 1/4 au milieu des patterns, il faut alterner.",
-    fingercontrol: "Rythmes irréguliers et chaînes courtes à BPM modéré.",
+    jump: "Au moins 60 % de jumps espacés en 1/2 et 1/1, aim rapide en DT compris. Le farm classique.",
+    stream: "Les streams et bursts portent la map : streams et deathstreams.",
+    hybrid: "Des jumps mélangés à des streams, bursts ou sliders : ni pur jump, ni pur stream.",
+    speed: "Étiquette de stream : streams rapides, à partir de 240 BPM environ (mods compris).",
+    tech: "Étiquette d'hybrid : sliders, changements de SV, rythmes inhabituels.",
+    alt: "Étiquette d'hybrid : petits bursts en 1/4 au milieu des patterns, il faut alterner.",
+    fingercontrol: "Étiquette d'hybrid : rythmes irréguliers et chaînes courtes à BPM modéré.",
   },
   typeMulti: "Tu peux en choisir plusieurs.",
+  typeTags: "Préciser",
+  typeTagsHelp: "Une étiquette précise son type : Speed pour les streams ; Tech, Alt et Finger control pour les hybrids.",
   mode: "Mode",
   mods: "Mods",
   modHelp: "Clique pour changer : sans → avec → les deux.",
@@ -317,7 +325,7 @@ const fr: Copy = {
   patternLongest: "stream max {count}",
   patternSliders: "{share} de sliders",
 
-  styles: { any: "Tous", jump: "Jump", stream: "Stream", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
+  styles: { any: "Tous", jump: "Jump", stream: "Stream", hybrid: "Hybrid", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
   status: {
     ranked: "Classée",
     approved: "Approuvée",
@@ -355,14 +363,17 @@ const es: Copy = {
   type: "Tipo",
   typeHelp: {
     any: "Todos los tipos. El orden farm favorece mapas jump cortos.",
-    jump: "Movimiento espaciado en 1/2 y 1/1, aim rápido en DT incluido. El farm clásico.",
-    stream: "Cadenas largas en 1/4: streams y deathstreams.",
-    speed: "Streams rápidos, desde unos 240 BPM (con los mods).",
-    tech: "Sliders, cambios de SV, ritmos poco comunes.",
-    alt: "Bursts cortos en 1/4 entre patrones, hay que alternar.",
-    fingercontrol: "Ritmos irregulares y cadenas cortas a BPM moderado.",
+    jump: "Al menos 60 % de jumps espaciados en 1/2 y 1/1, aim rápido en DT incluido. El farm clásico.",
+    stream: "Streams y bursts sostienen el mapa: streams y deathstreams.",
+    hybrid: "Jumps mezclados con streams, bursts o sliders: ni jump puro ni stream puro.",
+    speed: "Etiqueta de stream: streams rápidos, desde unos 240 BPM (con los mods).",
+    tech: "Etiqueta de hybrid: sliders, cambios de SV, ritmos poco comunes.",
+    alt: "Etiqueta de hybrid: bursts cortos en 1/4 entre patrones, hay que alternar.",
+    fingercontrol: "Etiqueta de hybrid: ritmos irregulares y cadenas cortas a BPM moderado.",
   },
   typeMulti: "Puedes elegir varios.",
+  typeTags: "Precisar",
+  typeTagsHelp: "Una etiqueta precisa su tipo: Speed para streams; Tech, Alt y Finger control para hybrids.",
   mode: "Modo",
   mods: "Mods",
   modHelp: "Pulsa para cambiar: sin → con → ambos.",
@@ -432,7 +443,7 @@ const es: Copy = {
   patternLongest: "stream máx. {count}",
   patternSliders: "{share} de sliders",
 
-  styles: { any: "Todos", jump: "Jump", stream: "Stream", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
+  styles: { any: "Todos", jump: "Jump", stream: "Stream", hybrid: "Hybrid", speed: "Speed", tech: "Tech", alt: "Alt", fingercontrol: "Finger control" },
   status: {
     ranked: "Clasificado",
     approved: "Aprobado",

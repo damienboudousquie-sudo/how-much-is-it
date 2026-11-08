@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { farmHint, farmScores, guessedScores, lengthScore, matchesStyleScores, primaryStyle, styleScores } from "@osu-pp/shared";
+import { farmHint, farmScores, guessedScores, lengthScore, matchesAnyStyle, matchesStyleScores, primaryStyle, secondaryStyle, styleScores } from "@osu-pp/shared";
 import { analyzePatterns } from "../src/patterns";
 
 /** Builds a minimal osu! standard map from [x, y, time] circles at one BPM. */
@@ -54,13 +54,28 @@ describe("pattern analysis", () => {
     expect(matchesStyleScores(scores, "speed")).toBe(false);
   });
 
-  it("calls fast streams speed, and counts DT in the speed", () => {
+  it("tags fast streams speed, and counts DT in the speed", () => {
     const fastStreams = styleScores(analyzePatterns(osuFile(250, streams(250, 400)))!);
-    expect(primaryStyle(fastStreams)).toBe("speed");
+    expect(primaryStyle(fastStreams)).toBe("stream");
+    expect(secondaryStyle(fastStreams)).toBe("speed");
+    expect(matchesStyleScores(fastStreams, "speed")).toBe(true);
     expect(matchesStyleScores(fastStreams, "stream")).toBe(true);
     const plain = analyzePatterns(osuFile(170, streams(170, 400)))!;
-    expect(primaryStyle(styleScores(plain))).toBe("stream");
-    expect(primaryStyle(styleScores(plain, undefined, 1.5))).toBe("speed");
+    expect(secondaryStyle(styleScores(plain))).toBe(null);
+    expect(secondaryStyle(styleScores(plain, undefined, 1.5))).toBe("speed");
+  });
+
+  it("puts jumps mixed with bursts in hybrid, and narrows with a secondary tag", () => {
+    const profile = {
+      v: 3, objects: 900, bpm: 190, streamShare: 0.07, burstShare: 0.26, doubleShare: 0.02, longestStream: 9,
+      streamSpacing: 1.2, jumpShare: 0.4, jumpSpacing: 5, speedShare: 0, sliderShare: 0.22, irregularShare: 0.01,
+      rhythmEntropy: 1.7, svChanges: 3, drain: 150,
+    };
+    const scores = styleScores(profile);
+    expect(primaryStyle(scores)).toBe("hybrid");
+    expect(matchesAnyStyle(scores, ["jump"])).toBe(false);
+    expect(matchesAnyStyle(scores, ["hybrid"])).toBe(true);
+    expect(matchesAnyStyle(scores, ["hybrid", "tech"])).toBe(matchesStyleScores(scores, "tech"));
   });
 
   it("treats 1/8 streams at half BPM as 1/4 streams", () => {
@@ -92,10 +107,6 @@ describe("farm", () => {
   it("prefers short drain", () => {
     expect(lengthScore(90)).toBe(1);
     expect(lengthScore(400)).toBeLessThan(lengthScore(180));
-  });
-
-  it("sinks compilations", () => {
-    expect(farmHint({ title: "Songs Compilation VII", creator: "Sotarks", tags: "" })).toBe(-1);
   });
 
   it("does not hold back short DT cuts", () => {

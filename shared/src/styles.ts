@@ -1,7 +1,29 @@
 import type { MapStyle } from "./types";
 
 export type ConcreteStyle = Exclude<MapStyle, "any">;
-export const CONCRETE_STYLES: readonly ConcreteStyle[] = ["jump", "stream", "speed", "tech", "alt", "fingercontrol"];
+export const CONCRETE_STYLES: readonly ConcreteStyle[] = ["jump", "stream", "hybrid", "speed", "tech", "alt", "fingercontrol"];
+
+/** Every map is one of these, or none when it has too little of anything (easy maps). */
+export const MAIN_STYLES = ["jump", "stream", "hybrid"] as const;
+export type MainStyle = (typeof MAIN_STYLES)[number];
+
+/** Secondary tags, each narrowing one main type. */
+export const SECONDARY_STYLES = ["speed", "tech", "alt", "fingercontrol"] as const;
+export type SecondaryStyle = (typeof SECONDARY_STYLES)[number];
+export const PARENT_STYLE: Record<SecondaryStyle, MainStyle> = {
+  speed: "stream",
+  tech: "hybrid",
+  alt: "hybrid",
+  fingercontrol: "hybrid",
+};
+
+export function isMainStyle(style: ConcreteStyle): style is MainStyle {
+  return style === "jump" || style === "stream" || style === "hybrid";
+}
+
+export function parentOf(style: ConcreteStyle): MainStyle {
+  return isMainStyle(style) ? style : PARENT_STYLE[style];
+}
 
 /** Measured from the hit objects of an osu! standard map (see server/src/patterns.ts). */
 export interface PatternProfile {
@@ -54,7 +76,7 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
  * played with DT is a 270 BPM speed map.
  *
  * - stream: long 1/4 chains and bursts carry the map, jumps allowed in between.
- * - speed: those streams, fast: about 240 BPM and up, mods counted.
+ * - speed (tag of stream): those streams, fast: about 240 BPM and up, mods counted.
  *   Fast 1/2 jumps are not speed: DT aim maps stay jump maps.
  * - jump: at least 60 % spaced 1/2 and 1/1 movement (50 to 60 % ranks lower, by ratio),
  *   few streams, at any speed; with DT this is
@@ -62,6 +84,10 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
  * - alt: short 1/4 bursts and doubles mixed into patterns, too fast to single-tap.
  * - fingercontrol: uneven rhythm (1/3, 1/6, 3/4 gaps) and short chains at moderate BPM.
  * - tech: slider-heavy, frequent SV changes, varied rhythm.
+ * - hybrid: jumps mixed with streams, bursts or sliders, neither clearly jump nor stream.
+ *
+ * jump, stream and hybrid are the main types; speed narrows stream, and tech, alt and
+ * fingercontrol narrow hybrid.
  */
 export function styleScores(profile: PatternProfile, names?: { version?: string; tags?: string }, rate = 1): StyleScores {
   const p = profile;
@@ -74,7 +100,8 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   const fast = ramp(bpm, 228, 248);
 
   const speed = streamCore * fast;
-  const stream = streamCore * (1 - 0.25 * fast);
+  // Fast streams are still streams; speed is their secondary tag.
+  const stream = streamCore;
 
   // Fast maps (nomod BPM, so DT aim maps are not affected) whose jumps come with complex
   // rhythm, slider-heavy sections and streams are tech / mixed maps, not jump maps
@@ -89,12 +116,12 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   const jumpRatio =
     p.jumpShare >= 0.5 ? 0.55 + 0.45 * ramp(p.jumpShare, 0.5, 0.6) : 0.55 * ramp(p.jumpShare, 0.4, 0.5);
   // Between 50 and 60 % of jumps, a fair share of streams or sliders makes it a hybrid map.
-  const hybrid =
+  const blend =
     (1 - ramp(p.jumpShare, 0.5, 0.6)) *
     (0.5 * ramp(p.streamShare + 0.6 * p.burstShare, 0.06, 0.15) + 0.5 * ramp(p.sliderShare, 0.35, 0.5));
   const jump =
     jumpRatio *
-    (1 - 0.45 * hybrid) *
+    (1 - 0.45 * blend) *
     (1 - ramp(p.streamShare, 0.22, 0.5)) *
     (0.85 + 0.15 * ramp(p.jumpSpacing, 4.5, 6.5)) *
     clamp(1 - mixed);
@@ -112,7 +139,14 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
       0.3 * mixed * ramp(p.jumpShare, 0.3, 0.5),
   );
 
-  const scores: StyleScores = { jump, stream, speed, tech, alt, fingercontrol };
+  // Hybrid: real jumps mixed with streams, bursts or sliders, without being clearly
+  // a jump map or a stream map. Easy maps with little of either stay without a type.
+  const hybrid =
+    (1 - Math.max(jump, streamCore)) *
+    ramp(p.jumpShare + streamMass, 0.3, 0.5) *
+    ramp(p.jumpShare, 0.12, 0.25);
+
+  const scores: StyleScores = { jump, stream, hybrid, speed, tech, alt, fingercontrol };
   const text = `${names?.version ?? ""} ${names?.tags ?? ""}`;
   for (const hint of NAME_HINTS) {
     if (hint.pattern.test(text)) scores[hint.style] = clamp(scores[hint.style] + 0.2);
@@ -130,18 +164,32 @@ export function streamPurity(profile: PatternProfile): number {
   return clamp(1 - 0.6 * ramp(profile.jumpShare, 0.1, 0.35) - 0.3 * ramp(profile.streamSpacing, 2.2, 3.5));
 }
 
-export function primaryStyle(scores: StyleScores): ConcreteStyle | null {
-  let best: ConcreteStyle | null = null;
+/** Main type: jump, stream or hybrid, or null when none reaches 0.5. */
+export function primaryStyle(scores: StyleScores): MainStyle | null {
+  let best: MainStyle | null = null;
   let value = 0;
-  for (const style of CONCRETE_STYLES) {
+  for (const style of MAIN_STYLES) {
     if (scores[style] > value) {
       value = scores[style];
       best = style;
     }
   }
-  // A fast stream map is labelled speed even though it is a stream map too.
-  if (best === "stream" && scores.speed >= 0.55 && scores.speed >= 0.75 * scores.stream) best = "speed";
   return value >= 0.5 ? best : null;
+}
+
+/** Secondary tag of the main type: speed for streams, tech / alt / fingercontrol for hybrids. */
+export function secondaryStyle(scores: StyleScores, main: MainStyle | null = primaryStyle(scores)): ConcreteStyle | null {
+  if (main === "stream") return scores.speed >= 0.55 && scores.speed >= 0.75 * scores.stream ? "speed" : null;
+  if (main !== "hybrid") return null;
+  let best: ConcreteStyle | null = null;
+  let value = 0;
+  for (const style of ["tech", "alt", "fingercontrol"] as const) {
+    if (scores[style] > value) {
+      value = scores[style];
+      best = style;
+    }
+  }
+  return value >= 0.4 ? best : null;
 }
 
 /** Clock rate of a mod list: DT and NC 1.5, HT 0.75. */
@@ -151,23 +199,45 @@ export function modRate(mods: readonly string[]): number {
   return 1;
 }
 
-/** A map matches when one of the wanted types fits it. No type wanted means every map. */
-export function matchesAnyStyle(scores: StyleScores, wanted: readonly ConcreteStyle[]): boolean {
-  return wanted.length === 0 || wanted.some((style) => matchesStyleScores(scores, style));
+/**
+ * The types that really filter: a secondary tag replaces its main type when both are
+ * picked (stream + speed means fast streams only), and implies it when picked alone.
+ */
+export function effectiveStyles(wanted: readonly ConcreteStyle[]): ConcreteStyle[] {
+  const narrowed = new Set(wanted.filter((style) => !isMainStyle(style)).map(parentOf));
+  return wanted.filter((style) => !(isMainStyle(style) && narrowed.has(style)));
 }
 
-/** A map matches a type when the type is strong and close to its main type. */
+/** A map matches when one of the wanted types fits it. No type wanted means every map. */
+export function matchesAnyStyle(scores: StyleScores, wanted: readonly ConcreteStyle[]): boolean {
+  return wanted.length === 0 || effectiveStyles(wanted).some((style) => matchesStyleScores(scores, style));
+}
+
+/**
+ * Main type: strong (0.55) and close to the best main type (75 %).
+ * Secondary tag: its main type matches, and the tag is strong and close to its siblings.
+ */
 export function matchesStyleScores(scores: StyleScores, wanted: MapStyle): boolean {
   if (wanted === "any") return true;
   const value = scores[wanted];
+  if (isMainStyle(wanted)) {
+    let max = 0;
+    for (const style of MAIN_STYLES) max = Math.max(max, scores[style]);
+    return value >= 0.55 && value >= 0.75 * max;
+  }
+  const parent = PARENT_STYLE[wanted];
+  if (!matchesStyleScores(scores, parent)) return false;
   let max = 0;
-  for (const style of CONCRETE_STYLES) max = Math.max(max, scores[style]);
+  for (const style of SECONDARY_STYLES) if (PARENT_STYLE[style] === parent) max = Math.max(max, scores[style]);
   return value >= 0.55 && value >= 0.75 * max;
 }
 
 /** Scores guessed from metadata only, before the .osu file is read. */
 export function guessedScores(guess: ConcreteStyle | null): StyleScores {
-  const scores: StyleScores = { jump: 0.3, stream: 0.3, speed: 0.15, tech: 0.15, alt: 0.15, fingercontrol: 0.1 };
-  if (guess) scores[guess] = 0.6;
+  const scores: StyleScores = { jump: 0.3, stream: 0.3, hybrid: 0.3, speed: 0.15, tech: 0.15, alt: 0.15, fingercontrol: 0.1 };
+  if (guess) {
+    scores[guess] = 0.6;
+    scores[parentOf(guess)] = 0.6;
+  }
   return scores;
 }

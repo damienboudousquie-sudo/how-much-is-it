@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DISCOVER_SORTS,
   FINDER_MODS,
+  MAIN_STYLES,
   MAP_STYLES,
+  SECONDARY_STYLES,
   MAX_SORT_RULES,
   RANGE_KEYS,
   SORT_KEYS,
@@ -104,6 +106,11 @@ function readSort(value: unknown): SortRule[] {
       Boolean(rule) && SORT_KEYS.includes((rule as SortRule).key) && ((rule as SortRule).dir === "asc" || (rule as SortRule).dir === "desc"),
   );
   return rules.length > 0 ? rules.slice(0, MAX_SORT_RULES) : DEFAULT_SORT;
+}
+
+/** Adds or removes a type; a secondary tag picked alone brings no main type with it. */
+function toggleStyle(styles: ConcreteStyle[], item: ConcreteStyle): ConcreteStyle[] {
+  return styles.includes(item) ? styles.filter((style) => style !== item) : [...styles, item];
 }
 
 function readStyles(saved: Partial<Settings> & { style?: unknown }): ConcreteStyle[] {
@@ -232,7 +239,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
           const fresh = new Map(results.map((hit) => [`${hit.beatmapId}:${hit.mods.join("")}`, hit]));
           return previous.map((hit) => {
             const update = fresh.get(`${hit.beatmapId}:${hit.mods.join("")}`);
-            return update ? { ...hit, style: update.style, estimated: update.estimated, farm: update.farm } : hit;
+            return update ? { ...hit, style: update.style, tag: update.tag, estimated: update.estimated, farm: update.farm } : hit;
           });
         }
         if (!options.append) return results;
@@ -423,7 +430,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
             <span className="row-label">{t.type}</span>
             <div className="row-body">
               <div className="tabs wrap" role="group" aria-label={t.type} data-testid="finder-style">
-                {MAP_STYLES.map((item) => {
+                {(["any", ...MAIN_STYLES] as const).map((item) => {
                   const selected = item === "any" ? styles.length === 0 || mode !== "osu" : mode === "osu" && styles.includes(item);
                   return (
                     <button
@@ -433,11 +440,26 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
                       disabled={mode !== "osu" && item !== "any"}
                       className={`tab type type-${item}${selected ? " on" : ""}`}
                       title={t.typeHelp[item]}
-                      onClick={() =>
-                        update({
-                          styles: item === "any" ? [] : styles.includes(item) ? styles.filter((style) => style !== item) : [...styles, item],
-                        })
-                      }
+                      onClick={() => update({ styles: item === "any" ? [] : toggleStyle(styles, item) })}
+                    >
+                      {t.styles[item]}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="tabs wrap sub" role="group" aria-label={t.typeTags} data-testid="finder-tags">
+                <span className="sub-label">{t.typeTags}</span>
+                {SECONDARY_STYLES.map((item) => {
+                  const selected = mode === "osu" && styles.includes(item);
+                  return (
+                    <button
+                      type="button"
+                      key={item}
+                      aria-pressed={selected}
+                      disabled={mode !== "osu"}
+                      className={`tab type type-${item}${selected ? " on" : ""}`}
+                      title={t.typeHelp[item]}
+                      onClick={() => update({ styles: toggleStyle(styles, item) })}
                     >
                       {t.styles[item]}
                     </button>
@@ -445,7 +467,8 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
                 })}
               </div>
               <p className="help">
-                {mode === "osu" && styles.length > 0 ? styles.map((style) => t.typeHelp[style]).join(" ") : t.typeHelp.any} {mode === "osu" ? t.typeMulti : ""}
+                {mode === "osu" && styles.length > 0 ? styles.map((style) => t.typeHelp[style]).join(" ") : t.typeHelp.any}{" "}
+                {mode === "osu" ? `${t.typeMulti} ${t.typeTagsHelp}` : ""}
               </p>
             </div>
           </div>
@@ -641,6 +664,11 @@ function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onO
             <span className={`tag type-${hit.style}${hit.estimated ? " estimated" : ""}`} title={hit.estimated ? t.estimated : t.typeHelp[hit.style]}>
               {t.styles[hit.style]}
               {hit.estimated ? " ?" : ""}
+            </span>
+          )}
+          {hit.style && hit.tag && (
+            <span className={`tag sub type-${hit.tag}${hit.estimated ? " estimated" : ""}`} title={t.typeHelp[hit.tag]}>
+              {t.styles[hit.tag]}
             </span>
           )}
         </span>

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  CONCRETE_STYLES,
   MODS_BY_MODE,
   defaultClockRate,
-  matchesStyleScores,
+  primaryStyle,
+  secondaryStyle,
   modRate,
   modeLabel,
   sanitizeMods,
@@ -271,7 +271,10 @@ export function BeatmapView(props: {
   // Types depend on speed: re-score with the current mods (DT turns fast streams into speed).
   const rate = shownRate ?? modRate(mods);
   const scored = pattern ? styleScores(pattern, { version: meta.version }, rate) : styles;
-  const types = scored ? CONCRETE_STYLES.filter((style) => matchesStyleScores(scored, style)).sort((a, b) => scored[b] - scored[a]) : [];
+  // Main type first, then its secondary tag (Hybrid · Tech, Stream · Speed).
+  const main = scored ? primaryStyle(scored) : null;
+  const tag = scored ? secondaryStyle(scored, main) : null;
+  const types = [main, tag].filter((style): style is NonNullable<typeof style> => style != null);
   const best = curve[0]?.pp ?? 1;
   const numberLocale = lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
 

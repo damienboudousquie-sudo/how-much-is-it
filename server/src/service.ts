@@ -8,7 +8,11 @@ import {
   modRate,
   matchingCombos,
   modsInCombo,
+  effectiveStyles,
+  isMainStyle,
+  parentOf,
   primaryStyle,
+  secondaryStyle,
   streamPurity,
   styleScores,
   textMatches,
@@ -180,7 +184,9 @@ function scoresFor(map: PpDbMap, osu: boolean): { scores: StyleScores; known: bo
 function keep(candidate: Candidate, input: DiscoverRequest, strict: boolean): boolean {
   if (input.styles.length === 0) return true;
   if (candidate.known) return matchesAnyStyle(candidate.scores, input.styles);
-  return strict ? candidate.map.guess != null && input.styles.includes(candidate.map.guess) : true;
+  const guess = candidate.map.guess;
+  if (!strict) return true;
+  return guess != null && effectiveStyles(input.styles).some((style) => style === guess || style === parentOf(guess));
 }
 
 function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
@@ -222,7 +228,15 @@ function toHit(item: Candidate, input: DiscoverRequest): DiscoverHit {
     bpm: map.bpm,
     ar: map.ar,
     mods: modsInCombo(map.mods),
-    style: input.mode === "osu" ? (item.known ? primaryStyle(item.scores) : map.guess) : null,
+    style: input.mode === "osu" ? (item.known ? primaryStyle(item.scores) : map.guess ? parentOf(map.guess) : null) : null,
+    tag:
+      input.mode === "osu"
+        ? item.known
+          ? secondaryStyle(item.scores)
+          : map.guess && !isMainStyle(map.guess)
+            ? map.guess
+            : null
+        : null,
     farm: item.farm,
     estimated: input.mode === "osu" && !item.known,
   };

@@ -1,4 +1,4 @@
-import type { ConcreteStyle, StyleScores } from "./styles";
+import { effectiveStyles, type ConcreteStyle, type StyleScores } from "./styles";
 
 /**
  * Farm maps give more pp than they cost. In practice:
@@ -14,15 +14,8 @@ const FARM_MAPPERS = new Set([
 ]);
 const SHORT_CUT = /\b(?:tv[\s.-]*(?:size|ver(?:sion)?)|cut[\s.-]*ver(?:sion)?|short[\s.-]*ver(?:sion)?|game[\s.-]*ver(?:sion)?|sped[\s-]*up|nightcore)\b/i;
 
-/** Compilations, marathons and packs: long, uneven, never what a farm search is after. */
-const COMPILATION = /\b(?:compilation|marathon|medley|mega[\s-]*mix|mashup|map[\s-]*pack|collab[\s-]*pack|songs?\s+pack)\b/i;
-
-/**
- * -1 to 1, from title, mapper and tags. Computed once when a map enters the index.
- * Compilations get -1, which costs them 15 farm points.
- */
+/** 0 to 1, from title, mapper and tags. Computed once when a map enters the index. */
 export function farmHint(input: { title: string; creator: string; tags: string }): number {
-  if (COMPILATION.test(input.title)) return -1;
   let hint = 0;
   if (SHORT_CUT.test(input.title)) hint += 0.5;
   if (FARM_MAPPERS.has(input.creator.trim().toLowerCase())) hint += 0.5;
@@ -40,6 +33,7 @@ type Curve = readonly (readonly [number, number])[];
 const LENGTH_CURVES: Record<ConcreteStyle, Curve> = {
   jump: [[10, 0.4], [22, 1], [160, 1], [260, 0.6], [400, 0.3], [600, 0.2]],
   stream: [[15, 0.4], [35, 1], [300, 1], [480, 0.7], [720, 0.4], [900, 0.3]],
+  hybrid: [[10, 0.4], [22, 1], [220, 1], [360, 0.6], [540, 0.3]],
   speed: [[15, 0.4], [30, 1], [210, 1], [360, 0.6], [540, 0.3]],
   tech: [[10, 0.4], [22, 1], [200, 1], [320, 0.6], [480, 0.3]],
   alt: [[15, 0.4], [30, 1], [240, 1], [400, 0.6], [600, 0.3]],
@@ -68,7 +62,8 @@ function clamp(value: number): number {
 }
 
 /** How well the map fits what the player wants to farm: the chosen types, or jump maps by default. */
-export function typeFit(scores: StyleScores, wanted: readonly ConcreteStyle[], purity: number | null = null): number {
+export function typeFit(scores: StyleScores, wantedTypes: readonly ConcreteStyle[], purity: number | null = null): number {
+  const wanted = effectiveStyles(wantedTypes);
   if (wanted.length > 0) {
     // Among stream maps, the ones that are only streams and bursts come first.
     const pure = 0.55 + 0.45 * (purity ?? 0.7);

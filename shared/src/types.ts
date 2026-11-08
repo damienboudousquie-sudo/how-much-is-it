@@ -97,7 +97,8 @@ export interface SearchResponse {
   message: string | null;
 }
 
-export const MAP_STYLES = ["any", "jump", "stream", "speed", "tech", "alt", "fingercontrol"] as const;
+/** Main types first (jump, stream, hybrid), then the secondary tags that narrow them. */
+export const MAP_STYLES = ["any", "jump", "stream", "hybrid", "speed", "tech", "alt", "fingercontrol"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
 /** Single sorts from before sorts could be combined. Still accepted by the API. */
@@ -162,7 +163,10 @@ export interface DiscoverHit {
   bpm: number | null;
   ar: number | null;
   mods: string[];
+  /** Main type: jump, stream or hybrid. */
   style: Exclude<MapStyle, "any"> | null;
+  /** Secondary tag: speed for streams, tech / alt / fingercontrol for hybrids. */
+  tag: Exclude<MapStyle, "any"> | null;
   /** 0 to 100. Higher means more pp for the effort. */
   farm: number;
   /** True while the type comes from metadata, before the .osu file is read. */

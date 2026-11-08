@@ -40,6 +40,7 @@
   --t-tech: #b28cff;
   --t-alt: #4fe0bd;
   --t-fingercontrol: #f2df5e;
+  --t-hybrid: #ff8c7a;
 
   /* osu!lazer mod families. */
   --mod-reduction: #b2ff66;
@@ -1653,6 +1654,29 @@ button:disabled {
 }
 :is(.tab, .tag, .badge).type-fingercontrol {
   --c: var(--t-fingercontrol);
+}
+:is(.tab, .tag, .badge).type-hybrid {
+  --c: var(--t-hybrid);
+}
+
+/* Secondary tags: smaller, under the main types. */
+.tabs.sub {
+  margin-top: 6px;
+  gap: 4px 12px;
+}
+.tabs.sub .tab {
+  font-size: 0.8rem;
+}
+.tabs.sub .sub-label {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tag.sub {
+  opacity: 0.85;
+  font-weight: 500;
 }
 
 /* ---------- small screens ---------- */
