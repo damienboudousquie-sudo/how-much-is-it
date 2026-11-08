@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { farmHint, farmScores, guessedScores, lengthScore, matchesAnyStyle, matchesStyleScores, primaryStyle, secondaryStyle, styleScores } from "@osu-pp/shared";
+import { farmHint, farmScores, guessedScores, lengthScore, matchesAnyStyle, matchesStyleScores, primaryStyle, secondaryStyles, styleScores } from "@osu-pp/shared";
 import { analyzePatterns } from "../src/patterns";
 
 /** Builds a minimal osu! standard map from [x, y, time] circles at one BPM. */
@@ -57,12 +57,12 @@ describe("pattern analysis", () => {
   it("tags fast streams speed, and counts DT in the speed", () => {
     const fastStreams = styleScores(analyzePatterns(osuFile(250, streams(250, 400)))!);
     expect(primaryStyle(fastStreams)).toBe("stream");
-    expect(secondaryStyle(fastStreams)).toBe("speed");
+    expect(secondaryStyles(fastStreams)).toEqual(["speed"]);
     expect(matchesStyleScores(fastStreams, "speed")).toBe(true);
     expect(matchesStyleScores(fastStreams, "stream")).toBe(true);
     const plain = analyzePatterns(osuFile(170, streams(170, 400)))!;
-    expect(secondaryStyle(styleScores(plain))).toBe(null);
-    expect(secondaryStyle(styleScores(plain, undefined, 1.5))).toBe("speed");
+    expect(secondaryStyles(styleScores(plain))).toEqual([]);
+    expect(secondaryStyles(styleScores(plain, undefined, 1.5))).toEqual(["speed"]);
   });
 
   it("puts jumps mixed with bursts in hybrid, and narrows with a secondary tag", () => {

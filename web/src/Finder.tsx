@@ -239,7 +239,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
           const fresh = new Map(results.map((hit) => [`${hit.beatmapId}:${hit.mods.join("")}`, hit]));
           return previous.map((hit) => {
             const update = fresh.get(`${hit.beatmapId}:${hit.mods.join("")}`);
-            return update ? { ...hit, style: update.style, tag: update.tag, estimated: update.estimated, farm: update.farm } : hit;
+            return update ? { ...hit, style: update.style, tags: update.tags, estimated: update.estimated, farm: update.farm } : hit;
           });
         }
         if (!options.append) return results;
@@ -666,11 +666,12 @@ function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onO
               {hit.estimated ? " ?" : ""}
             </span>
           )}
-          {hit.style && hit.tag && (
-            <span className={`tag sub type-${hit.tag}${hit.estimated ? " estimated" : ""}`} title={t.typeHelp[hit.tag]}>
-              {t.styles[hit.tag]}
-            </span>
-          )}
+          {hit.style &&
+            (hit.tags ?? []).map((tag) => (
+              <span key={tag} className={`tag sub type-${tag}${hit.estimated ? " estimated" : ""}`} title={t.typeHelp[tag]}>
+                {t.styles[tag]}
+              </span>
+            ))}
         </span>
         <span className="map-stats">
           <span title={t.length}>{formatLength(hit.lengthSeconds)}</span>

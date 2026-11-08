@@ -1658,6 +1658,12 @@ button:disabled {
 :is(.tab, .tag, .badge).type-hybrid {
   --c: var(--t-hybrid);
 }
+:is(.tab, .tag, .badge).type-hjump {
+  --c: var(--t-jump);
+}
+:is(.tab, .tag, .badge).type-hstream {
+  --c: var(--t-stream);
+}
 
 /* Secondary tags: smaller, under the main types. */
 .tabs.sub {

@@ -12,7 +12,7 @@ import {
   isMainStyle,
   parentOf,
   primaryStyle,
-  secondaryStyle,
+  secondaryStyles,
   streamPurity,
   styleScores,
   textMatches,
@@ -229,14 +229,14 @@ function toHit(item: Candidate, input: DiscoverRequest): DiscoverHit {
     ar: map.ar,
     mods: modsInCombo(map.mods),
     style: input.mode === "osu" ? (item.known ? primaryStyle(item.scores) : map.guess ? parentOf(map.guess) : null) : null,
-    tag:
+    tags:
       input.mode === "osu"
         ? item.known
-          ? secondaryStyle(item.scores)
+          ? secondaryStyles(item.scores)
           : map.guess && !isMainStyle(map.guess)
-            ? map.guess
-            : null
-        : null,
+            ? [map.guess]
+            : []
+        : [],
     farm: item.farm,
     estimated: input.mode === "osu" && !item.known,
   };

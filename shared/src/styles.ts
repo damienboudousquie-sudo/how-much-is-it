@@ -1,17 +1,19 @@
 import type { MapStyle } from "./types";
 
 export type ConcreteStyle = Exclude<MapStyle, "any">;
-export const CONCRETE_STYLES: readonly ConcreteStyle[] = ["jump", "stream", "hybrid", "speed", "tech", "alt", "fingercontrol"];
+export const CONCRETE_STYLES: readonly ConcreteStyle[] = ["jump", "stream", "hybrid", "speed", "hjump", "hstream", "tech", "alt", "fingercontrol"];
 
 /** Every map is one of these, or none when it has too little of anything (easy maps). */
 export const MAIN_STYLES = ["jump", "stream", "hybrid"] as const;
 export type MainStyle = (typeof MAIN_STYLES)[number];
 
 /** Secondary tags, each narrowing one main type. */
-export const SECONDARY_STYLES = ["speed", "tech", "alt", "fingercontrol"] as const;
+export const SECONDARY_STYLES = ["speed", "hjump", "hstream", "tech", "alt", "fingercontrol"] as const;
 export type SecondaryStyle = (typeof SECONDARY_STYLES)[number];
 export const PARENT_STYLE: Record<SecondaryStyle, MainStyle> = {
   speed: "stream",
+  hjump: "hybrid",
+  hstream: "hybrid",
   tech: "hybrid",
   alt: "hybrid",
   fingercontrol: "hybrid",
@@ -146,7 +148,11 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
     ramp(p.jumpShare + streamMass, 0.3, 0.5) *
     ramp(p.jumpShare, 0.12, 0.25);
 
-  const scores: StyleScores = { jump, stream, hybrid, speed, tech, alt, fingercontrol };
+  // Hybrid leanings, shown as the Jump and Stream tags of a hybrid map (both can apply).
+  const hjump = ramp(p.jumpShare, 0.25, 0.45);
+  const hstream = ramp(streamMass, 0.12, 0.3);
+
+  const scores: StyleScores = { jump, stream, hybrid, speed, hjump, hstream, tech, alt, fingercontrol };
   const text = `${names?.version ?? ""} ${names?.tags ?? ""}`;
   for (const hint of NAME_HINTS) {
     if (hint.pattern.test(text)) scores[hint.style] = clamp(scores[hint.style] + 0.2);
@@ -177,19 +183,13 @@ export function primaryStyle(scores: StyleScores): MainStyle | null {
   return value >= 0.5 ? best : null;
 }
 
-/** Secondary tag of the main type: speed for streams, tech / alt / fingercontrol for hybrids. */
-export function secondaryStyle(scores: StyleScores, main: MainStyle | null = primaryStyle(scores)): ConcreteStyle | null {
-  if (main === "stream") return scores.speed >= 0.55 && scores.speed >= 0.75 * scores.stream ? "speed" : null;
-  if (main !== "hybrid") return null;
-  let best: ConcreteStyle | null = null;
-  let value = 0;
-  for (const style of ["tech", "alt", "fingercontrol"] as const) {
-    if (scores[style] > value) {
-      value = scores[style];
-      best = style;
-    }
-  }
-  return value >= 0.4 ? best : null;
+/**
+ * Secondary tags of the main type: speed for streams; for hybrids, every tag that fits
+ * (jump, stream, tech, alt, fingercontrol), strongest first.
+ */
+export function secondaryStyles(scores: StyleScores, main: MainStyle | null = primaryStyle(scores)): SecondaryStyle[] {
+  if (main == null || main === "jump") return [];
+  return SECONDARY_STYLES.filter((style) => PARENT_STYLE[style] === main && scores[style] >= 0.55).sort((x, y) => scores[y] - scores[x]);
 }
 
 /** Clock rate of a mod list: DT and NC 1.5, HT 0.75. */
@@ -215,7 +215,7 @@ export function matchesAnyStyle(scores: StyleScores, wanted: readonly ConcreteSt
 
 /**
  * Main type: strong (0.55) and close to the best main type (75 %).
- * Secondary tag: its main type matches, and the tag is strong and close to its siblings.
+ * Secondary tag: its main type matches and the tag is strong; several tags can match.
  */
 export function matchesStyleScores(scores: StyleScores, wanted: MapStyle): boolean {
   if (wanted === "any") return true;
@@ -225,16 +225,13 @@ export function matchesStyleScores(scores: StyleScores, wanted: MapStyle): boole
     for (const style of MAIN_STYLES) max = Math.max(max, scores[style]);
     return value >= 0.55 && value >= 0.75 * max;
   }
-  const parent = PARENT_STYLE[wanted];
-  if (!matchesStyleScores(scores, parent)) return false;
-  let max = 0;
-  for (const style of SECONDARY_STYLES) if (PARENT_STYLE[style] === parent) max = Math.max(max, scores[style]);
-  return value >= 0.55 && value >= 0.75 * max;
+  // A tag needs its main type; a map can carry several tags.
+  return matchesStyleScores(scores, PARENT_STYLE[wanted]) && value >= 0.55;
 }
 
 /** Scores guessed from metadata only, before the .osu file is read. */
 export function guessedScores(guess: ConcreteStyle | null): StyleScores {
-  const scores: StyleScores = { jump: 0.3, stream: 0.3, hybrid: 0.3, speed: 0.15, tech: 0.15, alt: 0.15, fingercontrol: 0.1 };
+  const scores: StyleScores = { jump: 0.3, stream: 0.3, hybrid: 0.3, speed: 0.15, hjump: 0.15, hstream: 0.15, tech: 0.15, alt: 0.15, fingercontrol: 0.1 };
   if (guess) {
     scores[guess] = 0.6;
     scores[parentOf(guess)] = 0.6;

@@ -1,4 +1,4 @@
-import { effectiveStyles, type ConcreteStyle, type StyleScores } from "./styles";
+import { effectiveStyles, isMainStyle, parentOf, type ConcreteStyle, type StyleScores } from "./styles";
 
 /**
  * Farm maps give more pp than they cost. In practice:
@@ -34,6 +34,8 @@ const LENGTH_CURVES: Record<ConcreteStyle, Curve> = {
   jump: [[10, 0.4], [22, 1], [160, 1], [260, 0.6], [400, 0.3], [600, 0.2]],
   stream: [[15, 0.4], [35, 1], [300, 1], [480, 0.7], [720, 0.4], [900, 0.3]],
   hybrid: [[10, 0.4], [22, 1], [220, 1], [360, 0.6], [540, 0.3]],
+  hjump: [[10, 0.4], [22, 1], [200, 1], [320, 0.6], [480, 0.3]],
+  hstream: [[15, 0.4], [30, 1], [260, 1], [420, 0.6], [600, 0.3]],
   speed: [[15, 0.4], [30, 1], [210, 1], [360, 0.6], [540, 0.3]],
   tech: [[10, 0.4], [22, 1], [200, 1], [320, 0.6], [480, 0.3]],
   alt: [[15, 0.4], [30, 1], [240, 1], [400, 0.6], [600, 0.3]],
@@ -67,7 +69,9 @@ export function typeFit(scores: StyleScores, wantedTypes: readonly ConcreteStyle
   if (wanted.length > 0) {
     // Among stream maps, the ones that are only streams and bursts come first.
     const pure = 0.55 + 0.45 * (purity ?? 0.7);
-    return Math.max(...wanted.map((style) => scores[style] * (style === "stream" || style === "speed" ? pure : 1)));
+    // A tag counts with its main type: a hybrid tagged tech is judged as hybrid and tech.
+    const fit = (style: ConcreteStyle) => (isMainStyle(style) ? scores[style] : (scores[style] + scores[parentOf(style)]) / 2);
+    return Math.max(...wanted.map((style) => fit(style) * (style === "stream" || style === "speed" ? pure : 1)));
   }
   const against = Math.max(scores.stream, scores.speed, scores.tech, scores.fingercontrol);
   return 0.15 + 0.85 * clamp(scores.jump - 0.4 * against);

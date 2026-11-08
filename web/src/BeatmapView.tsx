@@ -3,7 +3,7 @@ import {
   MODS_BY_MODE,
   defaultClockRate,
   primaryStyle,
-  secondaryStyle,
+  secondaryStyles,
   modRate,
   modeLabel,
   sanitizeMods,
@@ -273,8 +273,7 @@ export function BeatmapView(props: {
   const scored = pattern ? styleScores(pattern, { version: meta.version }, rate) : styles;
   // Main type first, then its secondary tag (Hybrid · Tech, Stream · Speed).
   const main = scored ? primaryStyle(scored) : null;
-  const tag = scored ? secondaryStyle(scored, main) : null;
-  const types = [main, tag].filter((style): style is NonNullable<typeof style> => style != null);
+  const types = scored && main ? [main, ...secondaryStyles(scored, main)] : [];
   const best = curve[0]?.pp ?? 1;
   const numberLocale = lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "en-US";
 
