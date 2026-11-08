@@ -152,8 +152,8 @@ const PAGE = 60;
 const REFINE_WINDOW = PAGE * 2;
 /** Short: answers must stay fast. The client asks again while maps are being read. */
 const REFINE_BUDGET_MS = 600;
-/** Maps read in the background after answering, so scrolling and later searches are exact. */
-const BACKGROUND_WINDOW = 500;
+/** Maps read in the background after answering: the whole result list, so every map gets its real place. */
+const BACKGROUND_WINDOW = 1500;
 
 interface Candidate {
   map: PpDbMap;

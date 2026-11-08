@@ -86,11 +86,11 @@ export interface FarmCandidate {
 }
 
 /**
- * Type fit given to a map whose file is not read yet. Generous on purpose: unread maps
- * then sit high enough to be read first, and drop if they turn out not to fit.
- * A low guess kept them at the bottom, never read, behind maps that happened to be read.
+ * Type fit given to a map whose file is not read yet: the best case. An unread map can
+ * then only fall once read, never stay below its real place, and the top of the list
+ * is always made of maps that were read and checked (the server reads the top first).
  */
-export const UNREAD_TYPE_FIT = 0.75;
+export const UNREAD_TYPE_FIT = 1;
 
 /** Share of the farm score given to popularity. Small, so farm qualities always lead. */
 export const POPULARITY_WEIGHT = 0.1;
