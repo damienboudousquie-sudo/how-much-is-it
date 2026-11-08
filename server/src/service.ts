@@ -9,6 +9,7 @@ import {
   matchingCombos,
   modsInCombo,
   primaryStyle,
+  streamPurity,
   styleScores,
   textMatches,
   type CalculateRequest,
@@ -161,6 +162,11 @@ interface Candidate {
   farm: number;
 }
 
+function purityOf(beatmapId: number): number | null {
+  const profile = getProfile(beatmapId);
+  return profile ? streamPurity(profile) : null;
+}
+
 function scoresFor(map: PpDbMap, osu: boolean): { scores: StyleScores; known: boolean } {
   if (!osu) return { scores: guessedScores(null), known: false };
   const profile = getProfile(map.beatmapId);
@@ -188,6 +194,7 @@ function rank(list: Candidate[], input: DiscoverRequest): Candidate[] {
       lengthSeconds: item.map.lengthSeconds,
       hint: item.map.hint,
       scores: item.scores,
+      purity: purityOf(item.map.beatmapId),
       popularity: popularityOf(item.map.beatmapId),
     })),
     input.styles,

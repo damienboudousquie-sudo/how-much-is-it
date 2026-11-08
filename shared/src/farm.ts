@@ -61,8 +61,12 @@ function clamp(value: number): number {
 }
 
 /** How well the map fits what the player wants to farm: the chosen types, or jump maps by default. */
-export function typeFit(scores: StyleScores, wanted: readonly ConcreteStyle[]): number {
-  if (wanted.length > 0) return Math.max(...wanted.map((style) => scores[style]));
+export function typeFit(scores: StyleScores, wanted: readonly ConcreteStyle[], purity: number | null = null): number {
+  if (wanted.length > 0) {
+    // Among stream maps, the ones that are only streams and bursts come first.
+    const pure = 0.55 + 0.45 * (purity ?? 0.7);
+    return Math.max(...wanted.map((style) => scores[style] * (style === "stream" || style === "speed" ? pure : 1)));
+  }
   const against = Math.max(scores.stream, scores.speed, scores.tech, scores.fingercontrol);
   return 0.15 + 0.85 * clamp(scores.jump - 0.4 * against);
 }
@@ -73,6 +77,8 @@ export interface FarmCandidate {
   lengthSeconds: number | null;
   hint: number;
   scores: StyleScores;
+  /** 0 to 1, see streamPurity; null when the map is not read yet. */
+  purity?: number | null;
   /** 0 to 1 from play counts, or null when unknown. A hidden nudge, never the main reason. */
   popularity?: number | null;
 }
@@ -98,7 +104,7 @@ export function farmScores(maps: readonly FarmCandidate[], wanted: readonly Conc
     const efficiency = 1 / (1 + Math.exp(-(values[index]! - median) / spread));
     // Type first, then cheap pp, then how cheap a retry is, then the hints.
     const farm =
-      0.35 * typeFit(map.scores, wanted) +
+      0.35 * typeFit(map.scores, wanted, map.purity ?? null) +
       0.3 * efficiency +
       0.2 * lengthScore(map.lengthSeconds, wanted) +
       0.15 * map.hint;

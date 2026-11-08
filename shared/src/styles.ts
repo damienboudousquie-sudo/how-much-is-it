@@ -53,8 +53,7 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
  * `rate` is the clock rate of the mods (DT 1.5, HT 0.75): a 180 BPM stream map
  * played with DT is a 270 BPM speed map.
  *
- * - stream: long 1/4 chains carry the map (bursts count a little), with few jumps
- *   and tight spacing: Tower of Heaven, not stream-jump aim maps.
+ * - stream: long 1/4 chains and bursts carry the map, jumps allowed in between.
  * - speed: those streams, fast: about 240 BPM and up, mods counted.
  *   Fast 1/2 jumps are not speed: DT aim maps stay jump maps.
  * - jump: spaced 1/2 and 1/1 movement, few streams, at any speed; with DT this is
@@ -66,13 +65,10 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
 export function styleScores(profile: PatternProfile, names?: { version?: string; tags?: string }, rate = 1): StyleScores {
   const p = profile;
   const bpm = p.bpm * (rate > 0 ? rate : 1);
-  const streamMass = p.streamShare + 0.4 * p.burstShare;
-  // Stream means streams to tap through, not aim: jumps between them and widely spaced
-  // streams push a map out of the type (those are found with jump, or jump + DT).
-  const streamCore =
-    ramp(streamMass, 0.25, 0.55) *
-    (1 - 0.8 * ramp(p.jumpShare, 0.2, 0.42)) *
-    (1 - 0.5 * ramp(p.streamSpacing, 2.2, 3.5));
+  const streamMass = p.streamShare + 0.6 * p.burstShare;
+  // A map carried by streams and bursts is a stream map even with jumps in between
+  // (FREEDOM DiVE). How pure it is decides its rank, see streamPurity.
+  const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7));
   // Speed starts around 240 BPM: 200 BPM streams are plain streams.
   const fast = ramp(bpm, 228, 248);
 
@@ -113,6 +109,15 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   }
   for (const style of CONCRETE_STYLES) scores[style] = round2(scores[style]);
   return scores;
+}
+
+/**
+ * 0 to 1: how much a stream map is only streams and bursts. Jumps between the streams
+ * and widely spaced streams lower it. Tower of Heaven is near 1, FREEDOM DiVE lower.
+ * Used to rank stream and speed maps, not to decide their type.
+ */
+export function streamPurity(profile: PatternProfile): number {
+  return clamp(1 - 0.6 * ramp(profile.jumpShare, 0.1, 0.35) - 0.3 * ramp(profile.streamSpacing, 2.2, 3.5));
 }
 
 export function primaryStyle(scores: StyleScores): ConcreteStyle | null {
