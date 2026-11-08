@@ -59,6 +59,16 @@ export function apiKeyConfigured(): boolean {
   return Boolean(process.env.OSU_CLIENT_ID && process.env.OSU_CLIENT_SECRET);
 }
 
+/** osu! API numeric status, used when the text one is missing. */
+const NUMERIC_STATUS: Record<string, string> = { "-2": "graveyard", "-1": "wip", "0": "pending", "1": "ranked", "2": "approved", "3": "qualified", "4": "loved" };
+
+function readStatus(row: Record<string, unknown>): ReturnType<typeof normalizeStatus> {
+  const text = normalizeStatus(typeof row.status === "string" ? row.status : null);
+  if (text !== "unknown") return text;
+  const numeric = typeof row.ranked === "number" ? row.ranked : typeof row.status === "number" ? row.status : null;
+  return numeric != null ? normalizeStatus(NUMERIC_STATUS[String(numeric)] ?? null) : "unknown";
+}
+
 function coverFor(setId: number, cover: unknown): string | null {
   if (cover && typeof cover === "object" && "cover" in cover && typeof cover.cover === "string") {
     return cover.cover;
@@ -81,7 +91,7 @@ function readBeatmaps(value: unknown): RemoteBeatmap[] {
       version: typeof row.version === "string" ? row.version : "Difficulty",
       mode,
       stars: typeof row.difficulty_rating === "number" ? row.difficulty_rating : null,
-      status: normalizeStatus(typeof row.status === "string" ? row.status : null),
+      status: readStatus(row),
       totalLength: typeof row.total_length === "number" ? row.total_length : null,
     });
   }
@@ -98,7 +108,7 @@ function readSet(value: unknown): RemoteSet | null {
     title: typeof row.title === "string" ? row.title : "Untitled",
     artist: typeof row.artist === "string" ? row.artist : "Unknown artist",
     creator: typeof row.creator === "string" ? row.creator : "Unknown creator",
-    status: normalizeStatus(typeof row.status === "string" ? row.status : null),
+    status: readStatus(row),
     cover: coverFor(row.id, row.covers),
     tags: typeof row.tags === "string" ? row.tags : "",
     beatmaps: readBeatmaps(row.beatmaps),
@@ -242,7 +252,15 @@ export async function getBeatmapset(id: number, signal?: AbortSignal): Promise<R
     }
   }
 
-  const json = await mirrorGet(`/s/${id}`, signal);
+  let json: unknown;
+  try {
+    json = await mirrorGet(`/s/${id}`, signal);
+  } catch (error) {
+    // One quick retry: the mirror sometimes drops a request, and without the set the page shows no status.
+    if (signal?.aborted || (error instanceof AppError && error.code === "not_found")) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    json = await mirrorGet(`/s/${id}`, signal);
+  }
   const set = readSet(json);
   if (!set) throw new AppError("unavailable", tr("search.bad"), 502);
   remember(set);
@@ -270,15 +288,25 @@ function toHits(sets: RemoteSet[], limit: number): SearchHit[] {
   }));
 }
 
-export async function searchBeatmaps(query: string, signal?: AbortSignal): Promise<SearchHit[]> {
-  const key = query.trim();
+const RANKED = new Set(["ranked", "approved"]);
+
+/** Keeps ranked and approved sets, and only their ranked difficulties. */
+function rankedOnly(sets: RemoteSet[]): RemoteSet[] {
+  return sets
+    .filter((set) => RANKED.has(set.status) || set.beatmaps.some((beatmap) => RANKED.has(beatmap.status)))
+    .map((set) => ({ ...set, beatmaps: set.beatmaps.filter((beatmap) => RANKED.has(beatmap.status)) }))
+    .filter((set) => set.beatmaps.length > 0);
+}
+
+export async function searchBeatmaps(query: string, signal?: AbortSignal, ranked = false): Promise<SearchHit[]> {
+  const key = `${ranked ? "ranked" : "any"}\n${query.trim()}`;
   const cached = searchCache.get(key);
   if (cached && Date.now() - cached.at < 20_000) return cached.hits;
 
   let sets: RemoteSet[] = [];
   if (apiKeyConfigured()) {
     try {
-      const params = new URLSearchParams({ q: key, s: "any" });
+      const params = new URLSearchParams({ q: query.trim(), s: ranked ? "ranked" : "any" });
       const json = (await apiGet(`/beatmapsets/search?${params}`, signal)) as { beatmapsets?: unknown };
       sets = readSets(json.beatmapsets);
     } catch (error) {
@@ -287,10 +315,10 @@ export async function searchBeatmaps(query: string, signal?: AbortSignal): Promi
     }
   }
   if (sets.length === 0) {
-    const params = new URLSearchParams({ query: key });
+    const params = new URLSearchParams({ query: query.trim() });
     sets = readSets(await mirrorGet(`/search?${params}`, signal));
   }
-  const hits = toHits(sets, 8);
+  const hits = toHits(ranked ? rankedOnly(sets) : sets, 8);
   searchCache.set(key, { at: Date.now(), hits });
   return hits;
 }

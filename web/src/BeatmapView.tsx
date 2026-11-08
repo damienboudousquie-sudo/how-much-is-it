@@ -262,7 +262,9 @@ export function BeatmapView(props: {
     );
   }
 
-  const { meta, stats, curve, score, warnings, pattern, styles } = data;
+  const { meta: rawMeta, stats, curve, score, warnings, pattern, styles } = data;
+  // Maps from the farm list come from a ranked-only database: if the set lookup failed, they are still ranked.
+  const meta = rawMeta.status === "unknown" && props.preview ? { ...rawMeta, status: "ranked" as const } : rawMeta;
   const shownRate = clockRate ?? defaultClockRate(mods);
   const parts = breakdown(meta.mode, score, t);
   const profile = profileFor(meta.status, t);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { modeLabel, parseInput, type Mode, type SearchHit } from "@osu-pp/shared";
 import { fetchSearch, prefetchMap } from "./api";
 import { StarPill } from "./Badges";
+import { readJson, writeJson } from "./storage";
 import { useI18n } from "./i18n";
 
 export interface OpenTarget {
@@ -25,6 +26,9 @@ export function SearchBox(props: {
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const [rankedOnly, setRankedOnly] = useState<boolean>(() => readJson<unknown>("osu-pp-lookup:ranked-only", false) === true);
+
+  useEffect(() => writeJson("osu-pp-lookup:ranked-only", rankedOnly), [rankedOnly]);
 
   const flat = useMemo(() => results.flatMap((hit) => hit.beatmaps.map((beatmap) => ({ hit, beatmap }))), [results]);
   const parsed = useMemo(() => parseInput(query), [query]);
@@ -59,7 +63,7 @@ export function SearchBox(props: {
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setSearching(true);
-      fetchSearch(parsed.query, controller.signal)
+      fetchSearch(parsed.query, controller.signal, rankedOnly)
         .then((data) => {
           setResults(data.results);
           setMessage(data.message);
@@ -79,7 +83,7 @@ export function SearchBox(props: {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [parsed, t]);
+  }, [parsed, t, rankedOnly]);
 
   function choose(target: OpenTarget) {
     setOpen(false);
@@ -146,6 +150,21 @@ export function SearchBox(props: {
             }
           }}
         />
+        <button
+          type="button"
+          className={rankedOnly ? "ranked-toggle on" : "ranked-toggle"}
+          aria-pressed={rankedOnly}
+          title={t.rankedOnlyHelp}
+          onClick={() => {
+            setRankedOnly((value) => !value);
+            inputRef.current?.focus();
+          }}
+        >
+          <span className="ranked-check" aria-hidden="true">
+            {rankedOnly ? "✓" : ""}
+          </span>
+          {t.rankedOnly}
+        </button>
         {!props.compact && <kbd className="search-kbd" aria-hidden="true">/</kbd>}
         <button type="submit" className={direct ? "search-go ready" : "search-go"} disabled={props.busy}>
           {searching || props.busy ? <span className="spinner" aria-hidden="true" /> : t.open}
@@ -159,7 +178,9 @@ export function SearchBox(props: {
               {hit.cover ? <img src={hit.cover} alt="" loading="lazy" /> : <span className="hit-fallback" />}
               <div className="hit-body">
                 <div className="hit-title">
-                  <strong>{hit.title}</strong>
+                  <strong>
+                    {hit.title} <span className={`badge status-${hit.status}`}>{t.status[hit.status]}</span>
+                  </strong>
                   <span>
                     {hit.artist} · {hit.creator}
                   </span>

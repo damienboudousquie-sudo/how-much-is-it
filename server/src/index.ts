@@ -62,10 +62,12 @@ function abortOnClose(reply: FastifyReply): AbortController {
 app.get("/api/health", async () => ({ ok: true as const, apiKeyConfigured: apiKeyConfigured() }));
 
 app.get("/api/search", async (request, reply) => {
-  const query = typeof (request.query as { q?: unknown }).q === "string" ? (request.query as { q: string }).q : "";
+  const params = request.query as { q?: unknown; ranked?: unknown };
+  const query = typeof params.q === "string" ? params.q : "";
+  const ranked = params.ranked === "1" || params.ranked === "true";
   const controller = abortOnClose(reply);
   try {
-    return await search(query, controller.signal);
+    return await search(query, controller.signal, ranked);
   } catch (error) {
     sendError(reply, error);
   }

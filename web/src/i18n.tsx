@@ -5,6 +5,8 @@ import { setNumberLocale } from "./format";
 export type Copy = {
   searchPlaceholder: string;
   searchHint: string;
+  rankedOnly: string;
+  rankedOnlyHelp: string;
   open: string;
   recent: string;
   loading: string;
@@ -101,6 +103,8 @@ export type Copy = {
 const en: Copy = {
   searchPlaceholder: "Paste an osu! link, a difficulty id, or type a title",
   searchHint: "Press / to search from anywhere.",
+  rankedOnly: "Ranked only",
+  rankedOnlyHelp: "Show only ranked maps in title search. Maps to farm are always ranked.",
   open: "Open",
   recent: "Recently opened",
   loading: "Loading the beatmap…",
@@ -159,7 +163,7 @@ const en: Copy = {
   estimated: "type estimated from tags, still being checked",
   farm: "Farm",
   farmHelp: "Farm score: short drain, aim-friendly, more pp than the stars suggest.",
-  ssNote: "SS full combo, with the mods shown on each map.",
+  ssNote: "Ranked maps only, SS full combo with the mods shown on each map.",
   noticeNone: "No ranked map here. Widen the range or change the filters.",
   noticeTooMany: "Too many mods on “either”. Keep three at most.",
   styleIgnored: "Types apply to osu! standard only.",
@@ -214,6 +218,8 @@ const en: Copy = {
 const fr: Copy = {
   searchPlaceholder: "Colle un lien osu!, un ID de difficulté, ou tape un titre",
   searchHint: "Appuie sur / pour chercher depuis n'importe où.",
+  rankedOnly: "Ranked uniquement",
+  rankedOnlyHelp: "N'affiche que les maps classées dans la recherche par titre. Les maps à farm sont toujours classées.",
   open: "Voir",
   recent: "Ouvertes récemment",
   loading: "Chargement de la beatmap…",
@@ -272,7 +278,7 @@ const fr: Copy = {
   estimated: "type estimé d'après les tags, vérification en cours",
   farm: "Farm",
   farmHelp: "Score farm : drain court, facile en aim, plus de PP que les étoiles ne le laissent penser.",
-  ssNote: "SS full combo, avec les mods indiqués sur chaque map.",
+  ssNote: "Maps classées uniquement, SS full combo avec les mods indiqués sur chaque map.",
   noticeNone: "Aucune map classée ici. Élargis la fourchette ou change les filtres.",
   noticeTooMany: "Trop de mods sur « les deux ». Garde-en trois au plus.",
   styleIgnored: "Les types ne concernent que osu! standard.",
@@ -327,6 +333,8 @@ const fr: Copy = {
 const es: Copy = {
   searchPlaceholder: "Pega un enlace de osu!, un ID de dificultad o escribe un título",
   searchHint: "Pulsa / para buscar desde cualquier sitio.",
+  rankedOnly: "Solo ranked",
+  rankedOnlyHelp: "Muestra solo mapas clasificados en la búsqueda por título. Los mapas para farmear siempre están clasificados.",
   open: "Abrir",
   recent: "Abiertos hace poco",
   loading: "Cargando el beatmap…",
@@ -385,7 +393,7 @@ const es: Copy = {
   estimated: "tipo estimado por las etiquetas, en revisión",
   farm: "Farm",
   farmHelp: "Puntuación farm: drain corto, fácil de aim, más PP de lo que sugieren las estrellas.",
-  ssNote: "SS full combo, con los mods indicados en cada mapa.",
+  ssNote: "Solo mapas clasificados, SS full combo con los mods indicados en cada mapa.",
   noticeNone: "Ningún mapa clasificado aquí. Amplía el rango o cambia los filtros.",
   noticeTooMany: "Demasiados mods en «ambos». Deja tres como máximo.",
   styleIgnored: "Los tipos solo se aplican a osu! standard.",

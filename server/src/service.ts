@@ -32,14 +32,14 @@ import { analyzeLater, analyzeNow, getProfile, rememberProfile } from "./pattern
 import { coverFor, loadRangeMaps, loadTextMaps, type PpDbMap } from "./ppDb";
 import { calculatePlay } from "./pp";
 
-export async function search(query: string, signal?: AbortSignal): Promise<SearchResponse> {
+export async function search(query: string, signal?: AbortSignal, ranked = false): Promise<SearchResponse> {
   const trimmed = query.trim();
   if (!trimmed) return { results: [], apiKeyConfigured: apiKeyConfigured(), message: null };
   if (trimmed.length > 100) {
     throw new AppError("invalid", tr("request.query", { max: 100 }), 400);
   }
   try {
-    const results = await searchBeatmaps(trimmed, signal);
+    const results = await searchBeatmaps(trimmed, signal, ranked);
     return {
       results,
       apiKeyConfigured: apiKeyConfigured(),

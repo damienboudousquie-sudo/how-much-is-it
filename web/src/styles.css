@@ -519,6 +519,55 @@ button:disabled {
   color: var(--faint);
 }
 
+/* "Ranked only" switch inside the search bar. */
+.ranked-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ranked-toggle:hover {
+  color: var(--text);
+}
+
+.ranked-check {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.ranked-toggle.on {
+  background: color-mix(in srgb, var(--good) 18%, transparent);
+  color: var(--good);
+}
+
+.ranked-toggle.on .ranked-check {
+  border-color: var(--good);
+  background: var(--good);
+  color: #1a1a1a;
+}
+
+.hit-title .badge {
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  vertical-align: 2px;
+}
+
 .search-kbd {
   padding: 2px 8px;
   border-radius: 5px;
@@ -1609,6 +1658,11 @@ button:disabled {
 /* ---------- small screens ---------- */
 
 @media (max-width: 760px) {
+  .ranked-toggle {
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+
   .app {
     padding: 0 12px 40px;
   }

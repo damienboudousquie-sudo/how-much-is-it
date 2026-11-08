@@ -42,8 +42,8 @@ export function fetchHealth(): Promise<HealthResponse> {
   return request("/api/health");
 }
 
-export function fetchSearch(query: string, signal: AbortSignal): Promise<SearchResponse> {
-  return request(`/api/search?q=${encodeURIComponent(query)}`, { signal });
+export function fetchSearch(query: string, signal: AbortSignal, ranked = false): Promise<SearchResponse> {
+  return request(`/api/search?q=${encodeURIComponent(query)}${ranked ? "&ranked=1" : ""}`, { signal });
 }
 
 export function fetchLookup(body: LookupRequest): Promise<LookupResponse> {

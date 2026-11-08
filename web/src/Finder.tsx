@@ -6,6 +6,7 @@ import {
   MAX_SORT_RULES,
   RANGE_KEYS,
   SORT_KEYS,
+  compareDiscover,
   cycleChoice,
   emptyFilters,
   legacySort,
@@ -171,6 +172,7 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
   const { ppMin, ppMax, query, styles, sort, filters } = settings;
   const mode = props.mode;
   const parsedRanges = useMemo(() => parseRanges(settings.ranges), [settings.ranges]);
+
   const stylesKey = styles.join(",");
   const filtersKey = FINDER_MODS.map((mod) => filters[mod]).join(",");
   const sortKey = sort.map((rule) => `${rule.key}:${rule.dir}`).join(",");
@@ -221,9 +223,18 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
       if (current.signal.aborted || gen !== generation.current) return;
       const { results, ...rest } = data;
       setMeta(rest);
+      const refreshing = (options.polls ?? 0) > 0 && (data.analyzing > 0 || data.catalog != null);
       setHits((previous) => {
-        // While the catalogue is still arriving, keep the list on screen steady and only move the counter.
-        if (options.silent && data.catalog && previous.length > 0) return previous;
+        // While the server is still loading or reading maps, keep the order on screen steady:
+        // only the type tags and farm scores of the maps already shown are updated. The new
+        // order is applied once, when the work is finished.
+        if (refreshing && previous.length > 0) {
+          const fresh = new Map(results.map((hit) => [`${hit.beatmapId}:${hit.mods.join("")}`, hit]));
+          return previous.map((hit) => {
+            const update = fresh.get(`${hit.beatmapId}:${hit.mods.join("")}`);
+            return update ? { ...hit, style: update.style, estimated: update.estimated, farm: update.farm } : hit;
+          });
+        }
         if (!options.append) return results;
         const seen = new Set(previous.map((hit) => `${hit.beatmapId}:${hit.mods.join("")}`));
         return [...previous, ...results.filter((hit) => !seen.has(`${hit.beatmapId}:${hit.mods.join("")}`))];
@@ -244,15 +255,32 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
     }
   }
 
-  // Every filter change searches again, after a short pause while typing.
+  // Every filter change searches again. Typed fields wait for a short pause; buttons go at once.
+  // A sort change reorders the maps on screen immediately, then the server fills in quietly.
+  const typedKey = `${ppMin}|${ppMax}|${query}|${rangesKey}`;
+  const clickedKey = `${mode}|${stylesKey}|${filtersKey}`;
+  const lastKeys = useRef({ typed: typedKey, clicked: clickedKey, sort: sortKey });
   useEffect(() => {
-    const delay = firstRun.current ? 0 : 350;
-    firstRun.current = false;
-    const timer = window.setTimeout(() => void run(), delay);
+    const last = lastKeys.current;
+    lastKeys.current = { typed: typedKey, clicked: clickedKey, sort: sortKey };
+    if (firstRun.current) {
+      firstRun.current = false;
+      void run();
+      return;
+    }
+    const onlySort = last.typed === typedKey && last.clicked === clickedKey && last.sort !== sortKey;
+    if (onlySort) {
+      const rules = sort.length > 0 ? sort : DEFAULT_SORT;
+      setHits((previous) => [...previous].sort((a, b) => compareDiscover(rules, a, b)));
+      void run({ silent: true });
+      return;
+    }
+    const typed = last.typed !== typedKey;
+    const timer = window.setTimeout(() => void run(), typed ? 350 : 0);
     return () => window.clearTimeout(timer);
     // run reads the settings of this render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ppMin, ppMax, query, mode, stylesKey, sortKey, filtersKey, rangesKey]);
+  }, [typedKey, clickedKey, sortKey]);
 
   useEffect(
     () => () => {
