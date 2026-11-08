@@ -70,33 +70,16 @@ EOF
 ## 5. Brancher le domaine sur Cloudflare
 
 1. Dans Cloudflare, clique sur **Add a domain**, entre ton domaine et choisis l'offre **Free**.
-2. Cloudflare te donne **2 serveurs de noms** (du type `xxx.ns.cloudflare.com`). Va chez ton registraire (là où tu as acheté le domaine) et remplace ses serveurs de noms par ces deux-là. La propagation prend de 5 minutes à quelques heures.
+2. Cloudflare te donne **2 serveurs de noms** (du type `xxx.ns.cloudflare.com`). Va chez ton registraire et remplace ses serveurs de noms par ces deux-là (5 minutes à quelques heures).
 3. Dans **DNS → Records**, ajoute :
    - Type `A`, nom `@`, contenu `TON_IP`, nuage **orange** (proxied).
    - Type `A`, nom `www`, contenu `TON_IP`, nuage **orange**.
 4. Dans **SSL/TLS → Overview**, choisis le mode **Full (strict)**.
-5. Dans **SSL/TLS → Edge Certificates**, active **Always Use HTTPS**.
+5. Laisse **Always Use HTTPS** désactivé (SSL/TLS → Edge Certificates) : Caddy redirige déjà vers HTTPS, et Let's Encrypt doit pouvoir vérifier le domaine en HTTP.
 
-## 6. Créer le certificat d'origine (gratuit, valable 15 ans)
+## 6. Le certificat HTTPS
 
-1. Dans Cloudflare : **SSL/TLS → Origin Server → Create Certificate**. Garde les réglages par défaut (RSA, `tondomaine.eu` et `*.tondomaine.eu`, 15 ans).
-2. Cloudflare affiche deux blocs de texte. Sur le serveur :
-
-```bash
-nano deploy/certs/origin.pem
-```
-
-Colle le bloc **Origin Certificate**, puis enregistre (`Ctrl+O`, `Entrée`, `Ctrl+X`).
-
-```bash
-nano deploy/certs/origin.key
-```
-
-Colle le bloc **Private key**, puis enregistre. ⚠️ Cloudflare ne montre la clé privée qu'une seule fois. Ces deux fichiers ne sont jamais envoyés sur GitHub.
-
-```bash
-chmod 600 deploy/certs/origin.key
-```
+Rien à faire : Caddy obtient tout seul un certificat Let's Encrypt gratuit pour ton domaine au premier lancement, et le renouvelle. (Si tu préfères le certificat d'origine Cloudflare, voir `deploy/Caddyfile.origin`.)
 
 ## 7. Lancer le site
 
@@ -135,6 +118,6 @@ Au démarrage, le serveur lit en tâche de fond **toutes** les maps ranked osu! 
 - **Cache** : les analyses de maps et les plages de PP sont gardées dans un volume Docker. Elles survivent aux redémarrages et aux mises à jour, donc le site devient plus rapide au fil du temps.
 - **Redémarrage automatique** : si le serveur reboot, Docker relance tout seul le site.
 - **Sauvegarde** : active les snapshots dans le SCP Netcup avant une grosse mise à jour.
-- **Problème de certificat (erreur 526)** : vérifie que `origin.pem` et `origin.key` sont bien remplis et que le mode SSL est sur **Full (strict)**, puis lance `docker compose restart caddy`.
+- **Problème de certificat (erreur 526)** : regarde `docker compose logs caddy`. Le plus souvent, les serveurs de noms ne pointent pas encore vers Cloudflare, ou « Always Use HTTPS » est activé. Corrige puis lance `docker compose restart caddy`.
 - **Erreur 521/522** : le serveur ne répond pas ; vérifie `docker compose ps` et `ufw status`.
 - **Couper Render** : quand le nouveau site fonctionne, tu peux supprimer le service sur Render ou le laisser comme secours.

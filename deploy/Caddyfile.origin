@@ -1,0 +1,7 @@
+# Alternative: Cloudflare Origin Certificate instead of Let's Encrypt.
+# Put origin.pem and origin.key in deploy/certs, then point docker-compose.yml at this file.
+{$DOMAIN}, www.{$DOMAIN} {
+	tls /certs/origin.pem /certs/origin.key
+	encode zstd gzip
+	reverse_proxy app:3001
+}

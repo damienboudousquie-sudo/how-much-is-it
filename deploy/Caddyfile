@@ -1,7 +1,8 @@
-# Cloudflare sits in front (orange cloud) and talks to this server with its
-# free Origin Certificate, so SSL mode "Full (strict)" works without Let's Encrypt.
+# Caddy gets a free Let's Encrypt certificate for the domain by itself, and renews it.
+# Works with the domain behind Cloudflare (orange cloud) in SSL mode "Full (strict)",
+# as long as Cloudflare's "Always Use HTTPS" stays off (Caddy redirects to HTTPS itself,
+# and Let's Encrypt checks the domain over plain HTTP).
 {$DOMAIN}, www.{$DOMAIN} {
-	tls /certs/origin.pem /certs/origin.key
 	encode zstd gzip
 	reverse_proxy app:3001
 }
