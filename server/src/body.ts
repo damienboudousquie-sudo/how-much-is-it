@@ -148,7 +148,7 @@ export function parseDiscover(body: unknown): DiscoverRequest {
   if (typeof ppMin !== "number" || typeof ppMax !== "number" || !Number.isFinite(ppMin) || !Number.isFinite(ppMax)) {
     throw new AppError("invalid", tr("request.range"), 400);
   }
-  if (ppMin < 0 || ppMax > 2000 || ppMin > ppMax) {
+  if (ppMin < 0 || ppMax > 5000 || ppMin > ppMax) {
     throw new AppError("invalid", tr("request.rangeBounds"), 400);
   }
   let offset = 0;

@@ -123,7 +123,7 @@ function parseRange(min: string, max: string): [number, number] | null {
   const low = Number(min.replace(",", ".").trim());
   const high = Number(max.replace(",", ".").trim());
   if (min.trim() === "" || max.trim() === "" || !Number.isFinite(low) || !Number.isFinite(high)) return null;
-  if (low < 0 || high > 2000 || low > high) return null;
+  if (low < 0 || high > 5000 || low > high) return null;
   return [low, high];
 }
 

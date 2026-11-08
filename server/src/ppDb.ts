@@ -13,6 +13,26 @@ const MODE_ID: Record<Mode, string> = { osu: "0", taiko: "1", catch: "2", mania:
 const PAGE_SIZE = 200;
 /** PP width of one cached slice. A range is the union of the slices it touches. */
 export const BAND = 25;
+
+/**
+ * Band width by PP. Maps get rare at high PP, so bands widen there: a 1000 to 2000 pp
+ * search needs 4 bands instead of 40.
+ */
+function bandWidth(low: number): number {
+  return low < 600 ? BAND : low < 1000 ? 50 : 250;
+}
+
+/** Lower edge of the band holding `pp`. Band edges are fixed, so caches line up. */
+function bandLow(pp: number): number {
+  if (pp < 600) return Math.floor(Math.max(0, pp) / BAND) * BAND;
+  if (pp < 1000) return 600 + Math.floor((pp - 600) / 50) * 50;
+  return 1000 + Math.floor((pp - 1000) / 250) * 250;
+}
+
+/** Lower edge of the band just below the one starting at `low`. */
+function previousBand(low: number): number {
+  return bandLow(low - 1);
+}
 /** Widest range loaded at once, so a 0 to 2000 request does not pull the whole catalogue. */
 export const MAX_BANDS = 24;
 const MAX_PAGES_PER_BAND = 50;
@@ -245,7 +265,7 @@ function bandParams(mode: Mode, mods: string, low: number, offset: number): stri
     mods,
     game_mode: MODE_ID[mode],
     min_pp: String(low),
-    max_pp: String(low + BAND),
+    max_pp: String(low + bandWidth(low)),
     limit: String(PAGE_SIZE),
     offset: String(offset),
   }).toString();
@@ -253,11 +273,11 @@ function bandParams(mode: Mode, mods: string, low: number, offset: number): stri
 
 function inBand(map: PpDbMap, low: number): boolean {
   // Bands share their edges; keep the low edge only so a map is never counted twice.
-  return map.pp >= low && map.pp < low + BAND;
+  return map.pp >= low && map.pp < low + bandWidth(low);
 }
 
 function startBand(mode: Mode, mods: string, low: number): Band {
-  const key = `band\n${mode}\n${mods}\n${low}`;
+  const key = `band\n${mode}\n${mods}\n${low}\n${bandWidth(low)}`;
   const existing = bands.get(key);
   if (existing && !existing.failed) return existing;
   const band: Band = { maps: [], total: null, done: false, failed: false, ready: Promise.resolve() };
@@ -311,10 +331,13 @@ export async function loadRangeMaps(
   input: { mode: Mode; mods: string; ppMin: number; ppMax: number },
   waitMs = 2500,
 ): Promise<RangeProgress> {
-  const top = Math.floor(input.ppMax / BAND) * BAND;
-  const bottom = Math.floor(input.ppMin / BAND) * BAND;
+  const top = bandLow(input.ppMax);
+  const bottom = bandLow(input.ppMin);
   const lows: number[] = [];
-  for (let low = top; low >= bottom && lows.length < MAX_BANDS; low -= BAND) lows.push(low);
+  for (let low = top; low >= bottom && lows.length < MAX_BANDS; low = previousBand(low)) {
+    lows.push(low);
+    if (low === 0) break;
+  }
   const lowest = lows[lows.length - 1] ?? bottom;
   const list = lows.map((low) => startBand(input.mode, input.mods, low));
 
