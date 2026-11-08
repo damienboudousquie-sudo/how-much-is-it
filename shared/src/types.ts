@@ -248,11 +248,34 @@ export interface TopPlay {
   mods: string[];
 }
 
+/** What a pinned map looked like when it was pinned, to list it without a lookup. */
+export interface PinInfo {
+  beatmapId: number;
+  beatmapsetId: number | null;
+  mode: Mode;
+  title: string;
+  artist: string;
+  version: string;
+  creator: string;
+  cover: string | null;
+  stars: number;
+  pp: number;
+  mods: string[];
+  lengthSeconds: number | null;
+  bpm: number | null;
+  ar: number | null;
+  style: Exclude<MapStyle, "any"> | null;
+  tags: Exclude<MapStyle, "any">[];
+  /** When it was pinned (ms). */
+  at: number;
+}
+
 export interface MeResponse {
   signedIn: boolean;
   /** False when the server has no osu! OAuth application set up. */
   loginAvailable: boolean;
   profile: UserProfile | null;
   marks: Record<string, MapMark>;
+  pins: Record<string, PinInfo>;
   top: TopPlay[];
 }

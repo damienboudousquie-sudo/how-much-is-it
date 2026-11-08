@@ -32,6 +32,11 @@ export type Copy = {
   login: string;
   logout: string;
   loginFailed: string;
+  pin: string;
+  pinnedMaps: string;
+  pinnedEmpty: string;
+  pinnedAll: string;
+  pinnedLocal: string;
   profileHelp: string;
   marks: string;
   markFarm: string;
@@ -154,6 +159,11 @@ const en: Copy = {
   login: "Sign in with osu!",
   logout: "Sign out",
   loginFailed: "Sign-in with osu! failed:",
+  pin: "Pin",
+  pinnedMaps: "Pinned maps",
+  pinnedEmpty: "No pinned map yet. Click the pin on a map to mark it \"to farm\" or \"done\".",
+  pinnedAll: "All",
+  pinnedLocal: "Saved in this browser only. Sign in with osu! to keep them on every device.",
   profileHelp: "Your osu! profile",
   marks: "Mark this map",
   markFarm: "To farm",
@@ -285,6 +295,11 @@ const fr: Copy = {
   login: "Se connecter avec osu!",
   logout: "Déconnexion",
   loginFailed: "La connexion avec osu! a échoué :",
+  pin: "Épingler",
+  pinnedMaps: "Pinned maps",
+  pinnedEmpty: "Aucune map épinglée pour l'instant. Clique sur l'épingle d'une map pour la mettre « à farmer » ou « déjà fait ».",
+  pinnedAll: "Toutes",
+  pinnedLocal: "Gardées dans ce navigateur seulement. Connecte-toi avec osu! pour les retrouver partout.",
   profileHelp: "Ton profil osu!",
   marks: "Marquer cette map",
   markFarm: "À farmer",
@@ -416,6 +431,11 @@ const es: Copy = {
   login: "Entrar con osu!",
   logout: "Salir",
   loginFailed: "Falló el inicio de sesión con osu!:",
+  pin: "Fijar",
+  pinnedMaps: "Pinned maps",
+  pinnedEmpty: "Aún no hay mapas fijados. Pulsa el pin de un mapa para marcarlo \"para farmear\" o \"hecho\".",
+  pinnedAll: "Todos",
+  pinnedLocal: "Guardados solo en este navegador. Entra con osu! para tenerlos en todos tus dispositivos.",
   profileHelp: "Tu perfil de osu!",
   marks: "Marcar este mapa",
   markFarm: "Para farmear",

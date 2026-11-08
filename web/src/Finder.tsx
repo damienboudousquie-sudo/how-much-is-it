@@ -29,7 +29,7 @@ import {
 } from "@osu-pp/shared";
 import { fetchDiscover, prefetchMap } from "./api";
 import { useAccount } from "./account";
-import { MarkButtons, PlayerBadges } from "./Marks";
+import { PinButton, PlayerBadges, pinSource } from "./Marks";
 import { ModBadges, StarPill } from "./Badges";
 import { formatBpm, formatCount, formatLength, formatPp, formatStat, plainClick } from "./format";
 import { fill, useI18n } from "./i18n";
@@ -620,7 +620,7 @@ function farmTier(score: number): string {
   return "";
 }
 
-function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onOpen: (hit: DiscoverHit) => void }) {
+export function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; hideFarm?: boolean; onOpen: (hit: DiscoverHit) => void }) {
   const { t } = useI18n();
   const { hit } = props;
   const account = useAccount();
@@ -698,19 +698,21 @@ function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boolean; onO
         </span>
       </span>
       <span className="map-side">
-        <MarkButtons beatmapId={hit.beatmapId} />
+        <PinButton beatmapId={hit.beatmapId} map={pinSource(hit)} />
         <span className="map-pp">
           {formatPp(hit.pp)}
           <small>pp</small>
         </span>
-        <span className="farm" title={t.farmHelp}>
-          <span className="farm-bar">
-            <span style={{ width: `${Math.max(4, hit.farm)}%` }} />
+        {!props.hideFarm && (
+          <span className="farm" title={t.farmHelp}>
+            <span className="farm-bar">
+              <span style={{ width: `${Math.max(4, hit.farm)}%` }} />
+            </span>
+            <span className="farm-label">
+              {t.farm} {hit.farm}
+            </span>
           </span>
-          <span className="farm-label">
-            {t.farm} {hit.farm}
-          </span>
-        </span>
+        )}
       </span>
     </a>
   );

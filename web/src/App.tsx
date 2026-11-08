@@ -6,7 +6,8 @@ import { BeatmapView, type MapPreview, type PlayPreset } from "./BeatmapView";
 import { Finder } from "./Finder";
 import { plainClick } from "./format";
 import { useI18n } from "./i18n";
-import { beatmapPath, mapsPath, parseRoute, type AppRoute } from "./route";
+import { beatmapPath, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
+import { PinnedMaps } from "./Pinned";
 import { SearchBox, type OpenTarget } from "./SearchBox";
 import { Triangles } from "./Triangles";
 import { readJson, writeJson } from "./storage";
@@ -57,7 +58,7 @@ export function App() {
   useEffect(() => {
     // Old links used ?b=123. Keep them working, then show the canonical hash.
     const initial = parseRoute(window.location.hash, window.location.search);
-    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : mapsPath(initial.mode);
+    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : mapsPath(initial.mode);
     const url = new URL(window.location.href);
     url.searchParams.delete("b");
     const target = `${url.pathname}${url.search}${canonical}`;
@@ -66,7 +67,7 @@ export function App() {
     function onHash() {
       const next = parseRoute(window.location.hash, "");
       const previous = routeRef.current;
-      if (previous.page === "maps" && next.page === "beatmap") {
+      if ((previous.page === "maps" || previous.page === "pinned") && next.page === "beatmap") {
         fromList.current = true;
         mapsScroll.current = window.scrollY;
         window.scrollTo(0, 0);
@@ -129,6 +130,19 @@ export function App() {
     }
   }, []);
 
+  function openHit(hit: DiscoverHit) {
+    open({ id: hit.beatmapId, mode: hit.mode, setId: hit.beatmapsetId }, { mods: hit.mods }, null, {
+      title: hit.title,
+      artist: hit.artist,
+      version: hit.version,
+      creator: hit.creator,
+      cover: hit.cover,
+      stars: hit.stars,
+      pp: hit.pp,
+      mods: hit.mods,
+    });
+  }
+
   function setFinderMode(mode: Mode) {
     if (window.location.hash !== mapsPath(mode)) window.history.replaceState(null, "", mapsPath(mode));
     const next = { page: "maps" as const, mode };
@@ -165,7 +179,7 @@ export function App() {
             much is it <span className="brand-q">?</span>
           </span>
         </a>
-        <AccountButton />
+        <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} />
         <div className="langs" role="group" aria-label="Language">
           {LANGS.map((code) => (
             <button key={code} type="button" className={lang === code ? "on" : ""} aria-pressed={lang === code} onClick={() => setLang(code)}>
@@ -181,6 +195,15 @@ export function App() {
         <p className="notice error" role="alert">
           {resolveError}
         </p>
+      )}
+
+      {route.page === "pinned" && (
+        <>
+          <a className="back" href={mapsPath(finderMode)}>
+            ← {t.backToMaps}
+          </a>
+          <PinnedMaps onOpen={openHit} />
+        </>
       )}
 
       {route.page === "maps" && recent.length > 0 && (
@@ -228,18 +251,7 @@ export function App() {
         <Finder
           mode={finderMode}
           onMode={setFinderMode}
-          onOpen={(hit: DiscoverHit) =>
-            open({ id: hit.beatmapId, mode: hit.mode, setId: hit.beatmapsetId }, { mods: hit.mods }, null, {
-              title: hit.title,
-              artist: hit.artist,
-              version: hit.version,
-              creator: hit.creator,
-              cover: hit.cover,
-              stars: hit.stars,
-              pp: hit.pp,
-              mods: hit.mods,
-            })
-          }
+          onOpen={openHit}
         />
       </div>
 

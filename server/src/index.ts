@@ -174,12 +174,12 @@ app.get("/api/me", async (request, reply) => {
 
 app.put("/api/me/marks", async (request, reply) => {
   try {
-    const body = (request.body ?? {}) as { marks?: unknown };
+    const body = (request.body ?? {}) as { marks?: unknown; pins?: unknown };
     if (!body.marks || typeof body.marks !== "object" || Array.isArray(body.marks)) {
       throw new AppError("invalid", "Send { marks: { beatmapId: \"farm\" | \"done\" | null } }.", 400);
     }
-    const marks = await setMarks(sessionFromCookie(request.headers.cookie), body.marks as Record<string, "farm" | "done" | null>);
-    return { marks };
+    const pins = body.pins && typeof body.pins === "object" && !Array.isArray(body.pins) ? (body.pins as Record<string, unknown>) : {};
+    return await setMarks(sessionFromCookie(request.headers.cookie), body.marks as Record<string, "farm" | "done" | null>, pins);
   } catch (error) {
     sendError(reply, error);
   }

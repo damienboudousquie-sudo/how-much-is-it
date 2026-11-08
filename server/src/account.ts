@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { MapMark, TopPlay, UserProfile } from "@osu-pp/shared";
+import { MAP_STYLES, type MapMark, type PinInfo, type TopPlay, type UserProfile } from "@osu-pp/shared";
 import { repoRoot } from "./env";
 import { AppError } from "./errors";
 
@@ -36,6 +36,7 @@ interface Session {
 interface PlayerFile {
   profile: UserProfile;
   marks: Record<string, MapMark>;
+  pins?: Record<string, PinInfo>;
   top: TopPlay[];
   topAt: number;
 }
@@ -220,6 +221,7 @@ export async function completeLogin(code: string, state: string): Promise<string
   await savePlayer(me.id, {
     profile: toProfile(me),
     marks: existing?.marks ?? {},
+    pins: existing?.pins ?? {},
     top: existing?.top ?? [],
     topAt: 0,
   });
@@ -286,26 +288,29 @@ export interface MeAnswer {
   loginAvailable: boolean;
   profile: UserProfile | null;
   marks: Record<string, MapMark>;
+  pins: Record<string, PinInfo>;
   top: TopPlay[];
 }
 
+const SIGNED_OUT = (): MeAnswer => ({ signedIn: false, loginAvailable: loginConfigured(), profile: null, marks: {}, pins: {}, top: [] });
+
 export async function me(sessionId: string | undefined): Promise<MeAnswer> {
   const session = sessionFor(sessionId);
-  if (!session || !sessionId) return { signedIn: false, loginAvailable: loginConfigured(), profile: null, marks: {}, top: [] };
+  if (!session || !sessionId) return SIGNED_OUT();
   const file = loadPlayer(session.userId);
   if (!file) {
     logout(sessionId);
-    return { signedIn: false, loginAvailable: loginConfigured(), profile: null, marks: {}, top: [] };
+    return SIGNED_OUT();
   }
   try {
     await refreshTop(sessionId, session, file);
   } catch (error) {
     if (error instanceof AppError && error.code === "signed_out") {
-      return { signedIn: false, loginAvailable: loginConfigured(), profile: null, marks: {}, top: [] };
+      return SIGNED_OUT();
     }
     // osu! down: answer with what is stored.
   }
-  return { signedIn: true, loginAvailable: true, profile: file.profile, marks: file.marks, top: file.top };
+  return { signedIn: true, loginAvailable: true, profile: file.profile, marks: file.marks, pins: file.pins ?? {}, top: file.top };
 }
 
 function requirePlayer(sessionId: string | undefined): { session: Session; file: PlayerFile } {
@@ -315,18 +320,66 @@ function requirePlayer(sessionId: string | undefined): { session: Session; file:
   return { session, file };
 }
 
-/** Sets (or clears, with null) the marks of a few maps. */
-export async function setMarks(sessionId: string | undefined, changes: Record<string, MapMark | null>): Promise<Record<string, MapMark>> {
+const text = (value: unknown, max = 200) => (typeof value === "string" ? value.slice(0, max) : "");
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+const STYLE_NAMES = new Set<string>(MAP_STYLES.filter((style) => style !== "any"));
+
+/** Keeps only the expected fields of a pin sent by the browser. */
+function cleanPin(id: number, raw: unknown): PinInfo | null {
+  if (!raw || typeof raw !== "object") return null;
+  const pin = raw as Record<string, unknown>;
+  const mode = pin.mode === "taiko" || pin.mode === "catch" || pin.mode === "mania" ? pin.mode : "osu";
+  const cover = text(pin.cover, 300);
+  const style = typeof pin.style === "string" && STYLE_NAMES.has(pin.style) ? (pin.style as PinInfo["style"]) : null;
+  return {
+    beatmapId: id,
+    beatmapsetId: num(pin.beatmapsetId),
+    mode,
+    title: text(pin.title),
+    artist: text(pin.artist),
+    version: text(pin.version),
+    creator: text(pin.creator, 60),
+    cover: /^https:\/\/assets\.ppy\.sh\//.test(cover) ? cover : null,
+    stars: num(pin.stars) ?? 0,
+    pp: num(pin.pp) ?? 0,
+    mods: Array.isArray(pin.mods) ? pin.mods.filter((mod): mod is string => typeof mod === "string" && /^[A-Z]{2}$/.test(mod)).slice(0, 8) : [],
+    lengthSeconds: num(pin.lengthSeconds),
+    bpm: num(pin.bpm),
+    ar: num(pin.ar),
+    style,
+    tags: Array.isArray(pin.tags) ? (pin.tags.filter((tag) => typeof tag === "string" && STYLE_NAMES.has(tag)) as PinInfo["tags"]).slice(0, 6) : [],
+    at: num(pin.at) ?? Date.now(),
+  };
+}
+
+/** Sets (or clears, with null) the marks of a few maps, with what each pinned map looks like. */
+export async function setMarks(
+  sessionId: string | undefined,
+  changes: Record<string, MapMark | null>,
+  pins: Record<string, unknown> = {},
+): Promise<{ marks: Record<string, MapMark>; pins: Record<string, PinInfo> }> {
   const { session, file } = requirePlayer(sessionId);
+  file.pins ??= {};
   for (const [id, mark] of Object.entries(changes)) {
     if (!/^\d{1,10}$/.test(id)) continue;
-    if (mark === null) delete file.marks[id];
-    else if (mark === "farm" || mark === "done") file.marks[id] = mark;
+    if (mark === null) {
+      delete file.marks[id];
+      delete file.pins[id];
+    } else if (mark === "farm" || mark === "done") {
+      file.marks[id] = mark;
+      const pin = cleanPin(Number(id), pins[id]);
+      if (pin) file.pins[id] = { ...pin, at: file.pins[id]?.at ?? pin.at };
+    }
   }
   const ids = Object.keys(file.marks);
-  if (ids.length > MAX_MARKS) for (const id of ids.slice(0, ids.length - MAX_MARKS)) delete file.marks[id];
+  if (ids.length > MAX_MARKS) {
+    for (const id of ids.slice(0, ids.length - MAX_MARKS)) {
+      delete file.marks[id];
+      delete file.pins[id];
+    }
+  }
   await savePlayer(session.userId, file);
-  return file.marks;
+  return { marks: file.marks, pins: file.pins };
 }
 
 /** Reads the session cookie from a Cookie header. */

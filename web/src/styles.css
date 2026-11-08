@@ -1758,68 +1758,120 @@ button:disabled {
   background: var(--bg-3);
 }
 
-/* ---------- map marks: to farm / done ---------- */
+/* ---------- pins: to farm / done ---------- */
 
-.marks {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.mark-btn {
-  --c: var(--mark-farm);
+.pin-btn {
+  --c: var(--muted);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px;
+  padding: 5px;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted);
-  font-size: 0.8rem;
+  color: var(--c);
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
-.mark-btn.done {
+.pin-btn:hover {
+  --c: var(--text);
+  background: var(--bg-4);
+  transform: rotate(-12deg);
+}
+
+.pin-btn.pinned-farm {
+  --c: var(--mark-farm);
+}
+
+.pin-btn.pinned-done {
   --c: var(--mark-done);
 }
 
-.mark-dot {
-  width: 12px;
-  height: 12px;
-  border: 2px solid color-mix(in srgb, var(--c) 70%, transparent);
-  border-radius: 50%;
-  transition: background 0.15s, transform 0.15s;
-}
-
-.mark-btn:hover .mark-dot {
-  transform: scale(1.15);
-  background: color-mix(in srgb, var(--c) 35%, transparent);
-}
-
-.mark-btn.on .mark-dot {
-  border-color: var(--c);
-  background: var(--c);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent);
-}
-
-.marks.large .mark-btn {
-  padding: 5px 12px 5px 8px;
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--text);
-}
-
-.marks.large .mark-btn.on {
-  background: color-mix(in srgb, var(--c) 22%, rgba(0, 0, 0, 0.35));
+.pin-btn.large {
+  padding: 6px 14px 6px 10px;
+  background: rgba(0, 0, 0, 0.38);
   color: var(--c);
 }
 
-/* A marked card carries its colour on the left edge. */
-.map.marked-farm,
-.map.marked-done {
-  box-shadow: inset 4px 0 0 var(--mc);
+.pin-btn.large:not([class*="pinned-"]) {
+  --c: var(--text);
 }
 
+.pin-btn.large:hover {
+  transform: none;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.pin-menu {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  width: 170px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: pin-menu-in 0.12s ease-out;
+}
+
+@keyframes pin-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.pin-menu button {
+  --c: var(--mark-farm);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pin-menu button.is-done {
+  --c: var(--mark-done);
+}
+
+.pin-menu button:hover {
+  background: var(--bg-4);
+}
+
+.pin-menu button[aria-checked="true"] {
+  color: var(--c);
+}
+
+.pin-menu button.clear {
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0 0 6px 6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pin-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--c);
+}
+
+/*
+ * A pinned card shows a coloured tab sticking out of its outer edge: left for the left
+ * column, right for the right column (outside the card, so it is not clipped).
+ */
 .map.marked-farm {
   --mc: var(--mark-farm);
 }
@@ -1828,13 +1880,132 @@ button:disabled {
   --mc: var(--mark-done);
 }
 
-.map.marked-done .map-title {
-  opacity: 0.75;
+.map.marked-farm,
+.map.marked-done {
+  box-shadow: -6px 0 0 var(--mc);
 }
 
 .map.marked-farm:hover,
 .map.marked-done:hover {
-  box-shadow: inset 4px 0 0 var(--mc), 0 10px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: -6px 0 0 var(--mc), 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 1100px) {
+  .map-list > .map:nth-child(even).marked-farm,
+  .map-list > .map:nth-child(even).marked-done {
+    box-shadow: 6px 0 0 var(--mc);
+  }
+  .map-list > .map:nth-child(even).marked-farm:hover,
+  .map-list > .map:nth-child(even).marked-done:hover {
+    box-shadow: 6px 0 0 var(--mc), 0 10px 24px rgba(0, 0, 0, 0.45);
+  }
+}
+
+.map.marked-done .map-title {
+  opacity: 0.75;
+}
+
+/* ---------- account menu ---------- */
+
+.account {
+  position: relative;
+}
+
+.account-who {
+  border: 0;
+  cursor: pointer;
+}
+
+.account-caret {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.account-menu > button,
+.account-menu > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-menu > button:hover,
+.account-menu > a:hover {
+  background: var(--bg-4);
+}
+
+.account-menu .out {
+  color: var(--muted);
+}
+
+.account-menu .count,
+.pin-tab .count {
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--bg-4);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* ---------- pinned maps page ---------- */
+
+.pinned-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+  padding: 18px 20px;
+}
+
+.pinned-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.pinned-head .help {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.pin-tab.is-farm {
+  --c: var(--mark-farm);
+}
+
+.pin-tab.is-done {
+  --c: var(--mark-done);
+}
+
+.pinned .empty {
+  padding: 30px 0;
+  color: var(--muted);
+  text-align: center;
 }
 
 .tag.top-play {
@@ -1962,4 +2133,15 @@ button:disabled {
   color: inherit;
   font-weight: 800;
   cursor: pointer;
+}
+
+.pinned-head .tabs {
+  flex-wrap: wrap;
+}
+
+.pin-tab {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  white-space: nowrap;
 }

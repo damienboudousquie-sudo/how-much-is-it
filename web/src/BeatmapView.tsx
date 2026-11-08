@@ -1,4 +1,4 @@
-import { MarkButtons, PlayerBadges } from "./Marks";
+import { PinButton, PlayerBadges, pinSource } from "./Marks";
 import { useEffect, useRef, useState } from "react";
 import {
   MODS_BY_MODE,
@@ -298,7 +298,28 @@ export function BeatmapView(props: {
           </p>
           {meta.mode === "osu" && (
             <p className="hero-marks">
-              <MarkButtons beatmapId={meta.beatmapId} large />
+              <PinButton
+                beatmapId={meta.beatmapId}
+                large
+                map={pinSource({
+                  beatmapId: meta.beatmapId,
+                  beatmapsetId: meta.beatmapsetId,
+                  mode: meta.mode,
+                  title: meta.title,
+                  artist: meta.artist,
+                  version: meta.version,
+                  creator: meta.creator,
+                  cover: meta.cover,
+                  stars: stats.stars,
+                  pp: best,
+                  mods,
+                  lengthSeconds: stats.lengthSeconds,
+                  bpm: stats.bpm,
+                  ar: stats.ar,
+                  style: types[0] ?? null,
+                  tags: types.slice(1),
+                })}
+              />
               {score && <PlayerBadges beatmapId={meta.beatmapId} pp={curve[0]?.pp ?? score.pp} />}
             </p>
           )}

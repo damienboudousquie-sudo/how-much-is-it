@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ppGain, type MapMark, type MeResponse, type TopPlay, type UserProfile } from "@osu-pp/shared";
+import { ppGain, type MapMark, type MeResponse, type PinInfo, type TopPlay, type UserProfile } from "@osu-pp/shared";
 import { readJson, writeJson } from "./storage";
 
 /**
@@ -9,6 +9,10 @@ import { readJson, writeJson } from "./storage";
  */
 
 const LOCAL_MARKS = "osu-pp-lookup:marks";
+const LOCAL_PINS = "osu-pp-lookup:pins";
+
+/** A map as shown on a card, without the pin date. */
+export type PinSource = Omit<PinInfo, "at">;
 
 interface AccountState {
   ready: boolean;
@@ -18,27 +22,31 @@ interface AccountState {
   loginAvailable: boolean;
   profile: UserProfile | null;
   marks: Record<string, MapMark>;
+  /** What each marked map looks like, for the pinned maps page. */
+  pins: Record<string, PinInfo>;
   top: TopPlay[];
   /** beatmap id -> the player's best play on it */
   topById: Map<number, TopPlay>;
   markOf(beatmapId: number): MapMark | null;
-  setMark(beatmapId: number, mark: MapMark | null): void;
+  setMark(beatmapId: number, mark: MapMark | null, map?: PinSource): void;
   gainFor(beatmapId: number, pp: number): number;
   logout(): void;
 }
 
 const AccountContext = createContext<AccountState | null>(null);
 
-async function putMarks(marks: Record<string, MapMark | null>): Promise<Record<string, MapMark> | null> {
+type Saved = { marks: Record<string, MapMark>; pins: Record<string, PinInfo> };
+
+async function putMarks(marks: Record<string, MapMark | null>, pins: Record<string, PinInfo> = {}): Promise<Saved | null> {
   try {
     const response = await fetch("/api/me/marks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ marks }),
+      body: JSON.stringify({ marks, pins }),
     });
     if (!response.ok) return null;
-    return ((await response.json()) as { marks: Record<string, MapMark> }).marks;
+    return (await response.json()) as Saved;
   } catch {
     return null;
   }
@@ -47,6 +55,7 @@ async function putMarks(marks: Record<string, MapMark | null>): Promise<Record<s
 export function AccountProvider(props: { children: ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [localMarks, setLocalMarks] = useState<Record<string, MapMark>>(() => readJson(LOCAL_MARKS, {}));
+  const [localPins, setLocalPins] = useState<Record<string, PinInfo>>(() => readJson(LOCAL_PINS, {}));
   const merged = useRef(false);
   const [loginError, setLoginError] = useState<string | null>(() => {
     const match = /(?:^|;\s*)hmi_login_error=([^;]*)/.exec(document.cookie);
@@ -73,15 +82,17 @@ export function AccountProvider(props: { children: ReactNode }) {
           const known = answer.marks;
           const fresh = Object.fromEntries(Object.entries(pending).filter(([id]) => !(id in known)));
           if (Object.keys(fresh).length > 0) {
-            const saved = await putMarks(fresh);
+            const saved = await putMarks(fresh, readJson<Record<string, PinInfo>>(LOCAL_PINS, {}));
             if (saved) {
-              answer = { ...answer, marks: saved };
+              answer = { ...answer, marks: saved.marks, pins: saved.pins };
               writeJson(LOCAL_MARKS, {});
+              writeJson(LOCAL_PINS, {});
               setLocalMarks({});
+              setLocalPins({});
             }
           }
         }
-        if (alive) setMe(answer ?? { signedIn: false, loginAvailable: false, profile: null, marks: {}, top: [] });
+        if (alive) setMe(answer ? { ...answer, pins: answer.pins ?? {} } : { signedIn: false, loginAvailable: false, profile: null, marks: {}, pins: {}, top: [] });
       });
     return () => {
       alive = false;
@@ -90,6 +101,7 @@ export function AccountProvider(props: { children: ReactNode }) {
 
   const signedIn = Boolean(me?.signedIn);
   const marks = signedIn ? (me?.marks ?? {}) : localMarks;
+  const pins = signedIn ? (me?.pins ?? {}) : localPins;
   const top = me?.top ?? [];
   const topById = useMemo(() => {
     const map = new Map<number, TopPlay>();
@@ -101,23 +113,36 @@ export function AccountProvider(props: { children: ReactNode }) {
   }, [top]);
 
   const setMark = useCallback(
-    (beatmapId: number, mark: MapMark | null) => {
+    (beatmapId: number, mark: MapMark | null, map?: PinSource) => {
       const id = String(beatmapId);
-      const apply = (current: Record<string, MapMark>) => {
+      const applyMarks = (current: Record<string, MapMark>) => {
         const next = { ...current };
         if (mark) next[id] = mark;
         else delete next[id];
         return next;
       };
+      const applyPins = (current: Record<string, PinInfo>) => {
+        const next = { ...current };
+        if (!mark) delete next[id];
+        else if (map) next[id] = { ...map, at: current[id]?.at ?? Date.now() };
+        return next;
+      };
       if (signedIn) {
-        setMe((current) => (current ? { ...current, marks: apply(current.marks) } : current));
-        void putMarks({ [id]: mark }).then((saved) => {
-          if (saved) setMe((current) => (current ? { ...current, marks: saved } : current));
+        // The server keeps the first pin date, so "now" is fine here.
+        const sent: Record<string, PinInfo> = mark && map ? { [id]: { ...map, at: Date.now() } } : {};
+        setMe((current) => (current ? { ...current, marks: applyMarks(current.marks), pins: applyPins(current.pins ?? {}) } : current));
+        void putMarks({ [id]: mark }, sent).then((saved) => {
+          if (saved) setMe((current) => (current ? { ...current, marks: saved.marks, pins: saved.pins } : current));
         });
       } else {
         setLocalMarks((current) => {
-          const next = apply(current);
+          const next = applyMarks(current);
           writeJson(LOCAL_MARKS, next);
+          return next;
+        });
+        setLocalPins((current) => {
+          const next = applyPins(current);
+          writeJson(LOCAL_PINS, next);
           return next;
         });
       }
@@ -127,7 +152,7 @@ export function AccountProvider(props: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     void fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).finally(() => {
-      setMe((current) => (current ? { ...current, signedIn: false, profile: null, marks: {}, top: [] } : current));
+      setMe((current) => (current ? { ...current, signedIn: false, profile: null, marks: {}, pins: {}, top: [] } : current));
     });
   }, []);
 
@@ -139,6 +164,7 @@ export function AccountProvider(props: { children: ReactNode }) {
       loginAvailable: Boolean(me?.loginAvailable),
       profile: signedIn ? (me?.profile ?? null) : null,
       marks,
+      pins,
       top,
       topById,
       markOf: (beatmapId) => marks[String(beatmapId)] ?? null,
@@ -146,7 +172,7 @@ export function AccountProvider(props: { children: ReactNode }) {
       gainFor: (beatmapId, pp) => ppGain(top, beatmapId, pp),
       logout,
     }),
-    [me, signedIn, marks, top, topById, setMark, logout, loginError],
+    [me, signedIn, marks, pins, top, topById, setMark, logout, loginError],
   );
 
   return <AccountContext.Provider value={value}>{props.children}</AccountContext.Provider>;
