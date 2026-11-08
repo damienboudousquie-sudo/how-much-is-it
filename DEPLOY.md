@@ -121,7 +121,7 @@ Au démarrage, le serveur lit en tâche de fond **toutes** les maps ranked osu! 
 
 - Suivre l'avancement : `https://tondomaine.eu/api/scan` (`known` = maps analysées, `catalogue` = total).
 - Quand `finishedAt` est rempli, télécharge `https://tondomaine.eu/api/patterns-seed.json.gz` et range-le dans `data/patterns-seed.json.gz` du projet (puis push sur GitHub). Tout nouveau serveur connaîtra alors le type de chaque map dès le démarrage.
-- Réglages facultatifs dans `.env` : `ANALYSIS_CONCURRENCY=8` (téléchargements en parallèle), `FULL_SCAN=0` pour couper l'analyse complète.
+- Réglages facultatifs dans `.env` : `ANALYSIS_CONCURRENCY=16` (téléchargements en parallèle), `FULL_SCAN=0` pour couper l'analyse complète.
 
 ## Bon à savoir
 

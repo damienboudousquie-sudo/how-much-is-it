@@ -69,41 +69,76 @@ async function readDisk(id: number): Promise<{ bytes: Uint8Array; text: string }
   }
 }
 
-async function download(id: number, store = true): Promise<{ bytes: Uint8Array; text: string }> {
+/**
+ * Where .osu files come from. osu.ppy.sh slows down heavy users, so downloads rotate
+ * between it and two mirrors serving the same files; a source that refuses or fails
+ * rests for a while and the others take over.
+ */
+const SOURCES = [
+  (id: number) => `https://osu.ppy.sh/osu/${id}`,
+  (id: number) => `https://catboy.best/osu/${id}`,
+  (id: number) => `https://osu.direct/api/osu/${id}`,
+];
+const restUntil = SOURCES.map(() => 0);
+let turn = 0;
+
+function sourceOrder(): number[] {
+  const start = turn++ % SOURCES.length;
+  const order = SOURCES.map((_, index) => (start + index) % SOURCES.length);
+  const now = Date.now();
+  return [...order.filter((index) => restUntil[index]! <= now), ...order.filter((index) => restUntil[index]! > now)];
+}
+
+async function fetchFrom(index: number, id: number): Promise<Uint8Array | number> {
   let response: Response;
   try {
-    response = await fetch(`https://osu.ppy.sh/osu/${id}`, {
-      headers: {
-        Accept: "text/plain,*/*",
-        "User-Agent": "osu-pp-lookup/1.0",
-      },
+    response = await fetch(SOURCES[index]!(id), {
+      headers: { Accept: "text/plain,*/*", "User-Agent": "osu-pp-lookup/1.0" },
       signal: AbortSignal.timeout(10_000),
       redirect: "follow",
     });
   } catch {
-    throw new AppError("unavailable", tr("map.download"), 502);
-  }
-
-  if (response.status === 404) {
-    throw new AppError("not_found", tr("map.missing"), 404);
+    restUntil[index] = Date.now() + 15_000;
+    return 0;
   }
   if (response.status === 429) {
-    const retry = Number(response.headers.get("retry-after")) || 2;
-    throw new AppError("rate_limited", tr("search.osuWait", { seconds: retry }), 429);
+    const retry = Number(response.headers.get("retry-after")) || 30;
+    restUntil[index] = Date.now() + Math.min(120, retry) * 1000;
+    return 429;
   }
   if (!response.ok) {
+    if (response.status !== 404) restUntil[index] = Date.now() + 15_000;
+    return response.status;
+  }
+  const buffer = new Uint8Array(await response.arrayBuffer());
+  if (buffer.byteLength > MAX_BYTES) return 413;
+  // A mirror may answer with a page instead of the file: that counts as missing there.
+  if (!looksLikeOsu(decodeOsu(buffer))) return 404;
+  return buffer;
+}
+
+async function download(id: number, store = true): Promise<{ bytes: Uint8Array; text: string }> {
+  const statuses: number[] = [];
+  let buffer: Uint8Array | null = null;
+  for (const index of sourceOrder()) {
+    const result = await fetchFrom(index, id);
+    if (typeof result !== "number") {
+      buffer = result;
+      break;
+    }
+    statuses.push(result);
+    // osu.ppy.sh is the reference: if it has no such map, nobody has.
+    if (index === 0 && result === 404) break;
+  }
+  if (!buffer) {
+    if (statuses.includes(413)) throw new AppError("unavailable", tr("map.huge"), 502);
+    if (statuses.includes(404)) throw new AppError("not_found", tr("map.missing"), 404);
+    if (statuses.length > 0 && statuses.every((status) => status === 429)) {
+      throw new AppError("rate_limited", tr("search.osuWait", { seconds: 30 }), 429);
+    }
     throw new AppError("unavailable", tr("map.download"), 502);
   }
-
-  const buffer = new Uint8Array(await response.arrayBuffer());
-  if (buffer.byteLength > MAX_BYTES) {
-    throw new AppError("unavailable", tr("map.huge"), 502);
-  }
   const text = decodeOsu(buffer);
-  if (!looksLikeOsu(text)) {
-    throw new AppError("not_found", tr("map.missing"), 404);
-  }
-
   if (store) await persist(id, buffer);
   return { bytes: buffer, text };
 }

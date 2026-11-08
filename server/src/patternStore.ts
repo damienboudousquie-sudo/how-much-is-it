@@ -25,7 +25,8 @@ const FILE = join(DIR, `patterns-v${PATTERN_VERSION}.json.gz`);
 /** Before the compact format: plain JSON, still read once to migrate. */
 const OLD_FILE = join(DIR, `patterns-v${PATTERN_VERSION}.json`);
 export const SEED_FILE = join(repoRoot, "data", "patterns-seed.json.gz");
-const CONCURRENCY = Number(process.env.ANALYSIS_CONCURRENCY) || 8;
+/** Downloads in parallel. Three sources share the load (see beatmapCache). */
+const CONCURRENCY = Number(process.env.ANALYSIS_CONCURRENCY) || 16;
 /** 0 marks a map that cannot be analysed (not osu! standard, too short, gone). */
 type Entry = PatternProfile | 0;
 
