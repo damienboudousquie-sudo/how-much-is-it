@@ -17,7 +17,7 @@ export const BAND = 25;
 export const MAX_BANDS = 24;
 const MAX_PAGES_PER_BAND = 50;
 const TTL_MS = 24 * 60 * 60 * 1000;
-const SCHEMA = 4;
+const SCHEMA = 5;
 const DIR = join(repoRoot, "cache", "pp-bands");
 
 export interface PpDbMap {

@@ -14,8 +14,15 @@ const FARM_MAPPERS = new Set([
 ]);
 const SHORT_CUT = /\b(?:tv[\s.-]*(?:size|ver(?:sion)?)|cut[\s.-]*ver(?:sion)?|short[\s.-]*ver(?:sion)?|game[\s.-]*ver(?:sion)?|sped[\s-]*up|nightcore)\b/i;
 
-/** 0 to 1, from title, mapper and tags. Computed once when a map enters the index. */
+/** Compilations, marathons and packs: long, uneven, never what a farm search is after. */
+const COMPILATION = /\b(?:compilation|marathon|medley|mega[\s-]*mix|mashup|map[\s-]*pack|collab[\s-]*pack|songs?\s+pack)\b/i;
+
+/**
+ * -1 to 1, from title, mapper and tags. Computed once when a map enters the index.
+ * Compilations get -1, which costs them 15 farm points.
+ */
 export function farmHint(input: { title: string; creator: string; tags: string }): number {
+  if (COMPILATION.test(input.title)) return -1;
   let hint = 0;
   if (SHORT_CUT.test(input.title)) hint += 0.5;
   if (FARM_MAPPERS.has(input.creator.trim().toLowerCase())) hint += 0.5;

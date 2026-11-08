@@ -94,6 +94,10 @@ describe("farm", () => {
     expect(lengthScore(400)).toBeLessThan(lengthScore(180));
   });
 
+  it("sinks compilations", () => {
+    expect(farmHint({ title: "Songs Compilation VII", creator: "Sotarks", tags: "" })).toBe(-1);
+  });
+
   it("does not hold back short DT cuts", () => {
     expect(lengthScore(30)).toBe(1);
     expect(lengthScore(5)).toBeLessThan(lengthScore(15));

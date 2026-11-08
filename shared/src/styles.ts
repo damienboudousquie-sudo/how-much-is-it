@@ -56,7 +56,8 @@ const NAME_HINTS: { style: ConcreteStyle; pattern: RegExp }[] = [
  * - stream: long 1/4 chains and bursts carry the map, jumps allowed in between.
  * - speed: those streams, fast: about 240 BPM and up, mods counted.
  *   Fast 1/2 jumps are not speed: DT aim maps stay jump maps.
- * - jump: spaced 1/2 and 1/1 movement, few streams, at any speed; with DT this is
+ * - jump: at least 60 % spaced 1/2 and 1/1 movement (50 to 60 % ranks lower, by ratio),
+ *   few streams, at any speed; with DT this is
  *   "speed aim". Fast maps mixing jumps with complex rhythm and sliders are tech.
  * - alt: short 1/4 bursts and doubles mixed into patterns, too fast to single-tap.
  * - fingercontrol: uneven rhythm (1/3, 1/6, 3/4 gaps) and short chains at moderate BPM.
@@ -83,8 +84,17 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
     (0.45 * ramp(p.rhythmEntropy, 1.9, 2.15) +
       0.35 * ramp(p.sliderShare, 0.45, 0.62) +
       0.3 * ramp(p.streamShare + 0.4 * p.burstShare, 0.1, 0.25));
+  // 60 % of jumps or more: a jump map. From 60 % down to 50 % it still is one, ranked by
+  // its jump ratio (0.55 at 50 %, the lowest score that still matches). Under 50 %, no.
+  const jumpRatio =
+    p.jumpShare >= 0.5 ? 0.55 + 0.45 * ramp(p.jumpShare, 0.5, 0.6) : 0.55 * ramp(p.jumpShare, 0.4, 0.5);
+  // Between 50 and 60 % of jumps, a fair share of streams or sliders makes it a hybrid map.
+  const hybrid =
+    (1 - ramp(p.jumpShare, 0.5, 0.6)) *
+    (0.5 * ramp(p.streamShare + 0.6 * p.burstShare, 0.06, 0.15) + 0.5 * ramp(p.sliderShare, 0.35, 0.5));
   const jump =
-    ramp(p.jumpShare, 0.22, 0.5) *
+    jumpRatio *
+    (1 - 0.45 * hybrid) *
     (1 - ramp(p.streamShare, 0.22, 0.5)) *
     (0.85 + 0.15 * ramp(p.jumpSpacing, 4.5, 6.5)) *
     clamp(1 - mixed);
