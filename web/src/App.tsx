@@ -10,8 +10,9 @@ import { InfoButton } from "./InfoButton";
 import { PreviewDock } from "./PreviewDock";
 import { FeedbackInbox, TopLinks } from "./Feedback";
 import { ForYou } from "./Recommend";
+import { StatsPage, trackView } from "./Stats";
 import { AccountButton, LoginError } from "./Marks";
-import { beatmapPath, FEEDBACK_PATH, FOR_YOU_PATH, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
+import { beatmapPath, FEEDBACK_PATH, FOR_YOU_PATH, STATS_PATH, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
 import { PinnedMaps } from "./Pinned";
 import { SearchBox, type OpenTarget } from "./SearchBox";
 import { Triangles } from "./Triangles";
@@ -48,6 +49,11 @@ interface Navigation {
 export function App() {
   const { t } = useI18n();
   const [route, setRoute] = useState<AppRoute>(() => parseRoute(window.location.hash, window.location.search));
+  // One page view per page shown (the owner's own stats page is not counted).
+  const routeKey = route.page === "beatmap" ? `beatmap:${route.id}` : route.page === "maps" ? `maps:${route.mode}` : route.page;
+  useEffect(() => {
+    if (route.page !== "stats") trackView(window.location.hash || "#/");
+  }, [routeKey]);
   const [recent, setRecent] = useState<RecentMap[]>(readRecent);
   const [resolving, setResolving] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
@@ -62,7 +68,7 @@ export function App() {
   useEffect(() => {
     // Old links used ?b=123. Keep them working, then show the canonical hash.
     const initial = parseRoute(window.location.hash, window.location.search);
-    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : initial.page === "feedback" ? FEEDBACK_PATH : initial.page === "foryou" ? FOR_YOU_PATH : mapsPath(initial.mode);
+    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : initial.page === "feedback" ? FEEDBACK_PATH : initial.page === "foryou" ? FOR_YOU_PATH : initial.page === "stats" ? STATS_PATH : mapsPath(initial.mode);
     const url = new URL(window.location.href);
     url.searchParams.delete("b");
     const target = `${url.pathname}${url.search}${canonical}`;
@@ -184,7 +190,7 @@ export function App() {
           </span>
         </a>
         <TopLinks />
-        <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} onFeedback={() => (window.location.hash = FEEDBACK_PATH)} onForYou={() => (window.location.hash = FOR_YOU_PATH)} />
+        <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} onFeedback={() => (window.location.hash = FEEDBACK_PATH)} onForYou={() => (window.location.hash = FOR_YOU_PATH)} onStats={() => (window.location.hash = STATS_PATH)} />
         <LangMenu />
         <InfoButton />
       </header>
@@ -203,6 +209,15 @@ export function App() {
             ← {t.backToMaps}
           </a>
           <FeedbackInbox />
+        </>
+      )}
+
+      {route.page === "stats" && (
+        <>
+          <a className="back" href={mapsPath(finderMode)}>
+            ← {t.backToMaps}
+          </a>
+          <StatsPage />
         </>
       )}
 

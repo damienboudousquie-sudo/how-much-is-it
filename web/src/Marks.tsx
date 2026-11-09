@@ -168,7 +168,7 @@ export function PlayerBadges(props: { beatmapId: number; pp: number }) {
 }
 
 /** Sign in with osu!, or the signed-in player with a small menu. */
-export function AccountButton(props: { onPinned(): void; onFeedback(): void; onForYou(): void }) {
+export function AccountButton(props: { onPinned(): void; onFeedback(): void; onForYou(): void; onStats(): void }) {
   const { t } = useI18n();
   const account = useAccount();
   const [open, setOpen] = useState(false);
@@ -233,6 +233,18 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
                 }}
               >
                 {t.feedbackInbox}
+              </button>
+            )}
+            {account.admin && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  props.onStats();
+                }}
+              >
+                {t.stats}
               </button>
             )}
             <a role="menuitem" href={`https://osu.ppy.sh/users/${profile.id}`} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>

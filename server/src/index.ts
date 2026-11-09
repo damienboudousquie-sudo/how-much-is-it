@@ -18,6 +18,7 @@ import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
 import { mapAudio } from "./audio";
 import { recommend } from "./recommend";
+import { readStats, recordHit } from "./stats";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
@@ -202,6 +203,35 @@ app.get("/api/recommend", async (request, reply) => {
     const raw = String((request.query as { skip?: string }).skip ?? "");
     const skip = new Set(raw.split(",").slice(0, 400).map(Number).filter((id) => Number.isInteger(id) && id > 0));
     return await recommend(sessionFromCookie(request.headers.cookie), skip);
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+/* ---------- visit stats (owner only) ---------- */
+
+app.post("/api/hit", async (request, reply) => {
+  try {
+    await recordHit({
+      body: request.body,
+      ip: clientIp(request),
+      userAgent: String(request.headers["user-agent"] ?? ""),
+      country: typeof request.headers["cf-ipcountry"] === "string" ? request.headers["cf-ipcountry"].toUpperCase() : undefined,
+      lang: String(request.headers["x-lang"] ?? ""),
+      host: String(request.headers.host ?? ""),
+      signedIn: currentUser(sessionFromCookie(request.headers.cookie)) != null,
+    });
+  } catch (error) {
+    request.log.warn({ err: error }, "stats hit failed");
+  }
+  reply.code(204).send();
+});
+
+app.get("/api/stats", async (request, reply) => {
+  try {
+    requireAdmin(request.headers.cookie);
+    reply.header("cache-control", "no-store");
+    return await readStats(Number((request.query as { days?: string }).days ?? 30));
   } catch (error) {
     sendError(reply, error);
   }

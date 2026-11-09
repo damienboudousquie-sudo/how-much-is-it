@@ -317,3 +317,19 @@ export interface RecommendResponse {
   wanted: string[];
   results: RecommendHit[];
 }
+
+/** Visit counts for the owner's stats page (no personal data). */
+export interface StatsResponse {
+  span: number;
+  views: number;
+  /** Visitors counted once per day, added up over the period. */
+  visits: number;
+  signedIn: number;
+  /** Visitors seen in the last 5 minutes. */
+  online: number;
+  days: { day: string; views: number; visitors: number }[];
+  countries: { key: string; value: number }[];
+  sources: { key: string; value: number }[];
+  pages: { key: string; value: number }[];
+  langs: { key: string; value: number }[];
+}

@@ -165,6 +165,24 @@ export type Copy = {
   infoLabel: string;
   fullscreen: string;
   exitFullscreen: string;
+  stats: string;
+  statsToday: string;
+  statsDays: string;
+  statsHelp: string;
+  statsOnline: string;
+  statsVisitorsToday: string;
+  statsVisits: string;
+  statsViews: string;
+  statsSignedIn: string;
+  statsPerDay: string;
+  statsCountries: string;
+  statsSources: string;
+  statsLangs: string;
+  statsPages: string;
+  statsDirect: string;
+  statsEmpty: string;
+  statsMapsList: string;
+  statsMapPage: string;
 };
 
 const en: Copy = {
@@ -350,6 +368,24 @@ const en: Copy = {
   infoLabel: "About",
   fullscreen: "Full screen",
   exitFullscreen: "Exit full screen",
+  stats: "Statistics",
+  statsToday: "Today",
+  statsDays: "days",
+  statsHelp: "A visitor is counted once per day (no cookie, no IP kept). Countries come from Cloudflare. Bots are left out.",
+  statsOnline: "Online now",
+  statsVisitorsToday: "Visitors today",
+  statsVisits: "Visits",
+  statsViews: "Page views",
+  statsSignedIn: "Signed in",
+  statsPerDay: "Visitors per day",
+  statsCountries: "Countries",
+  statsSources: "Where they come from",
+  statsLangs: "Languages",
+  statsPages: "Pages",
+  statsDirect: "Direct / unknown",
+  statsEmpty: "Nothing yet.",
+  statsMapsList: "Map list",
+  statsMapPage: "Map page",
 };
 
 const fr: Copy = {
@@ -535,6 +571,24 @@ const fr: Copy = {
   infoLabel: "Infos",
   fullscreen: "Plein écran",
   exitFullscreen: "Quitter le plein écran",
+  stats: "Statistiques",
+  statsToday: "Aujourd'hui",
+  statsDays: "jours",
+  statsHelp: "Un visiteur est compté une fois par jour (sans cookie, aucune IP gardée). Les pays viennent de Cloudflare. Les robots sont exclus.",
+  statsOnline: "En ce moment",
+  statsVisitorsToday: "Visiteurs aujourd'hui",
+  statsVisits: "Visites",
+  statsViews: "Pages vues",
+  statsSignedIn: "Connectés",
+  statsPerDay: "Visiteurs par jour",
+  statsCountries: "Pays",
+  statsSources: "D'où ils viennent",
+  statsLangs: "Langues",
+  statsPages: "Pages",
+  statsDirect: "Direct / inconnu",
+  statsEmpty: "Rien pour l'instant.",
+  statsMapsList: "Liste des maps",
+  statsMapPage: "Page d'une map",
 };
 
 const es: Copy = {
@@ -720,6 +774,24 @@ const es: Copy = {
   infoLabel: "Información",
   fullscreen: "Pantalla completa",
   exitFullscreen: "Salir de pantalla completa",
+  stats: "Estadísticas",
+  statsToday: "Hoy",
+  statsDays: "días",
+  statsHelp: "Cada visitante se cuenta una vez al día (sin cookies, sin guardar IP). Los países vienen de Cloudflare. Los bots se excluyen.",
+  statsOnline: "Ahora mismo",
+  statsVisitorsToday: "Visitantes hoy",
+  statsVisits: "Visitas",
+  statsViews: "Páginas vistas",
+  statsSignedIn: "Conectados",
+  statsPerDay: "Visitantes por día",
+  statsCountries: "Países",
+  statsSources: "De dónde vienen",
+  statsLangs: "Idiomas",
+  statsPages: "Páginas",
+  statsDirect: "Directo / desconocido",
+  statsEmpty: "Nada todavía.",
+  statsMapsList: "Lista de mapas",
+  statsMapPage: "Página de mapa",
 };
 
 const de: Copy = {
@@ -933,6 +1005,24 @@ const de: Copy = {
   infoLabel: "Infos",
   fullscreen: "Vollbild",
   exitFullscreen: "Vollbild beenden",
+  stats: "Statistiken",
+  statsToday: "Heute",
+  statsDays: "Tage",
+  statsHelp: "Ein Besucher wird einmal pro Tag gezählt (kein Cookie, keine IP gespeichert). Länder kommen von Cloudflare. Bots sind ausgeschlossen.",
+  statsOnline: "Gerade online",
+  statsVisitorsToday: "Besucher heute",
+  statsVisits: "Besuche",
+  statsViews: "Seitenaufrufe",
+  statsSignedIn: "Angemeldet",
+  statsPerDay: "Besucher pro Tag",
+  statsCountries: "Länder",
+  statsSources: "Herkunft",
+  statsLangs: "Sprachen",
+  statsPages: "Seiten",
+  statsDirect: "Direkt / unbekannt",
+  statsEmpty: "Noch nichts.",
+  statsMapsList: "Map-Liste",
+  statsMapPage: "Map-Seite",
 };
 
 const pt: Copy = {
@@ -1146,6 +1236,24 @@ const pt: Copy = {
   infoLabel: "Informações",
   fullscreen: "Tela cheia",
   exitFullscreen: "Sair da tela cheia",
+  stats: "Estatísticas",
+  statsToday: "Hoje",
+  statsDays: "dias",
+  statsHelp: "Cada visitante é contado uma vez por dia (sem cookie, nenhum IP guardado). Os países vêm do Cloudflare. Bots são excluídos.",
+  statsOnline: "Agora",
+  statsVisitorsToday: "Visitantes hoje",
+  statsVisits: "Visitas",
+  statsViews: "Páginas vistas",
+  statsSignedIn: "Conectados",
+  statsPerDay: "Visitantes por dia",
+  statsCountries: "Países",
+  statsSources: "De onde vêm",
+  statsLangs: "Idiomas",
+  statsPages: "Páginas",
+  statsDirect: "Direto / desconhecido",
+  statsEmpty: "Nada ainda.",
+  statsMapsList: "Lista de mapas",
+  statsMapPage: "Página de mapa",
 };
 
 const pl: Copy = {
@@ -1359,6 +1467,24 @@ const pl: Copy = {
   infoLabel: "Informacje",
   fullscreen: "Pełny ekran",
   exitFullscreen: "Zamknij pełny ekran",
+  stats: "Statystyki",
+  statsToday: "Dzisiaj",
+  statsDays: "dni",
+  statsHelp: "Odwiedzający liczony jest raz dziennie (bez ciasteczek, bez zapisywania IP). Kraje pochodzą z Cloudflare. Boty są pomijane.",
+  statsOnline: "Teraz online",
+  statsVisitorsToday: "Odwiedzający dziś",
+  statsVisits: "Wizyty",
+  statsViews: "Wyświetlenia",
+  statsSignedIn: "Zalogowani",
+  statsPerDay: "Odwiedzający dziennie",
+  statsCountries: "Kraje",
+  statsSources: "Skąd przychodzą",
+  statsLangs: "Języki",
+  statsPages: "Strony",
+  statsDirect: "Bezpośrednio / nieznane",
+  statsEmpty: "Na razie nic.",
+  statsMapsList: "Lista map",
+  statsMapPage: "Strona mapy",
 };
 
 const ru: Copy = {
@@ -1572,6 +1698,24 @@ const ru: Copy = {
   infoLabel: "Информация",
   fullscreen: "Во весь экран",
   exitFullscreen: "Выйти из полноэкранного режима",
+  stats: "Статистика",
+  statsToday: "Сегодня",
+  statsDays: "дней",
+  statsHelp: "Посетитель считается один раз в день (без cookie, IP не хранится). Страны — по данным Cloudflare. Боты не учитываются.",
+  statsOnline: "Сейчас на сайте",
+  statsVisitorsToday: "Посетители сегодня",
+  statsVisits: "Визиты",
+  statsViews: "Просмотры",
+  statsSignedIn: "Вошли в аккаунт",
+  statsPerDay: "Посетители по дням",
+  statsCountries: "Страны",
+  statsSources: "Откуда приходят",
+  statsLangs: "Языки",
+  statsPages: "Страницы",
+  statsDirect: "Напрямую / неизвестно",
+  statsEmpty: "Пока ничего.",
+  statsMapsList: "Список карт",
+  statsMapPage: "Страница карты",
 };
 
 const ko: Copy = {
@@ -1785,6 +1929,24 @@ const ko: Copy = {
   infoLabel: "정보",
   fullscreen: "전체 화면",
   exitFullscreen: "전체 화면 종료",
+  stats: "통계",
+  statsToday: "오늘",
+  statsDays: "일",
+  statsHelp: "방문자는 하루에 한 번만 집계돼요 (쿠키 없음, IP 저장 안 함). 국가는 Cloudflare 정보예요. 봇은 제외돼요.",
+  statsOnline: "지금 접속 중",
+  statsVisitorsToday: "오늘 방문자",
+  statsVisits: "방문",
+  statsViews: "페이지 조회",
+  statsSignedIn: "로그인",
+  statsPerDay: "일별 방문자",
+  statsCountries: "국가",
+  statsSources: "유입 경로",
+  statsLangs: "언어",
+  statsPages: "페이지",
+  statsDirect: "직접 / 알 수 없음",
+  statsEmpty: "아직 없어요.",
+  statsMapsList: "맵 목록",
+  statsMapPage: "맵 페이지",
 };
 
 const ja: Copy = {
@@ -1998,6 +2160,24 @@ const ja: Copy = {
   infoLabel: "情報",
   fullscreen: "全画面",
   exitFullscreen: "全画面を終了",
+  stats: "統計",
+  statsToday: "今日",
+  statsDays: "日",
+  statsHelp: "訪問者は 1 日 1 回だけ数えます（Cookie なし、IP は保存しません）。国は Cloudflare から取得。ボットは除外。",
+  statsOnline: "オンライン",
+  statsVisitorsToday: "今日の訪問者",
+  statsVisits: "訪問",
+  statsViews: "ページビュー",
+  statsSignedIn: "ログイン中",
+  statsPerDay: "日別の訪問者",
+  statsCountries: "国",
+  statsSources: "流入元",
+  statsLangs: "言語",
+  statsPages: "ページ",
+  statsDirect: "直接 / 不明",
+  statsEmpty: "まだありません。",
+  statsMapsList: "譜面リスト",
+  statsMapPage: "譜面ページ",
 };
 
 const zh: Copy = {
@@ -2211,6 +2391,24 @@ const zh: Copy = {
   infoLabel: "说明",
   fullscreen: "全屏",
   exitFullscreen: "退出全屏",
+  stats: "统计",
+  statsToday: "今天",
+  statsDays: "天",
+  statsHelp: "每位访客每天只计一次（无 Cookie，不保存 IP）。国家来自 Cloudflare。已排除机器人。",
+  statsOnline: "当前在线",
+  statsVisitorsToday: "今日访客",
+  statsVisits: "访问",
+  statsViews: "页面浏览",
+  statsSignedIn: "已登录",
+  statsPerDay: "每日访客",
+  statsCountries: "国家",
+  statsSources: "来源",
+  statsLangs: "语言",
+  statsPages: "页面",
+  statsDirect: "直接 / 未知",
+  statsEmpty: "暂无数据。",
+  statsMapsList: "谱面列表",
+  statsMapPage: "谱面页面",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

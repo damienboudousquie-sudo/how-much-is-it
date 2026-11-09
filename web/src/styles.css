@@ -3132,3 +3132,141 @@ button:disabled {
   touch-action: none;
   background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 58%, transparent 58%, transparent 70%, rgba(255, 255, 255, 0.25) 70%, rgba(255, 255, 255, 0.25) 78%, transparent 78%);
 }
+
+/* ---------- stats (owner only) ---------- */
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.stats-card span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stats-card strong {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-card.live strong::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin: 0 8px 4px 0;
+  border-radius: 50%;
+  background: #5fdc96;
+  box-shadow: 0 0 0 4px rgba(95, 220, 150, 0.18);
+}
+
+.stats-chart {
+  margin-top: 10px;
+  padding: 14px 16px;
+}
+
+.stats-chart h3,
+.stats-list h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.stats-columns {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+}
+
+.stats-column {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  height: 100%;
+  min-width: 2px;
+}
+
+.stats-column span {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(var(--pink), rgba(255, 102, 170, 0.45));
+}
+
+.stats-column:hover span {
+  background: var(--pink);
+}
+
+.stats-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--faint);
+  font-size: 0.72rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stats-list {
+  padding: 14px 16px;
+}
+
+.stats-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats-list li {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.stats-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 6px;
+  background: rgba(255, 102, 170, 0.12);
+}
+
+.stats-key,
+.stats-value {
+  position: relative;
+}
+
+.stats-key {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-value {
+  color: var(--muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
