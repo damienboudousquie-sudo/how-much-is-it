@@ -6,6 +6,7 @@ import { Finder } from "./Finder";
 import { plainClick } from "./format";
 import { useI18n } from "./i18n";
 import { LangMenu } from "./LangMenu";
+import { PreviewDock } from "./PreviewDock";
 import { AccountButton, LoginError } from "./Marks";
 import { beatmapPath, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
 import { PinnedMaps } from "./Pinned";
@@ -250,6 +251,7 @@ export function App() {
       </div>
 
       <footer className="footer">{t.footer}</footer>
+      <PreviewDock />
     </div>
   );
 }

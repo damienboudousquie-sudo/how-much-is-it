@@ -14,6 +14,7 @@ import { completeLogin, loginErrorCookie, loginRedirect, logout, me, SESSION_MAX
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
+import { mapAudio } from "./audio";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
@@ -133,6 +134,23 @@ app.get("/api/osu/:id", async (request, reply) => {
     const text = await fetchBeatmapText(id);
     reply.header("content-type", "text/plain; charset=utf-8").header("cache-control", "public, max-age=86400");
     return text;
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+/** The full song of a map (pulled from its .osz), for the auto player. */
+app.get("/api/audio/:id", async (request, reply) => {
+  const id = Number((request.params as { id?: string }).id);
+  const hint = Number((request.query as { s?: string }).s ?? 0);
+  if (!Number.isInteger(id) || id <= 0 || id > 1e9) {
+    sendError(reply, new AppError("invalid", tr("request.beatmap"), 400));
+    return;
+  }
+  try {
+    const { bytes, type } = await mapAudio(id, Number.isInteger(hint) && hint > 0 ? hint : null);
+    reply.header("content-type", type).header("cache-control", "public, max-age=604800");
+    return reply.send(bytes);
   } catch (error) {
     sendError(reply, error);
   }

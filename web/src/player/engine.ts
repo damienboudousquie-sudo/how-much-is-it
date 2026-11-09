@@ -7,6 +7,8 @@ export interface PlayerMods {
   hr: boolean;
   ez: boolean;
   hd: boolean;
+  /** Nightcore: the song speeds up with its pitch. DT and HT keep the pitch. */
+  nc: boolean;
 }
 
 export interface PlayerStatus {
@@ -39,7 +41,7 @@ export class AutoPlayer {
   playing = true;
   dance = true;
   hitsounds = true;
-  private mods: PlayerMods = { rate: 1, hr: false, ez: false, hd: false };
+  private mods: PlayerMods = { rate: 1, hr: false, ez: false, hd: false, nc: false };
   private frame = 0;
   private last = performance.now();
   private scale = 1;
@@ -54,6 +56,8 @@ export class AutoPlayer {
   private buffers: Record<string, AudioBuffer> = {};
   private music: HTMLAudioElement | null = null;
   private musicBase = 0;
+  /** True when the music is the whole song, so map time is the song time. */
+  private fullSong = false;
   private observer: ResizeObserver | null = null;
   private readonly ctx: CanvasRenderingContext2D;
 
@@ -87,7 +91,10 @@ export class AutoPlayer {
 
   setMods(mods: PlayerMods): void {
     this.mods = mods;
-    if (this.music) this.music.playbackRate = mods.rate;
+    if (this.music) {
+      this.music.playbackRate = mods.rate;
+      this.music.preservesPitch = !mods.nc;
+    }
     this.applyMods();
   }
 
@@ -122,25 +129,42 @@ export class AutoPlayer {
   }
 
   seek(fraction: number): void {
-    this.stopMusic();
     this.time = this.map.start + Math.max(0, Math.min(1, fraction)) * (this.map.duration - this.map.start);
+    if (this.music && this.fullSong) this.music.currentTime = Math.max(0, this.time / 1000);
+    else this.stopMusic();
   }
 
-  /** Plays the osu! preview clip and jumps the map to where that clip starts. */
-  async playMusic(url: string): Promise<boolean> {
+  /**
+   * Plays music under the map. The whole song keeps the map where it is; the 10 s osu!
+   * preview clip jumps the map to where that clip starts.
+   */
+  async playMusic(url: string, fullSong: boolean): Promise<boolean> {
     this.stopMusic();
     const audio = new Audio(url);
-    audio.preservesPitch = false;
+    audio.preservesPitch = !this.mods.nc;
     audio.playbackRate = this.mods.rate;
     audio.volume = 0.5;
-    this.musicBase = this.map.previewTime > 0 ? this.map.previewTime : this.map.start;
-    this.time = this.musicBase;
+    this.fullSong = fullSong;
+    if (fullSong) {
+      this.musicBase = 0;
+      audio.currentTime = Math.max(0, this.time / 1000);
+    } else {
+      this.musicBase = this.map.previewTime > 0 ? this.map.previewTime : this.map.start;
+      this.time = this.musicBase;
+    }
     try {
       await audio.play();
     } catch {
       return false;
     }
-    audio.addEventListener("ended", () => this.stopMusic());
+    audio.addEventListener("ended", () => {
+      if (this.music !== audio) return;
+      if (!fullSong) return this.stopMusic();
+      // Loop the whole map, like the silent player does.
+      this.time = this.map.start;
+      audio.currentTime = Math.max(0, this.map.start / 1000);
+      void audio.play().catch(() => undefined);
+    });
     this.music = audio;
     this.playing = true;
     this.report();
@@ -167,8 +191,10 @@ export class AutoPlayer {
       const before = this.time;
       if (this.music && !this.music.paused) this.time = this.musicBase + this.music.currentTime * 1000;
       else this.time += dt * this.mods.rate;
-      if (this.time > this.map.duration) this.time = this.map.start;
-      else this.playSounds(before, this.time);
+      if (this.time > this.map.duration) {
+        this.time = this.map.start;
+        if (this.music && this.fullSong) this.music.currentTime = Math.max(0, this.map.start / 1000);
+      } else this.playSounds(before, this.time);
     }
     this.draw();
     this.report();

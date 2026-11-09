@@ -29,7 +29,10 @@ export function AutoPlayerPanel(props: { beatmapId: number; setId: number | null
     hr: props.mods.includes("HR"),
     ez: props.mods.includes("EZ"),
     hd: props.mods.includes("HD") || props.mods.includes("FL"),
+    nc: props.mods.includes("NC"),
   };
+  const song = useRef<string | null>(null);
+  const [musicState, setMusicState] = useState<"idle" | "loading" | "clip">("idle");
 
   useEffect(() => {
     let alive = true;
@@ -55,31 +58,58 @@ export function AutoPlayerPanel(props: { beatmapId: number; setId: number | null
         player.current = new AutoPlayer(canvas.current, map, skin, onStatus);
         player.current.setMods(mods);
         setState("ready");
+        // Opened by a click: start the whole song right away.
+        void startSong();
       })
       .catch(() => alive && setState("error"));
     return () => {
       alive = false;
       player.current?.destroy();
       player.current = null;
+      if (song.current) URL.revokeObjectURL(song.current);
+      song.current = null;
     };
   }, [props.beatmapId]);
 
   useEffect(() => {
     player.current?.setMods(mods);
-  }, [mods.rate, mods.hr, mods.ez, mods.hd, state]);
+  }, [mods.rate, mods.hr, mods.ez, mods.hd, mods.nc, state]);
 
   const unlock = () => player.current?.unlockAudio();
 
+  /** The whole song, pulled from the map's archive by the server; the 10 s clip if that fails. */
+  async function startSong() {
+    const p = player.current;
+    if (!p) return;
+    stopPreview();
+    p.unlockAudio();
+    setMusicState("loading");
+    try {
+      if (!song.current) {
+        const response = await fetch(`/api/audio/${props.beatmapId}${props.setId != null ? `?s=${props.setId}` : ""}`);
+        if (!response.ok) throw new Error(String(response.status));
+        song.current = URL.createObjectURL(await response.blob());
+      }
+      if (player.current !== p) return;
+      const ok = await p.playMusic(song.current, true);
+      setMusicState("idle");
+      if (ok) return;
+    } catch {
+      // Fall back to the preview clip below.
+    }
+    if (player.current !== p) return;
+    setMusicState(props.setId != null ? "clip" : "idle");
+    if (props.setId != null) await p.playMusic(previewUrl(props.setId), false);
+  }
+
   const toggleMusic = async () => {
     const p = player.current;
-    if (!p || props.setId == null) return;
+    if (!p) return;
     if (p.hasMusic) {
       p.stopMusic();
       return;
     }
-    stopPreview();
-    p.unlockAudio();
-    await p.playMusic(previewUrl(props.setId));
+    await startSong();
   };
 
   const seek = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -116,11 +146,15 @@ export function AutoPlayerPanel(props: { beatmapId: number; setId: number | null
           0:00 / 0:00
         </span>
         <span className="auto-sep" />
-        {props.setId != null && (
-          <button type="button" className={music ? "on" : ""} aria-pressed={music} disabled={state !== "ready"} onClick={() => void toggleMusic()}>
-            ♪ {t.playerMusic}
-          </button>
-        )}
+        <button
+          type="button"
+          className={music ? "on" : ""}
+          aria-pressed={music}
+          disabled={state !== "ready" || musicState === "loading"}
+          onClick={() => void toggleMusic()}
+        >
+          ♪ {musicState === "loading" ? t.playerMusicLoading : t.playerMusic}
+        </button>
         <button
           type="button"
           className={hitsounds ? "on" : ""}
@@ -147,6 +181,7 @@ export function AutoPlayerPanel(props: { beatmapId: number; setId: number | null
         </button>
       </div>
       <p className="auto-note">
+        {musicState === "clip" ? `${t.playerClipOnly} · ` : ""}
         {t.playerSoundHint} · {t.playerCredit}
       </p>
     </section>

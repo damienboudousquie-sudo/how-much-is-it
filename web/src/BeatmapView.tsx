@@ -352,7 +352,7 @@ export function BeatmapView(props: {
               </button>
             )}
             {meta.beatmapsetId != null && (
-              <button type="button" className={previewing ? "button ghost on" : "button ghost"} aria-pressed={previewing} onClick={() => togglePreview(meta.beatmapsetId!)}>
+              <button type="button" className={previewing ? "button ghost on" : "button ghost"} aria-pressed={previewing} onClick={() => togglePreview(meta.beatmapsetId!, { title: meta.title, artist: meta.artist, cover: meta.cover })}>
                 {previewing ? `■ ${t.previewStop}` : `♪ ${t.previewPlay}`}
               </button>
             )}

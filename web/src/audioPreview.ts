@@ -5,55 +5,102 @@ export function previewUrl(setId: number): string {
   return `https://b.ppy.sh/preview/${setId}.mp3`;
 }
 
+export interface PreviewInfo {
+  title: string;
+  artist: string;
+  cover: string | null;
+}
+
+export interface PreviewState {
+  setId: number | null;
+  info: PreviewInfo | null;
+  playing: boolean;
+  time: number;
+  duration: number;
+  volume: number;
+}
+
+const VOLUME_KEY = "osu-pp-lookup:preview-volume";
+
+function savedVolume(): number {
+  try {
+    const value = Number(localStorage.getItem(VOLUME_KEY));
+    return Number.isFinite(value) && value > 0 && value <= 1 ? value : 0.5;
+  } catch {
+    return 0.5;
+  }
+}
+
 let audio: HTMLAudioElement | null = null;
-let current: number | null = null;
+let state: PreviewState = { setId: null, info: null, playing: false, time: 0, duration: 0, volume: savedVolume() };
 const listeners = new Set<() => void>();
 
-function emit(): void {
+function set(next: Partial<PreviewState>): void {
+  state = { ...state, ...next };
   for (const listener of listeners) listener();
 }
 
-/** Stops whatever preview is playing, e.g. when the auto player starts its own music. */
+/** Stops and closes the preview, e.g. when the auto player starts its own music. */
 export function stopPreview(): void {
   if (audio) audio.pause();
   audio = null;
-  current = null;
-  emit();
+  set({ setId: null, info: null, playing: false, time: 0, duration: 0 });
 }
 
-/** Plays a set's preview, or stops it if it is the one playing. Only one plays at a time. */
-export function togglePreview(setId: number): void {
-  if (current === setId) {
-    stopPreview();
+/** Plays a set's preview, or pauses / resumes it if it is the current one. One at a time. */
+export function togglePreview(setId: number, info: PreviewInfo | null = null): void {
+  if (state.setId === setId && audio) {
+    if (audio.paused) void audio.play().catch(() => undefined);
+    else audio.pause();
     return;
   }
-  stopPreview();
+  if (audio) audio.pause();
   const next = new Audio(previewUrl(setId));
-  next.volume = 0.45;
-  next.addEventListener("ended", () => {
-    if (audio === next) stopPreview();
-  });
-  next.addEventListener("error", () => {
-    if (audio === next) stopPreview();
-  });
+  next.volume = state.volume;
+  const mine = () => audio === next;
+  next.addEventListener("play", () => mine() && set({ playing: true }));
+  next.addEventListener("pause", () => mine() && set({ playing: false }));
+  next.addEventListener("ended", () => mine() && set({ playing: false, time: 0 }));
+  next.addEventListener("timeupdate", () => mine() && set({ time: next.currentTime }));
+  next.addEventListener("loadedmetadata", () => mine() && set({ duration: next.duration || 0 }));
+  next.addEventListener("error", () => mine() && stopPreview());
   audio = next;
-  current = setId;
-  emit();
-  void next.play().catch(() => {
-    if (audio === next) stopPreview();
-  });
+  set({ setId, info, playing: true, time: 0, duration: 0 });
+  void next.play().catch(() => mine() && set({ playing: false }));
 }
 
-/** True while this set's preview is playing. */
-export function usePreviewPlaying(setId: number | null): boolean {
-  const [playing, setPlaying] = useState(setId != null && current === setId);
+export function seekPreview(fraction: number): void {
+  if (!audio || !state.duration) return;
+  audio.currentTime = Math.max(0, Math.min(1, fraction)) * state.duration;
+  set({ time: audio.currentTime });
+}
+
+export function setPreviewVolume(volume: number): void {
+  const value = Math.max(0, Math.min(1, volume));
+  if (audio) audio.volume = value;
+  try {
+    localStorage.setItem(VOLUME_KEY, String(value));
+  } catch {
+    // Not remembered; still applies now.
+  }
+  set({ volume: value });
+}
+
+export function usePreview(): PreviewState {
+  const [value, setValue] = useState(state);
   useEffect(() => {
-    const update = () => setPlaying(setId != null && current === setId);
+    const update = () => setValue(state);
     listeners.add(update);
     update();
     return () => {
       listeners.delete(update);
     };
-  }, [setId]);
-  return playing;
+  }, []);
+  return value;
+}
+
+/** True while this set's preview is the current one and playing. */
+export function usePreviewPlaying(setId: number | null): boolean {
+  const preview = usePreview();
+  return setId != null && preview.setId === setId && preview.playing;
 }

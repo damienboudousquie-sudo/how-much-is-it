@@ -129,6 +129,8 @@ export type Copy = {
   previewStop: string;
   playerPause: string;
   playerPlay: string;
+  playerMusicLoading: string;
+  playerClipOnly: string;
 };
 
 const en: Copy = {
@@ -272,12 +274,14 @@ const en: Copy = {
   playerMusic: "Music",
   playerHitsounds: "Hitsounds",
   playerDance: "Danser cursor",
-  playerSoundHint: "Click once in the player to allow sound. Music is the 10 s osu! preview.",
+  playerSoundHint: "Click once in the player if the browser blocks the sound.",
   playerCredit: "Skin: vv_idke_trail by [Garin] + Aristia + Various",
   previewPlay: "Play preview",
   previewStop: "Stop preview",
   playerPause: "Pause",
   playerPlay: "Play",
+  playerMusicLoading: "Loading song…",
+  playerClipOnly: "Full song unavailable: playing the 10 s preview",
 };
 
 const fr: Copy = {
@@ -421,12 +425,14 @@ const fr: Copy = {
   playerMusic: "Musique",
   playerHitsounds: "Hitsounds",
   playerDance: "Curseur danser",
-  playerSoundHint: "Clique une fois dans le lecteur pour autoriser le son. La musique est l'extrait osu! de 10 s.",
+  playerSoundHint: "Clique une fois dans le lecteur si le navigateur bloque le son.",
   playerCredit: "Skin : vv_idke_trail par [Garin] + Aristia + Various",
   previewPlay: "Écouter l'extrait",
   previewStop: "Arrêter l'extrait",
   playerPause: "Pause",
   playerPlay: "Lecture",
+  playerMusicLoading: "Chargement de la musique…",
+  playerClipOnly: "Musique complète indisponible : extrait de 10 s",
 };
 
 const es: Copy = {
@@ -570,12 +576,14 @@ const es: Copy = {
   playerMusic: "Música",
   playerHitsounds: "Hitsounds",
   playerDance: "Cursor danser",
-  playerSoundHint: "Haz clic una vez en el reproductor para activar el sonido. La música es el avance de 10 s de osu!.",
+  playerSoundHint: "Haz clic una vez en el reproductor si el navegador bloquea el sonido.",
   playerCredit: "Skin: vv_idke_trail de [Garin] + Aristia + Various",
   previewPlay: "Escuchar avance",
   previewStop: "Detener avance",
   playerPause: "Pausa",
   playerPlay: "Reproducir",
+  playerMusicLoading: "Cargando la música…",
+  playerClipOnly: "Canción completa no disponible: avance de 10 s",
 };
 
 const de: Copy = {
@@ -747,12 +755,14 @@ const de: Copy = {
   playerMusic: "Musik",
   playerHitsounds: "Hitsounds",
   playerDance: "Danser-Cursor",
-  playerSoundHint: "Klicke einmal in den Player, um den Ton zu erlauben. Die Musik ist die 10-s-Vorschau von osu!.",
+  playerSoundHint: "Klicke einmal in den Player, falls der Browser den Ton blockiert.",
   playerCredit: "Skin: vv_idke_trail von [Garin] + Aristia + Various",
   previewPlay: "Vorschau abspielen",
   previewStop: "Vorschau stoppen",
   playerPause: "Pause",
   playerPlay: "Abspielen",
+  playerMusicLoading: "Musik wird geladen…",
+  playerClipOnly: "Ganzer Song nicht verfügbar: 10-s-Vorschau",
 };
 
 const pt: Copy = {
@@ -924,12 +934,14 @@ const pt: Copy = {
   playerMusic: "Música",
   playerHitsounds: "Hitsounds",
   playerDance: "Cursor danser",
-  playerSoundHint: "Clique uma vez no player para liberar o som. A música é a prévia de 10 s do osu!.",
+  playerSoundHint: "Clique uma vez no player se o navegador bloquear o som.",
   playerCredit: "Skin: vv_idke_trail por [Garin] + Aristia + Various",
   previewPlay: "Ouvir prévia",
   previewStop: "Parar prévia",
   playerPause: "Pausar",
   playerPlay: "Tocar",
+  playerMusicLoading: "Carregando a música…",
+  playerClipOnly: "Música completa indisponível: prévia de 10 s",
 };
 
 const pl: Copy = {
@@ -1101,12 +1113,14 @@ const pl: Copy = {
   playerMusic: "Muzyka",
   playerHitsounds: "Hitsoundy",
   playerDance: "Kursor danser",
-  playerSoundHint: "Kliknij raz w odtwarzacz, aby włączyć dźwięk. Muzyka to 10-sekundowy podgląd z osu!.",
+  playerSoundHint: "Kliknij raz w odtwarzacz, jeśli przeglądarka blokuje dźwięk.",
   playerCredit: "Skin: vv_idke_trail od [Garin] + Aristia + Various",
   previewPlay: "Odtwórz podgląd",
   previewStop: "Zatrzymaj podgląd",
   playerPause: "Pauza",
   playerPlay: "Odtwórz",
+  playerMusicLoading: "Ładowanie muzyki…",
+  playerClipOnly: "Pełny utwór niedostępny: 10-sekundowy podgląd",
 };
 
 const ru: Copy = {
@@ -1278,12 +1292,14 @@ const ru: Copy = {
   playerMusic: "Музыка",
   playerHitsounds: "Хитсаунды",
   playerDance: "Курсор danser",
-  playerSoundHint: "Кликните один раз по плееру, чтобы включить звук. Музыка — 10-секундное превью osu!.",
+  playerSoundHint: "Кликните по плееру, если браузер блокирует звук.",
   playerCredit: "Скин: vv_idke_trail от [Garin] + Aristia + Various",
   previewPlay: "Слушать превью",
   previewStop: "Остановить превью",
   playerPause: "Пауза",
   playerPlay: "Играть",
+  playerMusicLoading: "Загрузка музыки…",
+  playerClipOnly: "Полная песня недоступна: 10-секундное превью",
 };
 
 const ko: Copy = {
@@ -1455,12 +1471,14 @@ const ko: Copy = {
   playerMusic: "음악",
   playerHitsounds: "히트사운드",
   playerDance: "danser 커서",
-  playerSoundHint: "소리를 켜려면 플레이어를 한 번 클릭하세요. 음악은 osu!의 10초 미리듣기예요.",
+  playerSoundHint: "브라우저가 소리를 막으면 플레이어를 한 번 클릭하세요.",
   playerCredit: "스킨: vv_idke_trail ([Garin] + Aristia + Various)",
   previewPlay: "미리듣기",
   previewStop: "미리듣기 정지",
   playerPause: "일시정지",
   playerPlay: "재생",
+  playerMusicLoading: "음악 불러오는 중…",
+  playerClipOnly: "전체 곡을 쓸 수 없어요: 10초 미리듣기",
 };
 
 const ja: Copy = {
@@ -1632,12 +1650,14 @@ const ja: Copy = {
   playerMusic: "音楽",
   playerHitsounds: "ヒットサウンド",
   playerDance: "danser カーソル",
-  playerSoundHint: "音を出すにはプレイヤーを一度クリックしてください。音楽は osu! の 10 秒プレビューです。",
+  playerSoundHint: "ブラウザが音をブロックする場合は、プレイヤーを一度クリックしてください。",
   playerCredit: "スキン：vv_idke_trail（[Garin] + Aristia + Various）",
   previewPlay: "プレビューを再生",
   previewStop: "プレビューを停止",
   playerPause: "一時停止",
   playerPlay: "再生",
+  playerMusicLoading: "音楽を読み込み中…",
+  playerClipOnly: "曲全体は利用できません：10 秒プレビュー",
 };
 
 const zh: Copy = {
@@ -1809,12 +1829,14 @@ const zh: Copy = {
   playerMusic: "音乐",
   playerHitsounds: "打击音效",
   playerDance: "danser 光标",
-  playerSoundHint: "点击一次播放器以开启声音。音乐为 osu! 的 10 秒试听。",
+  playerSoundHint: "如果浏览器阻止了声音，请点击一次播放器。",
   playerCredit: "皮肤：vv_idke_trail，作者 [Garin] + Aristia + Various",
   previewPlay: "播放试听",
   previewStop: "停止试听",
   playerPause: "暂停",
   playerPlay: "播放",
+  playerMusicLoading: "正在加载音乐…",
+  playerClipOnly: "无法获取完整歌曲：播放 10 秒试听",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

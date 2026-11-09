@@ -621,10 +621,11 @@ function farmTier(score: number): string {
   return "";
 }
 
-/** Plays the map's osu! preview clip without opening the card. */
-function PreviewButton(props: { setId: number }) {
+/** Plays the map's osu! preview clip without opening the card: just a small triangle. */
+function PreviewButton(props: { hit: DiscoverHit }) {
   const { t } = useI18n();
-  const playing = usePreviewPlaying(props.setId);
+  const setId = props.hit.beatmapsetId!;
+  const playing = usePreviewPlaying(setId);
   return (
     <button
       type="button"
@@ -635,16 +636,17 @@ function PreviewButton(props: { setId: number }) {
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        togglePreview(props.setId);
+        togglePreview(setId, { title: props.hit.title, artist: props.hit.artist, cover: props.hit.cover });
       }}
     >
       {playing ? (
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-          <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
+          <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
         </svg>
       ) : (
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-          <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
         </svg>
       )}
     </button>
@@ -695,7 +697,7 @@ export function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boole
       <span className="map-cover">
         {cover ? <img src={cover} alt="" loading="lazy" decoding="async" onError={() => setCoverFailed(true)} /> : null}
         {props.showRank && <span className="map-rank">#{props.rank}</span>}
-        {hit.beatmapsetId != null && <PreviewButton setId={hit.beatmapsetId} />}
+        {hit.beatmapsetId != null && <PreviewButton hit={hit} />}
       </span>
       <span className="map-main">
         <span className="map-title">{hit.title}</span>
