@@ -389,7 +389,7 @@ const en: Copy = {
   statsMapsList: "Map list",
   statsMapPage: "Map page",
   loginShort: "Sign in",
-  experimental: "Experimental",
+  experimental: "Beta",
 };
 
 const fr: Copy = {
@@ -594,7 +594,7 @@ const fr: Copy = {
   statsMapsList: "Liste des maps",
   statsMapPage: "Page d'une map",
   loginShort: "Connexion",
-  experimental: "Expérimental",
+  experimental: "Beta",
 };
 
 const es: Copy = {
@@ -799,7 +799,7 @@ const es: Copy = {
   statsMapsList: "Lista de mapas",
   statsMapPage: "Página de mapa",
   loginShort: "Entrar",
-  experimental: "Experimental",
+  experimental: "Beta",
 };
 
 const de: Copy = {
@@ -1032,7 +1032,7 @@ const de: Copy = {
   statsMapsList: "Map-Liste",
   statsMapPage: "Map-Seite",
   loginShort: "Anmelden",
-  experimental: "Experimentell",
+  experimental: "Beta",
 };
 
 const pt: Copy = {
@@ -1265,7 +1265,7 @@ const pt: Copy = {
   statsMapsList: "Lista de mapas",
   statsMapPage: "Página de mapa",
   loginShort: "Entrar",
-  experimental: "Experimental",
+  experimental: "Beta",
 };
 
 const pl: Copy = {
@@ -1498,7 +1498,7 @@ const pl: Copy = {
   statsMapsList: "Lista map",
   statsMapPage: "Strona mapy",
   loginShort: "Zaloguj",
-  experimental: "Eksperymentalne",
+  experimental: "Beta",
 };
 
 const ru: Copy = {
@@ -1731,7 +1731,7 @@ const ru: Copy = {
   statsMapsList: "Список карт",
   statsMapPage: "Страница карты",
   loginShort: "Войти",
-  experimental: "Экспериментально",
+  experimental: "Beta",
 };
 
 const ko: Copy = {
@@ -1964,7 +1964,7 @@ const ko: Copy = {
   statsMapsList: "맵 목록",
   statsMapPage: "맵 페이지",
   loginShort: "로그인",
-  experimental: "실험적",
+  experimental: "Beta",
 };
 
 const ja: Copy = {
@@ -2197,7 +2197,7 @@ const ja: Copy = {
   statsMapsList: "譜面リスト",
   statsMapPage: "譜面ページ",
   loginShort: "ログイン",
-  experimental: "試験運用",
+  experimental: "Beta",
 };
 
 const zh: Copy = {
@@ -2430,7 +2430,7 @@ const zh: Copy = {
   statsMapsList: "谱面列表",
   statsMapPage: "谱面页面",
   loginShort: "登录",
-  experimental: "实验性",
+  experimental: "Beta",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };
