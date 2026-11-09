@@ -290,9 +290,27 @@ export interface MeAnswer {
   marks: Record<string, MapMark>;
   pins: Record<string, PinInfo>;
   top: TopPlay[];
+  admin: boolean;
 }
 
-const SIGNED_OUT = (): MeAnswer => ({ signedIn: false, loginAvailable: loginConfigured(), profile: null, marks: {}, pins: {}, top: [] });
+/** osu! names (or ids) allowed to read the feedback; the site owner by default. */
+function admins(): Set<string> {
+  return new Set((process.env.ADMIN_OSU_USERS ?? "TYROOOO").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean));
+}
+
+export function isAdmin(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  const list = admins();
+  return list.has(profile.username.toLowerCase()) || list.has(String(profile.id));
+}
+
+/** The signed-in player, without calling osu!. */
+export function currentUser(sessionId: string | undefined): UserProfile | null {
+  const session = sessionFor(sessionId);
+  return session ? (loadPlayer(session.userId)?.profile ?? null) : null;
+}
+
+const SIGNED_OUT = (): MeAnswer => ({ signedIn: false, loginAvailable: loginConfigured(), profile: null, marks: {}, pins: {}, top: [], admin: false });
 
 export async function me(sessionId: string | undefined): Promise<MeAnswer> {
   const session = sessionFor(sessionId);
@@ -310,7 +328,7 @@ export async function me(sessionId: string | undefined): Promise<MeAnswer> {
     }
     // osu! down: answer with what is stored.
   }
-  return { signedIn: true, loginAvailable: true, profile: file.profile, marks: file.marks, pins: file.pins ?? {}, top: file.top };
+  return { signedIn: true, loginAvailable: true, profile: file.profile, marks: file.marks, pins: file.pins ?? {}, top: file.top, admin: isAdmin(file.profile) };
 }
 
 function requirePlayer(sessionId: string | undefined): { session: Session; file: PlayerFile } {

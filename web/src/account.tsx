@@ -21,6 +21,8 @@ interface AccountState {
   dismissLoginError(): void;
   loginAvailable: boolean;
   profile: UserProfile | null;
+  /** The site owner: sees the feedback page. */
+  admin: boolean;
   marks: Record<string, MapMark>;
   /** What each marked map looks like, for the pinned maps page. */
   pins: Record<string, PinInfo>;
@@ -163,6 +165,7 @@ export function AccountProvider(props: { children: ReactNode }) {
       dismissLoginError: () => setLoginError(null),
       loginAvailable: Boolean(me?.loginAvailable),
       profile: signedIn ? (me?.profile ?? null) : null,
+      admin: signedIn && Boolean(me?.admin),
       marks,
       pins,
       top,

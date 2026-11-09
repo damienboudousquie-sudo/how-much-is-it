@@ -2702,3 +2702,269 @@ button:disabled {
   color: var(--faint);
   font-size: 0.75rem;
 }
+
+/* ---------- top links: feedback and contact ---------- */
+
+.top-links {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.top-links + .account,
+.top-links + .login-osu {
+  margin-left: 0;
+}
+
+.top-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.top-feedback:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.top-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.top-osu {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  opacity: 0.75;
+  transition: color 0.15s, opacity 0.15s;
+}
+
+.top-osu:hover {
+  color: var(--pink);
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .top-contact-label,
+  .top-feedback span {
+    display: none;
+  }
+
+  .top-links {
+    gap: 6px;
+  }
+}
+
+/* ---------- feedback dialog ---------- */
+
+.modal-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(5, 3, 4, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.feedback-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(440px, 100%);
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: auto-pop 0.16s ease-out;
+}
+
+.feedback-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feedback-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.feedback-kinds {
+  display: flex;
+  gap: 6px;
+}
+
+.feedback-kinds button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-4);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.feedback-kinds button.on {
+  background: var(--pink);
+  color: #33001a;
+}
+
+.feedback-dialog textarea,
+.feedback-dialog input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.feedback-dialog textarea:focus,
+.feedback-dialog input:focus {
+  box-shadow: inset 0 0 0 1.5px var(--pink);
+}
+
+.feedback-dialog .button {
+  align-self: flex-end;
+}
+
+.feedback-dialog .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.feedback-sent {
+  margin: 8px 0 4px;
+  color: var(--text);
+}
+
+.feedback-error {
+  margin: 0;
+  color: #ff7a8a;
+  font-size: 0.85rem;
+}
+
+/* ---------- feedback inbox (owner only) ---------- */
+
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inbox-item {
+  padding: 12px 14px;
+}
+
+.inbox-item.done {
+  opacity: 0.55;
+}
+
+.inbox-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.inbox-meta a {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.inbox-kind {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-4);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.inbox-kind.kind-bug {
+  background: rgba(255, 90, 110, 0.18);
+  color: #ff8a99;
+}
+
+.inbox-kind.kind-idea {
+  background: rgba(255, 201, 77, 0.16);
+  color: var(--mark-farm);
+}
+
+.inbox-lang {
+  color: var(--faint);
+  font-weight: 700;
+}
+
+.inbox-message {
+  margin: 8px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inbox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.inbox-page {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-actions button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-4);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inbox-actions button.danger:hover {
+  background: rgba(255, 90, 110, 0.25);
+}

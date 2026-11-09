@@ -131,6 +131,24 @@ export type Copy = {
   playerPlay: string;
   playerMusicLoading: string;
   playerClipOnly: string;
+  contact: string;
+  feedback: string;
+  feedbackTitle: string;
+  feedbackBug: string;
+  feedbackIdea: string;
+  feedbackOther: string;
+  feedbackMessage: string;
+  feedbackContact: string;
+  feedbackSend: string;
+  feedbackSent: string;
+  feedbackInbox: string;
+  feedbackEmpty: string;
+  feedbackDone: string;
+  feedbackReopen: string;
+  feedbackDelete: string;
+  feedbackAll: string;
+  feedbackOpen: string;
+  creatorProfile: string;
 };
 
 const en: Copy = {
@@ -282,6 +300,24 @@ const en: Copy = {
   playerPlay: "Play",
   playerMusicLoading: "Loading song…",
   playerClipOnly: "Full song unavailable: playing the 10 s preview",
+  contact: "Contact:",
+  feedback: "Feedback",
+  feedbackTitle: "Send feedback",
+  feedbackBug: "Bug",
+  feedbackIdea: "Idea",
+  feedbackOther: "Other",
+  feedbackMessage: "What happened, or what would you like?",
+  feedbackContact: "Your osu! name or Discord (optional)",
+  feedbackSend: "Send",
+  feedbackSent: "Thanks! Your message was sent.",
+  feedbackInbox: "Feedback received",
+  feedbackEmpty: "No messages yet.",
+  feedbackDone: "Mark as done",
+  feedbackReopen: "Reopen",
+  feedbackDelete: "Delete",
+  feedbackAll: "All",
+  feedbackOpen: "To do",
+  creatorProfile: "The creator's osu! profile",
 };
 
 const fr: Copy = {
@@ -433,6 +469,24 @@ const fr: Copy = {
   playerPlay: "Lecture",
   playerMusicLoading: "Chargement de la musique…",
   playerClipOnly: "Musique complète indisponible : extrait de 10 s",
+  contact: "Contact :",
+  feedback: "Avis",
+  feedbackTitle: "Donner ton avis",
+  feedbackBug: "Bug",
+  feedbackIdea: "Idée",
+  feedbackOther: "Autre",
+  feedbackMessage: "Qu'est-ce qui s'est passé, ou qu'aimerais-tu ?",
+  feedbackContact: "Ton pseudo osu! ou Discord (facultatif)",
+  feedbackSend: "Envoyer",
+  feedbackSent: "Merci ! Ton message a été envoyé.",
+  feedbackInbox: "Avis reçus",
+  feedbackEmpty: "Aucun message pour l'instant.",
+  feedbackDone: "Marquer traité",
+  feedbackReopen: "Rouvrir",
+  feedbackDelete: "Supprimer",
+  feedbackAll: "Tous",
+  feedbackOpen: "À traiter",
+  creatorProfile: "Le profil osu! du créateur",
 };
 
 const es: Copy = {
@@ -584,6 +638,24 @@ const es: Copy = {
   playerPlay: "Reproducir",
   playerMusicLoading: "Cargando la música…",
   playerClipOnly: "Canción completa no disponible: avance de 10 s",
+  contact: "Contacto:",
+  feedback: "Opinión",
+  feedbackTitle: "Enviar opinión",
+  feedbackBug: "Error",
+  feedbackIdea: "Idea",
+  feedbackOther: "Otro",
+  feedbackMessage: "¿Qué pasó o qué te gustaría?",
+  feedbackContact: "Tu nombre de osu! o Discord (opcional)",
+  feedbackSend: "Enviar",
+  feedbackSent: "¡Gracias! Tu mensaje se envió.",
+  feedbackInbox: "Opiniones recibidas",
+  feedbackEmpty: "Aún no hay mensajes.",
+  feedbackDone: "Marcar como hecho",
+  feedbackReopen: "Reabrir",
+  feedbackDelete: "Eliminar",
+  feedbackAll: "Todos",
+  feedbackOpen: "Pendientes",
+  creatorProfile: "El perfil de osu! del creador",
 };
 
 const de: Copy = {
@@ -763,6 +835,24 @@ const de: Copy = {
   playerPlay: "Abspielen",
   playerMusicLoading: "Musik wird geladen…",
   playerClipOnly: "Ganzer Song nicht verfügbar: 10-s-Vorschau",
+  contact: "Kontakt:",
+  feedback: "Feedback",
+  feedbackTitle: "Feedback senden",
+  feedbackBug: "Fehler",
+  feedbackIdea: "Idee",
+  feedbackOther: "Sonstiges",
+  feedbackMessage: "Was ist passiert oder was wünschst du dir?",
+  feedbackContact: "Dein osu!-Name oder Discord (optional)",
+  feedbackSend: "Senden",
+  feedbackSent: "Danke! Deine Nachricht wurde gesendet.",
+  feedbackInbox: "Erhaltenes Feedback",
+  feedbackEmpty: "Noch keine Nachrichten.",
+  feedbackDone: "Als erledigt markieren",
+  feedbackReopen: "Wieder öffnen",
+  feedbackDelete: "Löschen",
+  feedbackAll: "Alle",
+  feedbackOpen: "Offen",
+  creatorProfile: "Das osu!-Profil des Erstellers",
 };
 
 const pt: Copy = {
@@ -942,6 +1032,24 @@ const pt: Copy = {
   playerPlay: "Tocar",
   playerMusicLoading: "Carregando a música…",
   playerClipOnly: "Música completa indisponível: prévia de 10 s",
+  contact: "Contato:",
+  feedback: "Opinião",
+  feedbackTitle: "Enviar opinião",
+  feedbackBug: "Bug",
+  feedbackIdea: "Ideia",
+  feedbackOther: "Outro",
+  feedbackMessage: "O que aconteceu, ou o que você gostaria?",
+  feedbackContact: "Seu nome no osu! ou Discord (opcional)",
+  feedbackSend: "Enviar",
+  feedbackSent: "Obrigado! Sua mensagem foi enviada.",
+  feedbackInbox: "Opiniões recebidas",
+  feedbackEmpty: "Nenhuma mensagem ainda.",
+  feedbackDone: "Marcar como feito",
+  feedbackReopen: "Reabrir",
+  feedbackDelete: "Excluir",
+  feedbackAll: "Todas",
+  feedbackOpen: "A fazer",
+  creatorProfile: "O perfil osu! do criador",
 };
 
 const pl: Copy = {
@@ -1121,6 +1229,24 @@ const pl: Copy = {
   playerPlay: "Odtwórz",
   playerMusicLoading: "Ładowanie muzyki…",
   playerClipOnly: "Pełny utwór niedostępny: 10-sekundowy podgląd",
+  contact: "Kontakt:",
+  feedback: "Opinia",
+  feedbackTitle: "Wyślij opinię",
+  feedbackBug: "Błąd",
+  feedbackIdea: "Pomysł",
+  feedbackOther: "Inne",
+  feedbackMessage: "Co się stało albo czego byś chciał?",
+  feedbackContact: "Twój nick w osu! lub Discord (opcjonalnie)",
+  feedbackSend: "Wyślij",
+  feedbackSent: "Dzięki! Wiadomość wysłana.",
+  feedbackInbox: "Otrzymane opinie",
+  feedbackEmpty: "Brak wiadomości.",
+  feedbackDone: "Oznacz jako zrobione",
+  feedbackReopen: "Otwórz ponownie",
+  feedbackDelete: "Usuń",
+  feedbackAll: "Wszystkie",
+  feedbackOpen: "Do zrobienia",
+  creatorProfile: "Profil osu! twórcy",
 };
 
 const ru: Copy = {
@@ -1300,6 +1426,24 @@ const ru: Copy = {
   playerPlay: "Играть",
   playerMusicLoading: "Загрузка музыки…",
   playerClipOnly: "Полная песня недоступна: 10-секундное превью",
+  contact: "Контакт:",
+  feedback: "Отзыв",
+  feedbackTitle: "Оставить отзыв",
+  feedbackBug: "Баг",
+  feedbackIdea: "Идея",
+  feedbackOther: "Другое",
+  feedbackMessage: "Что случилось или что бы вы хотели?",
+  feedbackContact: "Ваш ник в osu! или Discord (необязательно)",
+  feedbackSend: "Отправить",
+  feedbackSent: "Спасибо! Сообщение отправлено.",
+  feedbackInbox: "Полученные отзывы",
+  feedbackEmpty: "Сообщений пока нет.",
+  feedbackDone: "Отметить как сделанное",
+  feedbackReopen: "Открыть снова",
+  feedbackDelete: "Удалить",
+  feedbackAll: "Все",
+  feedbackOpen: "К обработке",
+  creatorProfile: "Профиль osu! создателя",
 };
 
 const ko: Copy = {
@@ -1479,6 +1623,24 @@ const ko: Copy = {
   playerPlay: "재생",
   playerMusicLoading: "음악 불러오는 중…",
   playerClipOnly: "전체 곡을 쓸 수 없어요: 10초 미리듣기",
+  contact: "연락처:",
+  feedback: "의견",
+  feedbackTitle: "의견 보내기",
+  feedbackBug: "버그",
+  feedbackIdea: "아이디어",
+  feedbackOther: "기타",
+  feedbackMessage: "무슨 일이 있었나요, 혹은 무엇을 원하나요?",
+  feedbackContact: "osu! 이름 또는 Discord (선택)",
+  feedbackSend: "보내기",
+  feedbackSent: "고마워요! 메시지를 보냈어요.",
+  feedbackInbox: "받은 의견",
+  feedbackEmpty: "아직 메시지가 없어요.",
+  feedbackDone: "처리 완료",
+  feedbackReopen: "다시 열기",
+  feedbackDelete: "삭제",
+  feedbackAll: "전체",
+  feedbackOpen: "할 일",
+  creatorProfile: "제작자의 osu! 프로필",
 };
 
 const ja: Copy = {
@@ -1658,6 +1820,24 @@ const ja: Copy = {
   playerPlay: "再生",
   playerMusicLoading: "音楽を読み込み中…",
   playerClipOnly: "曲全体は利用できません：10 秒プレビュー",
+  contact: "連絡先：",
+  feedback: "フィードバック",
+  feedbackTitle: "フィードバックを送る",
+  feedbackBug: "バグ",
+  feedbackIdea: "アイデア",
+  feedbackOther: "その他",
+  feedbackMessage: "何が起きましたか？または、ほしい機能は？",
+  feedbackContact: "osu! の名前か Discord（任意）",
+  feedbackSend: "送信",
+  feedbackSent: "ありがとう！メッセージを送信しました。",
+  feedbackInbox: "届いたフィードバック",
+  feedbackEmpty: "まだメッセージはありません。",
+  feedbackDone: "対応済みにする",
+  feedbackReopen: "未対応に戻す",
+  feedbackDelete: "削除",
+  feedbackAll: "すべて",
+  feedbackOpen: "未対応",
+  creatorProfile: "制作者の osu! プロフィール",
 };
 
 const zh: Copy = {
@@ -1837,6 +2017,24 @@ const zh: Copy = {
   playerPlay: "播放",
   playerMusicLoading: "正在加载音乐…",
   playerClipOnly: "无法获取完整歌曲：播放 10 秒试听",
+  contact: "联系：",
+  feedback: "反馈",
+  feedbackTitle: "发送反馈",
+  feedbackBug: "错误",
+  feedbackIdea: "建议",
+  feedbackOther: "其他",
+  feedbackMessage: "发生了什么，或者你希望有什么？",
+  feedbackContact: "你的 osu! 名称或 Discord（可选）",
+  feedbackSend: "发送",
+  feedbackSent: "谢谢！消息已发送。",
+  feedbackInbox: "收到的反馈",
+  feedbackEmpty: "还没有消息。",
+  feedbackDone: "标记为已处理",
+  feedbackReopen: "重新打开",
+  feedbackDelete: "删除",
+  feedbackAll: "全部",
+  feedbackOpen: "待处理",
+  creatorProfile: "作者的 osu! 个人资料",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

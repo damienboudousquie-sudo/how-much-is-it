@@ -278,4 +278,20 @@ export interface MeResponse {
   marks: Record<string, MapMark>;
   pins: Record<string, PinInfo>;
   top: TopPlay[];
+  /** True for the site owner: can read the feedback. */
+  admin?: boolean;
+}
+
+export type FeedbackKind = "bug" | "idea" | "other";
+
+export interface FeedbackItem {
+  id: string;
+  at: string;
+  kind: FeedbackKind;
+  message: string;
+  contact: string | null;
+  page: string | null;
+  lang: string | null;
+  user: { id: number; username: string } | null;
+  done: boolean;
 }

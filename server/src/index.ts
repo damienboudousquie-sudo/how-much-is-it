@@ -10,6 +10,8 @@ import { apiKeyConfigured, mirrorHealth } from "./osuApi";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
+import { currentUser, isAdmin } from "./account";
+import { addFeedback, deleteFeedback, listFeedback, updateFeedback } from "./feedback";
 import { completeLogin, loginErrorCookie, loginRedirect, logout, me, SESSION_MAX_AGE, sessionCookie, sessionFromCookie, setMarks } from "./account";
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
@@ -189,6 +191,62 @@ app.get("/api/auth/callback", async (request, reply) => {
     const message = error instanceof Error ? error.message : "Sign-in failed.";
     reply.header("set-cookie", loginErrorCookie(message));
     return reply.redirect("/");
+  }
+});
+
+/* ---------- feedback ---------- */
+
+function clientIp(request: { headers: Record<string, string | string[] | undefined>; ip: string }): string {
+  const header = request.headers["cf-connecting-ip"] ?? request.headers["x-forwarded-for"];
+  const value = Array.isArray(header) ? header[0] : header;
+  return (value ?? request.ip).split(",")[0].trim();
+}
+
+function requireAdmin(cookie: string | undefined): void {
+  const user = currentUser(sessionFromCookie(cookie));
+  if (!user) throw new AppError("signed_out", "Sign in with osu! first.", 401);
+  if (!isAdmin(user)) throw new AppError("not_found", "Not found.", 404);
+}
+
+app.post("/api/feedback", async (request, reply) => {
+  try {
+    const user = currentUser(sessionFromCookie(request.headers.cookie));
+    const lang = String(request.headers["x-lang"] ?? "");
+    await addFeedback(request.body, clientIp(request), user ? { id: user.id, username: user.username } : null, lang);
+    return { ok: true };
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+app.get("/api/feedback", async (request, reply) => {
+  try {
+    requireAdmin(request.headers.cookie);
+    reply.header("cache-control", "no-store");
+    return { items: await listFeedback() };
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+app.patch("/api/feedback/:id", async (request, reply) => {
+  try {
+    requireAdmin(request.headers.cookie);
+    const done = Boolean((request.body as { done?: unknown } | null)?.done);
+    await updateFeedback(String((request.params as { id?: string }).id ?? ""), done);
+    return { ok: true };
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+app.delete("/api/feedback/:id", async (request, reply) => {
+  try {
+    requireAdmin(request.headers.cookie);
+    await deleteFeedback(String((request.params as { id?: string }).id ?? ""));
+    return { ok: true };
+  } catch (error) {
+    sendError(reply, error);
   }
 });
 
