@@ -302,7 +302,7 @@ export interface RecommendHit extends DiscoverHit {
 }
 
 export interface RecommendResponse {
-  /** pp range the suggestions come from, taken from the top plays. */
+  /** FC (SS) pp range the suggestions come from: that of the maps in the top plays. */
   ppMin: number;
   ppMax: number;
   /** Share of a map's SS pp the player usually gets (their top plays are not all SS). */

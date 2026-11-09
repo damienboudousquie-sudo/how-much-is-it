@@ -63,20 +63,25 @@ async function ssPp(beatmapId: number, mods: readonly string[]): Promise<number 
  * How much of a map's SS pp the player really gets: their top plays are rarely SS, so a
  * 400 pp play is often a map worth 450 pp at SS. The median over the best plays.
  */
-async function scoreRatio(plays: TopPlay[]): Promise<number> {
+async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; ss: number[] }> {
   const ratios: number[] = [];
+  const ssList: number[] = [];
   const queue = [...plays];
   await Promise.all(
     Array.from({ length: 4 }, async () => {
       for (let play = queue.shift(); play; play = queue.shift()) {
         const ss = await ssPp(play.beatmapId, play.mods.filter((mod) => mod !== "CL"));
-        if (ss && ss > 0) ratios.push(Math.min(1, play.pp / ss));
+        if (ss && ss > 0) {
+          ratios.push(Math.min(1, play.pp / ss));
+          ssList.push(ss);
+        }
       }
     }),
   );
-  if (ratios.length < 5) return 0.92;
+  ssList.sort((a, b) => a - b);
+  if (ratios.length < 5) return { ratio: 0.92, ss: ssList };
   ratios.sort((a, b) => a - b);
-  return Math.max(0.55, Math.min(1, ratios[Math.floor(ratios.length / 2)]));
+  return { ratio: Math.max(0.55, Math.min(1, ratios[Math.floor(ratios.length / 2)])), ss: ssList };
 }
 
 /** Picks without replacement, favouring high scores, so each refresh shows a new mix. */
@@ -100,13 +105,12 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const plays = [...top].sort((a, b) => b.pp - a.pp);
   if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], results: [] };
 
-  // Range of the top plays (30th play to a bit above the best), turned into SS pp.
+  // Range: the FC (SS) pp of the maps in the top, from the lowest to the highest, since
+  // the player's plays are not all SS. One very low map does not pull the range down.
   const best = plays.slice(0, 50);
-  const ratio = await scoreRatio(best);
-  const ppMin = Math.max(0, Math.round(plays[Math.min(plays.length - 1, 30)].pp * 0.95));
-  const ppMax = Math.round(plays[0].pp * 1.03);
-  const ssMin = Math.round(ppMin / ratio);
-  const ssMax = Math.round(ppMax / ratio);
+  const { ratio, ss } = await scoreRatio(best);
+  const ssMin = ss.length >= 5 ? Math.round(ss[Math.floor(ss.length * 0.1)]) : Math.round((plays[Math.min(plays.length - 1, 30)].pp * 0.95) / ratio);
+  const ssMax = ss.length >= 5 ? Math.round(ss[ss.length - 1] * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
 
   // Mod combos and map types of the best 50 plays, weighted by pp.
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
@@ -121,24 +125,29 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
 
   const played = new Set(plays.map((play) => play.beatmapId));
   const picked = new Map<number, RecommendHit & { score: number }>();
+  // Look for each map type of the top on its own: the best farm maps overall are mostly
+  // jump maps, so a stream player would otherwise get too few streams to choose from.
+  const wanted = (styleShares.length ? styleShares.filter((item) => item.share >= 0.05).map((item) => item.key) : ["jump", "stream", "hybrid"]) as ("jump" | "stream" | "hybrid")[];
   for (const combo of combos) {
     const mods = combo.key === "NM" ? [] : (PP_MODS.filter((mod) => combo.key.includes(mod)) as ModKey[]);
-    let offset = 0;
-    for (let page = 0; page < 4; page++) {
-      const answer = await discover({
-        query: "",
-        mode: "osu",
-        styles: [],
-        mods: modRecord(mods),
-        ppMin: ssMin,
-        ppMax: ssMax,
-        offset,
-        sort: [{ key: "farm", dir: "desc" }],
-        ranges: emptyRanges(),
-      });
-      for (const hit of answer.results) consider(hit, combo.share);
-      if (!answer.hasMore) break;
-      offset = answer.nextOffset;
+    for (const style of wanted) {
+      let offset = 0;
+      for (let page = 0; page < 2; page++) {
+        const answer = await discover({
+          query: "",
+          mode: "osu",
+          styles: [style],
+          mods: modRecord(mods),
+          ppMin: ssMin,
+          ppMax: ssMax,
+          offset,
+          sort: [{ key: "farm", dir: "desc" }],
+          ranges: emptyRanges(),
+        });
+        for (const hit of answer.results) consider(hit, combo.share);
+        if (!answer.hasMore) break;
+        offset = answer.nextOffset;
+      }
     }
   }
 
@@ -180,8 +189,8 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     .slice(0, RESULTS)
     .map(({ score: _score, ...hit }) => hit);
   return {
-    ppMin,
-    ppMax,
+    ppMin: ssMin,
+    ppMax: ssMax,
     ratio,
     mods: combos.map((item) => ({ mods: item.key === "NM" ? [] : item.key.match(/.{2}/g) ?? [], share: item.share })),
     styles: styleShares.map((item) => ({ style: item.key, share: item.share })),
