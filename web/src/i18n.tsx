@@ -183,6 +183,7 @@ export type Copy = {
   statsEmpty: string;
   statsMapsList: string;
   statsMapPage: string;
+  loginShort: string;
 };
 
 const en: Copy = {
@@ -386,6 +387,7 @@ const en: Copy = {
   statsEmpty: "Nothing yet.",
   statsMapsList: "Map list",
   statsMapPage: "Map page",
+  loginShort: "Sign in",
 };
 
 const fr: Copy = {
@@ -589,6 +591,7 @@ const fr: Copy = {
   statsEmpty: "Rien pour l'instant.",
   statsMapsList: "Liste des maps",
   statsMapPage: "Page d'une map",
+  loginShort: "Connexion",
 };
 
 const es: Copy = {
@@ -792,6 +795,7 @@ const es: Copy = {
   statsEmpty: "Nada todavía.",
   statsMapsList: "Lista de mapas",
   statsMapPage: "Página de mapa",
+  loginShort: "Entrar",
 };
 
 const de: Copy = {
@@ -1023,6 +1027,7 @@ const de: Copy = {
   statsEmpty: "Noch nichts.",
   statsMapsList: "Map-Liste",
   statsMapPage: "Map-Seite",
+  loginShort: "Anmelden",
 };
 
 const pt: Copy = {
@@ -1254,6 +1259,7 @@ const pt: Copy = {
   statsEmpty: "Nada ainda.",
   statsMapsList: "Lista de mapas",
   statsMapPage: "Página de mapa",
+  loginShort: "Entrar",
 };
 
 const pl: Copy = {
@@ -1485,6 +1491,7 @@ const pl: Copy = {
   statsEmpty: "Na razie nic.",
   statsMapsList: "Lista map",
   statsMapPage: "Strona mapy",
+  loginShort: "Zaloguj",
 };
 
 const ru: Copy = {
@@ -1716,6 +1723,7 @@ const ru: Copy = {
   statsEmpty: "Пока ничего.",
   statsMapsList: "Список карт",
   statsMapPage: "Страница карты",
+  loginShort: "Войти",
 };
 
 const ko: Copy = {
@@ -1947,6 +1955,7 @@ const ko: Copy = {
   statsEmpty: "아직 없어요.",
   statsMapsList: "맵 목록",
   statsMapPage: "맵 페이지",
+  loginShort: "로그인",
 };
 
 const ja: Copy = {
@@ -2178,6 +2187,7 @@ const ja: Copy = {
   statsEmpty: "まだありません。",
   statsMapsList: "譜面リスト",
   statsMapPage: "譜面ページ",
+  loginShort: "ログイン",
 };
 
 const zh: Copy = {
@@ -2409,6 +2419,7 @@ const zh: Copy = {
   statsEmpty: "暂无数据。",
   statsMapsList: "谱面列表",
   statsMapPage: "谱面页面",
+  loginShort: "登录",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

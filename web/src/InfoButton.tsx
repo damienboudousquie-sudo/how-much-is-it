@@ -24,7 +24,11 @@ export function InfoButton() {
   return (
     <div className={pinned ? "info open" : "info"} ref={box}>
       <button type="button" className="info-button" aria-label={t.infoLabel} aria-expanded={pinned} onClick={() => setPinned((value) => !value)}>
-        ?
+        {/* Drawn, not typed: a "?" character sits differently in each font. */}
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <path d="M8.8 8.6a3.3 3.3 0 0 1 6.4 1.1c0 2.2-3.2 2.6-3.2 4.8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="18.6" r="1.45" fill="currentColor" />
+        </svg>
       </button>
       <div className="info-card" role="tooltip">
         <p>{t.footer}</p>

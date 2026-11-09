@@ -275,7 +275,8 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
       )}
       {account.loginAvailable && (
         <a className="login-osu" href="/api/auth/login">
-          {t.login}
+          <span className="login-full">{t.login}</span>
+          <span className="login-short">{t.loginShort}</span>
         </a>
       )}
     </div>

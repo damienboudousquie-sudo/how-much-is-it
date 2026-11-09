@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { StatsResponse } from "@osu-pp/shared";
 import { useAccount } from "./account";
 import { currentLang, useI18n } from "./i18n";
@@ -16,10 +16,10 @@ export function trackView(path: string): void {
   }
 }
 
-/** A country code as a flag emoji ("FR" -> 🇫🇷). */
-function flag(code: string): string {
-  if (!/^[A-Z]{2}$/.test(code)) return "🏳️";
-  return String.fromCodePoint(...[...code].map((c) => 0x1f1a5 + c.charCodeAt(0)));
+/** A small flag picture: Windows draws no flag emoji, so emoji would show as two letters. */
+function Flag(props: { code: string }) {
+  if (!/^[A-Z]{2}$/.test(props.code)) return <span className="stats-flag unknown" aria-hidden="true" />;
+  return <img className="stats-flag" src={`https://flagcdn.com/w40/${props.code.toLowerCase()}.png`} alt="" width={20} height={15} loading="lazy" />;
 }
 
 const SPANS = [1, 7, 30, 90] as const;
@@ -68,7 +68,7 @@ export function StatsPage() {
   const named: Record<string, string> = { beatmap: t.statsMapPage, foryou: t.forYou, pinned: t.pinnedMaps, feedback: t.feedbackInbox };
   const pageName = (key: string) => (key.startsWith("maps:") ? `${t.statsMapsList} (${key.slice(5)})` : (named[key] ?? key));
 
-  const list = (title: string, rows: { key: string; value: number }[], label: (key: string) => string) => {
+  const list = (title: string, rows: { key: string; value: number }[], label: (key: string) => ReactNode) => {
     const max = Math.max(1, ...rows.map((row) => row.value));
     return (
       <section className="panel stats-list">
@@ -101,7 +101,6 @@ export function StatsPage() {
             </button>
           ))}
         </div>
-        <p className="help">{t.statsHelp}</p>
       </div>
       {error && <p className="notice error">{error}</p>}
       {data && (
@@ -147,7 +146,12 @@ export function StatsPage() {
           )}
 
           <div className="stats-grid">
-            {list(t.statsCountries, data.countries, (code) => `${flag(code)}  ${countryName(code)}`)}
+            {list(t.statsCountries, data.countries, (code) => (
+              <>
+                <Flag code={code} />
+                {countryName(code)}
+              </>
+            ))}
             {list(t.statsSources, data.sources, (key) => (key === "direct" ? t.statsDirect : key))}
             {list(t.statsLangs, data.langs, (key) => key.toUpperCase())}
             {list(t.statsPages, data.pages, pageName)}
