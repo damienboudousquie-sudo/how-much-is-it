@@ -1,6 +1,6 @@
 import type { Mode } from "@osu-pp/shared";
 
-export type AppRoute = { page: "maps"; mode: Mode } | { page: "beatmap"; mode: Mode; id: number } | { page: "pinned" } | { page: "feedback" };
+export type AppRoute = { page: "maps"; mode: Mode } | { page: "beatmap"; mode: Mode; id: number } | { page: "pinned" } | { page: "feedback" } | { page: "foryou" };
 
 const MODES = new Set<Mode>(["osu", "taiko", "catch", "mania"]);
 
@@ -18,6 +18,7 @@ export function parseRoute(hash: string, search = ""): AppRoute {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   if (parts[0] === "pinned") return { page: "pinned" };
   if (parts[0] === "feedback") return { page: "feedback" };
+  if (parts[0] === "foryou") return { page: "foryou" };
   if (parts[0] && isMode(parts[0]) && parts[1] === "maps") return { page: "maps", mode: parts[0] };
   if (parts[0] && isMode(parts[0]) && parts[1] === "b") {
     const id = beatmapId(parts[2]);
@@ -34,6 +35,7 @@ export function parseRoute(hash: string, search = ""): AppRoute {
 
 export const PINNED_PATH = "#/pinned";
 export const FEEDBACK_PATH = "#/feedback";
+export const FOR_YOU_PATH = "#/foryou";
 
 export function mapsPath(mode: Mode): string {
   return `#/${mode}/maps`;

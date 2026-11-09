@@ -17,6 +17,7 @@ import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
 import { mapAudio } from "./audio";
+import { recommend } from "./recommend";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
@@ -191,6 +192,16 @@ app.get("/api/auth/callback", async (request, reply) => {
     const message = error instanceof Error ? error.message : "Sign-in failed.";
     reply.header("set-cookie", loginErrorCookie(message));
     return reply.redirect("/");
+  }
+});
+
+/** Farm maps suggested from the signed-in player's top plays. */
+app.get("/api/recommend", async (request, reply) => {
+  try {
+    reply.header("cache-control", "no-store");
+    return await recommend(sessionFromCookie(request.headers.cookie));
+  } catch (error) {
+    sendError(reply, error);
   }
 });
 

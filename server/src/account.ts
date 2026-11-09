@@ -337,6 +337,12 @@ export async function me(sessionId: string | undefined): Promise<MeAnswer> {
   return { signedIn: true, loginAvailable: true, profile: file.profile, marks: file.marks, pins: file.pins ?? {}, top: file.top, admin: isAdmin(file.profile) };
 }
 
+/** The signed-in player's top plays and marks, for recommendations. */
+export function playerData(sessionId: string | undefined): { top: TopPlay[]; marks: Record<string, MapMark> } {
+  const { file } = requirePlayer(sessionId);
+  return { top: file.top, marks: file.marks };
+}
+
 function requirePlayer(sessionId: string | undefined): { session: Session; file: PlayerFile } {
   const session = sessionFor(sessionId);
   const file = session ? loadPlayer(session.userId) : null;

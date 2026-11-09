@@ -295,3 +295,19 @@ export interface FeedbackItem {
   user: { id: number; username: string } | null;
   done: boolean;
 }
+
+/** A map suggested from the player's top plays, with the pp it would add to their profile. */
+export interface RecommendHit extends DiscoverHit {
+  gain: number;
+}
+
+export interface RecommendResponse {
+  /** pp range the suggestions come from, taken from the top plays. */
+  ppMin: number;
+  ppMax: number;
+  /** Mod combos of the top plays, most played first (share 0–1). */
+  mods: { mods: string[]; share: number }[];
+  /** Map types of the top plays (share 0–1). */
+  styles: { style: string; share: number }[];
+  results: RecommendHit[];
+}

@@ -8,8 +8,9 @@ import { useI18n } from "./i18n";
 import { LangMenu } from "./LangMenu";
 import { PreviewDock } from "./PreviewDock";
 import { FeedbackInbox, TopLinks } from "./Feedback";
+import { ForYou } from "./Recommend";
 import { AccountButton, LoginError } from "./Marks";
-import { beatmapPath, FEEDBACK_PATH, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
+import { beatmapPath, FEEDBACK_PATH, FOR_YOU_PATH, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
 import { PinnedMaps } from "./Pinned";
 import { SearchBox, type OpenTarget } from "./SearchBox";
 import { Triangles } from "./Triangles";
@@ -60,7 +61,7 @@ export function App() {
   useEffect(() => {
     // Old links used ?b=123. Keep them working, then show the canonical hash.
     const initial = parseRoute(window.location.hash, window.location.search);
-    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : initial.page === "feedback" ? FEEDBACK_PATH : mapsPath(initial.mode);
+    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : initial.page === "feedback" ? FEEDBACK_PATH : initial.page === "foryou" ? FOR_YOU_PATH : mapsPath(initial.mode);
     const url = new URL(window.location.href);
     url.searchParams.delete("b");
     const target = `${url.pathname}${url.search}${canonical}`;
@@ -182,7 +183,7 @@ export function App() {
           </span>
         </a>
         <TopLinks />
-        <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} onFeedback={() => (window.location.hash = FEEDBACK_PATH)} />
+        <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} onFeedback={() => (window.location.hash = FEEDBACK_PATH)} onForYou={() => (window.location.hash = FOR_YOU_PATH)} />
         <LangMenu />
       </header>
 
@@ -200,6 +201,15 @@ export function App() {
             ← {t.backToMaps}
           </a>
           <FeedbackInbox />
+        </>
+      )}
+
+      {route.page === "foryou" && (
+        <>
+          <a className="back" href={mapsPath(finderMode)}>
+            ← {t.backToMaps}
+          </a>
+          <ForYou onOpen={openHit} />
         </>
       )}
 

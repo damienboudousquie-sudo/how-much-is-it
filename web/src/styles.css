@@ -2967,3 +2967,67 @@ button:disabled {
 .inbox-actions button.danger:hover {
   background: rgba(255, 90, 110, 0.25);
 }
+
+/* ---------- maps for you ---------- */
+
+.for-you-link {
+  margin-left: 14px;
+  margin-right: auto;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 102, 170, 0.14);
+  color: var(--pink);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.for-you-link:hover {
+  background: rgba(255, 102, 170, 0.24);
+}
+
+.for-you-head {
+  position: relative;
+}
+
+.for-you-head > .button.small {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 0.8rem;
+}
+
+.for-you-profile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 12px 0 0;
+}
+
+.for-you-profile div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.for-you-profile dt {
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.for-you-profile dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.for-you-head .login-osu {
+  align-self: flex-start;
+  margin: 12px 0 0;
+}

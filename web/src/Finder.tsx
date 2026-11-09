@@ -175,6 +175,7 @@ type Status = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message:
 
 export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen: (hit: DiscoverHit) => void }) {
   const { t } = useI18n();
+  const account = useAccount();
   const [settings, setSettings] = useState<Settings>(readSettings);
   const [hits, setHits] = useState<DiscoverHit[]>([]);
   const [meta, setMeta] = useState<Omit<DiscoverResponse, "results"> | null>(null);
@@ -350,6 +351,11 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
       <div className="panel listing">
         <header className="listing-head">
           <h2 id="finder-title">{t.finderTitle}</h2>
+          {account.profile && mode === "osu" && (
+            <a className="for-you-link" href="#/foryou">
+              ✨ {t.forYou}
+            </a>
+          )}
           <div className="tabs" role="radiogroup" aria-label={t.mode}>
             {MODES.map((item) => (
               <button
