@@ -234,7 +234,7 @@ function AutoPlayerPanel(props: { beatmapId: number; setId: number | null; mods:
             </svg>
           ) : (
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-              <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
+              <path d="M7.5 5.5v13l11-6.5z" fill="currentColor" />
             </svg>
           )}
         </button>

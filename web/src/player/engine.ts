@@ -63,6 +63,8 @@ export class AutoPlayer {
   private fullSong = false;
   private observer: ResizeObserver | null = null;
   private readonly ctx: CanvasRenderingContext2D;
+  /** Slider bodies are drawn here first, then laid on the playfield see-through. */
+  private readonly layer = document.createElement("canvas");
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -476,12 +478,30 @@ export class AutoPlayer {
     this.sprite(slider && images.sliderstartcircleoverlay ? images.sliderstartcircleoverlay : images.hitcircleoverlay, p.x, p.y, k, alpha);
   }
 
+  /**
+   * The body is drawn opaque on its own layer, then laid on the playfield at 70 %, so
+   * notes under the end of a slider stay visible without the border showing through.
+   */
   private drawSliderBody(o: HitObject, alpha: number): void {
-    const ctx = this.ctx;
+    if (alpha <= 0) return;
+    if (this.layer.width !== this.canvas.width || this.layer.height !== this.canvas.height) {
+      this.layer.width = this.canvas.width;
+      this.layer.height = this.canvas.height;
+    }
+    const ctx = this.layer.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, this.layer.width, this.layer.height);
+    this.strokeSliderBody(ctx, o);
+    this.ctx.save();
+    this.ctx.globalAlpha = Math.min(1, alpha) * 0.7;
+    this.ctx.drawImage(this.layer, 0, 0);
+    this.ctx.restore();
+  }
+
+  private strokeSliderBody(ctx: CanvasRenderingContext2D, o: HitObject): void {
     const off = this.offset(o);
     const width = this.radius * 2 * this.scale;
     ctx.save();
-    ctx.globalAlpha = alpha;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -492,7 +512,7 @@ export class AutoPlayer {
     ctx.strokeStyle = this.skin.sliderTrack;
     ctx.lineWidth = width * 0.84;
     ctx.stroke();
-    ctx.globalAlpha = alpha * 0.35;
+    ctx.globalAlpha = 0.35;
     ctx.strokeStyle = "rgb(48,48,56)";
     ctx.lineWidth = width * 0.45;
     ctx.stroke();
@@ -561,7 +581,7 @@ export class AutoPlayer {
       }
       if (o.kind === "slider") {
         const bodyAlpha = this.mods.hd && t > o.time ? Math.max(0, 1 - (t - o.time) / (o.endTime - o.time || 1)) : alpha;
-        this.drawSliderBody(o, bodyAlpha * 0.9);
+        this.drawSliderBody(o, bodyAlpha);
         this.drawTicks(o, t, bodyAlpha);
         if (o.slides > 1 && t < o.endTime) {
           const done = Math.max(0, Math.floor((t - o.time) / o.slideTime));

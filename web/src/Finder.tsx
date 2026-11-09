@@ -646,7 +646,7 @@ function PreviewButton(props: { hit: DiscoverHit }) {
         </svg>
       ) : (
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+          <path d="M6.5 4.5v15l13-7.5z" fill="currentColor" />
         </svg>
       )}
     </button>
