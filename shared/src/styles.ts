@@ -100,7 +100,11 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   // Bursts and streams on an uneven rhythm (triplets, 1/3 and 1/6 mixed in, doubles) are
   // finger control and alternating, not stream maps (Sapphire On Fire [Extravaganza]).
   const uneven = 1 - 0.7 * ramp(p.irregularShare, 0.12, 0.25);
-  const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7)) * uneven;
+  // Lots of doubles (one in five notes or more) next to the bursts: spaced 1/4 pairs
+  // and triples to aim, an aim control / alternating map, not a stream map
+  // (Burning Star [Burn Out]: 36 % streams but 21 % doubles and 37 % bursts).
+  const paired = 1 - 0.7 * ramp(p.doubleShare, 0.12, 0.2);
+  const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7)) * uneven * paired;
   // Speed starts around 240 BPM: 200 BPM streams are plain streams.
   const fast = ramp(bpm, 228, 248);
 
