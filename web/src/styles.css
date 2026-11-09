@@ -1057,6 +1057,7 @@ button:disabled {
 }
 
 .map-cover {
+  position: relative;
   display: block;
   align-self: stretch;
   width: 112px;
@@ -2245,4 +2246,179 @@ button:disabled {
   color: var(--faint);
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+/* ---------- audio preview on cards ---------- */
+
+.map-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(10, 6, 9, 0.72);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9);
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.map:hover .map-play,
+.map:focus-visible .map-play,
+.map-play:focus-visible,
+.map-play.on {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.map-play:hover,
+.map-play.on {
+  background: var(--pink);
+  color: #33001a;
+}
+
+@media (hover: none) {
+  .map-play {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ---------- auto player ---------- */
+
+.hero-actions .button.on {
+  background: var(--pink);
+  color: #33001a;
+}
+
+.auto-player {
+  margin-top: 16px;
+  background: #000;
+}
+
+.auto-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: 70vh;
+}
+
+.auto-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.auto-tag {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.auto-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.auto-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+}
+
+.auto-controls button {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-4);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auto-controls button.on {
+  background: var(--pink);
+  color: #33001a;
+}
+
+.auto-controls button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.auto-controls .auto-play {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: var(--pink);
+  color: #33001a;
+}
+
+.auto-bar {
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-4);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.auto-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--pink);
+}
+
+.auto-clock {
+  min-width: 82px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.auto-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.auto-note {
+  margin: 0;
+  padding: 0 12px 10px;
+  background: var(--bg-2);
+  color: var(--faint);
+  font-size: 0.75rem;
 }

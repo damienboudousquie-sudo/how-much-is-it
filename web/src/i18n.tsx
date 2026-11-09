@@ -116,6 +116,19 @@ export type Copy = {
 
   styles: Record<MapStyle, string>;
   status: Record<BeatmapStatus, string>;
+  watchAuto: string;
+  hideAuto: string;
+  playerLoading: string;
+  playerError: string;
+  playerMusic: string;
+  playerHitsounds: string;
+  playerDance: string;
+  playerSoundHint: string;
+  playerCredit: string;
+  previewPlay: string;
+  previewStop: string;
+  playerPause: string;
+  playerPlay: string;
 };
 
 const en: Copy = {
@@ -252,6 +265,19 @@ const en: Copy = {
     wip: "WIP",
     unknown: "Unknown status",
   },
+  watchAuto: "Watch auto",
+  hideAuto: "Hide auto",
+  playerLoading: "Loading the map…",
+  playerError: "Could not load this map for the player.",
+  playerMusic: "Music",
+  playerHitsounds: "Hitsounds",
+  playerDance: "Danser cursor",
+  playerSoundHint: "Click once in the player to allow sound. Music is the 10 s osu! preview.",
+  playerCredit: "Skin: vv_idke_trail by [Garin] + Aristia + Various",
+  previewPlay: "Play preview",
+  previewStop: "Stop preview",
+  playerPause: "Pause",
+  playerPlay: "Play",
 };
 
 const fr: Copy = {
@@ -388,6 +414,19 @@ const fr: Copy = {
     wip: "Brouillon",
     unknown: "Statut inconnu",
   },
+  watchAuto: "Voir l'auto",
+  hideAuto: "Masquer l'auto",
+  playerLoading: "Chargement de la map…",
+  playerError: "Impossible de charger cette map dans le lecteur.",
+  playerMusic: "Musique",
+  playerHitsounds: "Hitsounds",
+  playerDance: "Curseur danser",
+  playerSoundHint: "Clique une fois dans le lecteur pour autoriser le son. La musique est l'extrait osu! de 10 s.",
+  playerCredit: "Skin : vv_idke_trail par [Garin] + Aristia + Various",
+  previewPlay: "Écouter l'extrait",
+  previewStop: "Arrêter l'extrait",
+  playerPause: "Pause",
+  playerPlay: "Lecture",
 };
 
 const es: Copy = {
@@ -524,6 +563,19 @@ const es: Copy = {
     wip: "Borrador",
     unknown: "Estado desconocido",
   },
+  watchAuto: "Ver auto",
+  hideAuto: "Ocultar auto",
+  playerLoading: "Cargando el mapa…",
+  playerError: "No se pudo cargar este mapa en el reproductor.",
+  playerMusic: "Música",
+  playerHitsounds: "Hitsounds",
+  playerDance: "Cursor danser",
+  playerSoundHint: "Haz clic una vez en el reproductor para activar el sonido. La música es el avance de 10 s de osu!.",
+  playerCredit: "Skin: vv_idke_trail de [Garin] + Aristia + Various",
+  previewPlay: "Escuchar avance",
+  previewStop: "Detener avance",
+  playerPause: "Pausa",
+  playerPlay: "Reproducir",
 };
 
 const de: Copy = {
@@ -688,6 +740,19 @@ const de: Copy = {
     wip: "WIP",
     unknown: "Unbekannter Status",
   },
+  watchAuto: "Auto ansehen",
+  hideAuto: "Auto ausblenden",
+  playerLoading: "Map wird geladen…",
+  playerError: "Diese Map konnte nicht im Player geladen werden.",
+  playerMusic: "Musik",
+  playerHitsounds: "Hitsounds",
+  playerDance: "Danser-Cursor",
+  playerSoundHint: "Klicke einmal in den Player, um den Ton zu erlauben. Die Musik ist die 10-s-Vorschau von osu!.",
+  playerCredit: "Skin: vv_idke_trail von [Garin] + Aristia + Various",
+  previewPlay: "Vorschau abspielen",
+  previewStop: "Vorschau stoppen",
+  playerPause: "Pause",
+  playerPlay: "Abspielen",
 };
 
 const pt: Copy = {
@@ -852,6 +917,19 @@ const pt: Copy = {
     wip: "WIP",
     unknown: "Status desconhecido",
   },
+  watchAuto: "Ver auto",
+  hideAuto: "Ocultar auto",
+  playerLoading: "Carregando o mapa…",
+  playerError: "Não foi possível carregar este mapa no player.",
+  playerMusic: "Música",
+  playerHitsounds: "Hitsounds",
+  playerDance: "Cursor danser",
+  playerSoundHint: "Clique uma vez no player para liberar o som. A música é a prévia de 10 s do osu!.",
+  playerCredit: "Skin: vv_idke_trail por [Garin] + Aristia + Various",
+  previewPlay: "Ouvir prévia",
+  previewStop: "Parar prévia",
+  playerPause: "Pausar",
+  playerPlay: "Tocar",
 };
 
 const pl: Copy = {
@@ -1016,6 +1094,19 @@ const pl: Copy = {
     wip: "WIP",
     unknown: "Nieznany status",
   },
+  watchAuto: "Zobacz auto",
+  hideAuto: "Ukryj auto",
+  playerLoading: "Ładowanie mapy…",
+  playerError: "Nie udało się wczytać tej mapy do odtwarzacza.",
+  playerMusic: "Muzyka",
+  playerHitsounds: "Hitsoundy",
+  playerDance: "Kursor danser",
+  playerSoundHint: "Kliknij raz w odtwarzacz, aby włączyć dźwięk. Muzyka to 10-sekundowy podgląd z osu!.",
+  playerCredit: "Skin: vv_idke_trail od [Garin] + Aristia + Various",
+  previewPlay: "Odtwórz podgląd",
+  previewStop: "Zatrzymaj podgląd",
+  playerPause: "Pauza",
+  playerPlay: "Odtwórz",
 };
 
 const ru: Copy = {
@@ -1180,6 +1271,19 @@ const ru: Copy = {
     wip: "WIP",
     unknown: "Неизвестный статус",
   },
+  watchAuto: "Смотреть авто",
+  hideAuto: "Скрыть авто",
+  playerLoading: "Загрузка карты…",
+  playerError: "Не удалось загрузить карту в плеер.",
+  playerMusic: "Музыка",
+  playerHitsounds: "Хитсаунды",
+  playerDance: "Курсор danser",
+  playerSoundHint: "Кликните один раз по плееру, чтобы включить звук. Музыка — 10-секундное превью osu!.",
+  playerCredit: "Скин: vv_idke_trail от [Garin] + Aristia + Various",
+  previewPlay: "Слушать превью",
+  previewStop: "Остановить превью",
+  playerPause: "Пауза",
+  playerPlay: "Играть",
 };
 
 const ko: Copy = {
@@ -1344,6 +1448,19 @@ const ko: Copy = {
     wip: "WIP",
     unknown: "알 수 없는 상태",
   },
+  watchAuto: "오토 보기",
+  hideAuto: "오토 숨기기",
+  playerLoading: "맵을 불러오는 중…",
+  playerError: "플레이어에서 이 맵을 불러오지 못했어요.",
+  playerMusic: "음악",
+  playerHitsounds: "히트사운드",
+  playerDance: "danser 커서",
+  playerSoundHint: "소리를 켜려면 플레이어를 한 번 클릭하세요. 음악은 osu!의 10초 미리듣기예요.",
+  playerCredit: "스킨: vv_idke_trail ([Garin] + Aristia + Various)",
+  previewPlay: "미리듣기",
+  previewStop: "미리듣기 정지",
+  playerPause: "일시정지",
+  playerPlay: "재생",
 };
 
 const ja: Copy = {
@@ -1508,6 +1625,19 @@ const ja: Copy = {
     wip: "WIP",
     unknown: "不明なステータス",
   },
+  watchAuto: "オートを見る",
+  hideAuto: "オートを隠す",
+  playerLoading: "譜面を読み込み中…",
+  playerError: "この譜面をプレイヤーで読み込めませんでした。",
+  playerMusic: "音楽",
+  playerHitsounds: "ヒットサウンド",
+  playerDance: "danser カーソル",
+  playerSoundHint: "音を出すにはプレイヤーを一度クリックしてください。音楽は osu! の 10 秒プレビューです。",
+  playerCredit: "スキン：vv_idke_trail（[Garin] + Aristia + Various）",
+  previewPlay: "プレビューを再生",
+  previewStop: "プレビューを停止",
+  playerPause: "一時停止",
+  playerPlay: "再生",
 };
 
 const zh: Copy = {
@@ -1672,6 +1802,19 @@ const zh: Copy = {
     wip: "WIP",
     unknown: "未知状态",
   },
+  watchAuto: "观看 Auto",
+  hideAuto: "隐藏 Auto",
+  playerLoading: "正在加载谱面…",
+  playerError: "无法在播放器中加载此谱面。",
+  playerMusic: "音乐",
+  playerHitsounds: "打击音效",
+  playerDance: "danser 光标",
+  playerSoundHint: "点击一次播放器以开启声音。音乐为 osu! 的 10 秒试听。",
+  playerCredit: "皮肤：vv_idke_trail，作者 [Garin] + Aristia + Various",
+  previewPlay: "播放试听",
+  previewStop: "停止试听",
+  playerPause: "暂停",
+  playerPlay: "播放",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

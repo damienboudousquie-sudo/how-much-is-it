@@ -21,6 +21,8 @@ import {
 import { ApiError, fetchCalculate, fetchLookup } from "./api";
 import { formatBpm, formatLength, formatPercent, formatPp, formatRate, formatStars, formatStat, numberLocaleOf, osuDirectUrl, osuMapUrl } from "./format";
 import { StarPill } from "./Badges";
+import { AutoPlayerPanel } from "./AutoPlayerPanel";
+import { togglePreview, usePreviewPlaying } from "./audioPreview";
 import { fill, useI18n, type Copy } from "./i18n";
 
 export interface PlayPreset {
@@ -125,6 +127,8 @@ export function BeatmapView(props: {
   const [calculating, setCalculating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const calcGen = useRef(0);
+  const [showAuto, setShowAuto] = useState(false);
+  const previewing = usePreviewPlaying(data?.meta.beatmapsetId ?? null);
 
   const accuracy = parseAccuracy(accuracyText);
   const misses = parseCount(missesText) ?? 0;
@@ -342,10 +346,24 @@ export function BeatmapView(props: {
             <a className="button ghost" href={osuDirectUrl(meta.beatmapsetId, meta.beatmapId)}>
               {t.osuDirect}
             </a>
+            {meta.mode === "osu" && (
+              <button type="button" className={showAuto ? "button ghost on" : "button ghost"} aria-pressed={showAuto} onClick={() => setShowAuto((value) => !value)}>
+                {showAuto ? t.hideAuto : `▶ ${t.watchAuto}`}
+              </button>
+            )}
+            {meta.beatmapsetId != null && (
+              <button type="button" className={previewing ? "button ghost on" : "button ghost"} aria-pressed={previewing} onClick={() => togglePreview(meta.beatmapsetId!)}>
+                {previewing ? `■ ${t.previewStop}` : `♪ ${t.previewPlay}`}
+              </button>
+            )}
           </div>
           {profile && <p className="profile">{profile}</p>}
         </div>
       </section>
+
+      {showAuto && meta.mode === "osu" && (
+        <AutoPlayerPanel key={meta.beatmapId} beatmapId={meta.beatmapId} setId={meta.beatmapsetId ?? null} mods={mods} rate={rate} />
+      )}
 
       {meta.difficulties.length > 1 && (
         <div className="diffs" aria-label={t.difficulties}>

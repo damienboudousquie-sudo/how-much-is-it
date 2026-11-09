@@ -13,6 +13,7 @@ import { AppError } from "./errors";
 import { completeLogin, loginErrorCookie, loginRedirect, logout, me, SESSION_MAX_AGE, sessionCookie, sessionFromCookie, setMarks } from "./account";
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
+import { fetchBeatmapText } from "./beatmapCache";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
@@ -116,6 +117,22 @@ app.post("/api/discover", async (request, reply) => {
   const controller = abortOnClose(reply);
   try {
     return await discover(parseDiscover(request.body), controller.signal);
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+/** The raw .osu file, for the auto player drawn in the browser. */
+app.get("/api/osu/:id", async (request, reply) => {
+  const id = Number((request.params as { id?: string }).id);
+  if (!Number.isInteger(id) || id <= 0 || id > 1e9) {
+    sendError(reply, new AppError("invalid", tr("request.beatmap"), 400));
+    return;
+  }
+  try {
+    const text = await fetchBeatmapText(id);
+    reply.header("content-type", "text/plain; charset=utf-8").header("cache-control", "public, max-age=86400");
+    return text;
   } catch (error) {
     sendError(reply, error);
   }
