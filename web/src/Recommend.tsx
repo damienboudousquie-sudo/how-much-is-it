@@ -51,7 +51,10 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
   return (
     <section className="finder pinned for-you">
       <div className="panel pinned-head for-you-head">
-        <h2>{t.forYou}</h2>
+        <h2>
+          {t.forYou}
+          <span className="beta-badge">{t.experimental}</span>
+        </h2>
         {signedIn && (
           <button type="button" className="button ghost small" disabled={loading} onClick={() => setRound((value) => value + 1)}>
             {t.forYouRefresh}

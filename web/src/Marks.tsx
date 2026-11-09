@@ -211,6 +211,7 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
               }}
             >
               {t.forYou}
+              <span className="beta-badge">{t.experimental}</span>
             </button>
             <button
               type="button"

@@ -3381,3 +3381,35 @@ button:disabled {
     display: inline;
   }
 }
+
+/* Small "experimental" label next to features still being tuned. */
+.beta-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 201, 77, 0.14);
+  color: var(--mark-farm);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+h2 .beta-badge {
+  position: relative;
+  top: -2px;
+  font-size: 0.68rem;
+}
+
+.account-menu button,
+.account-menu a {
+  white-space: nowrap;
+}
+
+.account-menu .beta-badge {
+  margin-left: 10px;
+  font-size: 0.6rem;
+}
