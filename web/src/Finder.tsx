@@ -719,7 +719,7 @@ export function MapCard(props: { hit: DiscoverHit; rank: number; showRank: boole
                 {t.styles[tag]}
               </span>
             ))}
-          <PlayerBadges beatmapId={hit.beatmapId} pp={hit.pp} />
+          <PlayerBadges beatmapId={hit.beatmapId} pp={hit.expectedPp ?? hit.pp} />
         </span>
         <span className="map-stats">
           <span title={t.length}>{formatLength(hit.lengthSeconds)}</span>

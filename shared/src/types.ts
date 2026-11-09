@@ -171,6 +171,8 @@ export interface DiscoverHit {
   farm: number;
   /** True while the type comes from metadata, before the .osu file is read. */
   estimated: boolean;
+  /** pp the signed-in player would really get (suggestions); the gain is counted on it. */
+  expectedPp?: number;
 }
 
 export interface DiscoverResponse {

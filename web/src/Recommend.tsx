@@ -36,8 +36,8 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
       .then((answer) => {
         if (!alive) return;
         shown.current = [...shown.current, ...answer.results.map((hit) => hit.beatmapId)];
-        // Show the pp the player would really get, not the SS pp.
-        setData({ ...answer, results: answer.results.map((hit) => ({ ...hit, pp: Math.round(hit.pp * answer.ratio) })) });
+        // Cards show the FC pp (the range is in FC pp); the gain uses what the player would really get.
+        setData({ ...answer, results: answer.results.map((hit) => ({ ...hit, expectedPp: Math.round(hit.pp * answer.ratio) })) });
       })
       .catch((failure) => alive && setError(failure instanceof Error ? failure.message : String(failure)))
       .finally(() => alive && setLoading(false));

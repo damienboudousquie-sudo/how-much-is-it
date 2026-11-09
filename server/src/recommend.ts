@@ -81,7 +81,7 @@ async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; ss: number
     }),
   );
   ssList.sort((a, b) => a - b);
-  if (ratios.length < 5) return { ratio: 0.92, ss: ssList };
+  if (ratios.length < 3) return { ratio: 0.92, ss: ssList };
   ratios.sort((a, b) => a - b);
   return { ratio: Math.max(0.55, Math.min(1, ratios[Math.floor(ratios.length / 2)])), ss: ssList };
 }
@@ -107,14 +107,15 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const plays = [...top].sort((a, b) => b.pp - a.pp);
   if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
 
-  // Range: the FC (SS) pp of the maps in the top, from the lowest to the highest, since
-  // the player's plays are not all SS. One very low map does not pull the range down.
-  const best = plays.slice(0, 50);
+  // Everything is read from the top 20: the FC (SS) pp of those maps sets the range, from
+  // the lowest to a bit above the highest. No suggestion is worth less at FC than the
+  // weakest map of the top 20.
+  const best = plays.slice(0, 20);
   const { ratio, ss } = await scoreRatio(best);
-  const ssMin = ss.length >= 5 ? Math.round(ss[Math.floor(ss.length * 0.1)]) : Math.round((plays[Math.min(plays.length - 1, 30)].pp * 0.95) / ratio);
-  const ssMax = ss.length >= 5 ? Math.round(ss[ss.length - 1] * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
+  const ssMin = ss.length >= 3 ? Math.round(ss[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
+  const ssMax = ss.length >= 3 ? Math.round(ss[ss.length - 1] * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
 
-  // Mod combos and map types of the best 50 plays, weighted by pp.
+  // Mod combos and map types of the top 20, weighted by pp.
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
   const combos = comboShares.filter((item, index) => index === 0 || item.share >= 0.15).slice(0, 3);
   const typed: { key: string; weight: number }[] = [];
@@ -181,7 +182,7 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   }
 
   function consider(hit: DiscoverHit, comboShare: number, slice: number): void {
-    if (played.has(hit.beatmapId) || marks[String(hit.beatmapId)] === "done") return;
+    if (played.has(hit.beatmapId) || marks[String(hit.beatmapId)] === "done" || hit.pp < ssMin) return;
     // What the player would really get, at their usual share of the SS pp.
     const gain = ppGain(plays, hit.beatmapId, hit.pp * ratio);
     if (gain <= 0) return;
