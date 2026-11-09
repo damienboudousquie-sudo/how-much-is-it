@@ -113,7 +113,7 @@ function AutoPlayerPanel(props: { beatmapId: number; setId: number | null; mods:
   const player = useRef<AutoPlayer | null>(null);
   const song = useRef<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [musicState, setMusicState] = useState<"idle" | "loading" | "clip">("idle");
   const [volume, setVolume] = useState(savedVolume);
 

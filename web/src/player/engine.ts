@@ -38,7 +38,8 @@ const unit = (x: number, y: number): Point | null => {
 /** Draws an osu!standard map on a canvas, played by auto, with the skin's sprites and hitsounds. */
 export class AutoPlayer {
   time: number;
-  playing = true;
+  /** Starts paused: the map only moves once the music plays, so it never runs on hitsounds alone. */
+  playing = false;
   dance = true;
   hitsounds = true;
   /** Overall volume, music and hitsounds together (0–1). */
