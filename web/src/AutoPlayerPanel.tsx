@@ -24,6 +24,29 @@ function savedVolume(): number {
 }
 
 const WIDTH = 540;
+const SIZE_KEY = "osu-pp-lookup:player-size";
+
+/** The size the player window had when it was last resized, kept inside the screen. */
+function savedSize(): { width: number; height: number } | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SIZE_KEY) ?? "null") as { width?: unknown; height?: unknown } | null;
+    if (!raw || typeof raw.width !== "number" || typeof raw.height !== "number") return null;
+    return {
+      width: Math.max(360, Math.min(window.innerWidth - 24, raw.width)),
+      height: Math.max(320, Math.min(window.innerHeight - 24, raw.height)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveSize(size: { width: number; height: number }): void {
+  try {
+    localStorage.setItem(SIZE_KEY, JSON.stringify({ width: Math.round(size.width), height: Math.round(size.height) }));
+  } catch {
+    // Not remembered; the window still has this size now.
+  }
+}
 
 /**
  * The map played by auto in the vv_idke_trail skin, in a medium window floating over the
@@ -42,7 +65,7 @@ export function AutoPlayerPopup(props: {
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
   // Set once the window is resized by its corner; until then it keeps its natural size.
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(savedSize);
   const [full, setFull] = useState(false);
 
   useEffect(() => {
@@ -63,19 +86,30 @@ export function AutoPlayerPopup(props: {
     const rect = box.current?.getBoundingClientRect();
     if (!rect) return;
     const start = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height };
-    const move = (e: PointerEvent) =>
-      setSize({
+    let last = { width: rect.width, height: rect.height };
+    const move = (e: PointerEvent) => {
+      last = {
         width: Math.max(360, Math.min(window.innerWidth - rect.left - 4, start.width + e.clientX - start.x)),
         height: Math.max(320, Math.min(window.innerHeight - rect.top - 4, start.height + e.clientY - start.y)),
-      });
+      };
+      setSize(last);
+    };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", () => window.removeEventListener("pointermove", move), { once: true });
+    window.addEventListener(
+      "pointerup",
+      () => {
+        window.removeEventListener("pointermove", move);
+        // Reopens at this size next time.
+        saveSize(last);
+      },
+      { once: true },
+    );
   };
 
   // Open just under the button, kept inside the window.
   useLayoutEffect(() => {
-    const width = Math.min(WIDTH, window.innerWidth - 24);
-    const height = box.current?.offsetHeight ?? 460;
+    const width = size?.width ?? Math.min(WIDTH, window.innerWidth - 24);
+    const height = size?.height ?? box.current?.offsetHeight ?? 460;
     const rect = props.anchor?.getBoundingClientRect();
     let left = rect ? rect.left : (window.innerWidth - width) / 2;
     let top = rect ? rect.bottom + 10 : 80;
