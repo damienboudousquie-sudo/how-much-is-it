@@ -210,7 +210,7 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
                 props.onForYou();
               }}
             >
-              ✨ {t.forYou}
+              {t.forYou}
             </button>
             <button
               type="button"

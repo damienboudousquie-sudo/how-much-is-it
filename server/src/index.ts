@@ -199,7 +199,9 @@ app.get("/api/auth/callback", async (request, reply) => {
 app.get("/api/recommend", async (request, reply) => {
   try {
     reply.header("cache-control", "no-store");
-    return await recommend(sessionFromCookie(request.headers.cookie));
+    const raw = String((request.query as { skip?: string }).skip ?? "");
+    const skip = new Set(raw.split(",").slice(0, 400).map(Number).filter((id) => Number.isInteger(id) && id > 0));
+    return await recommend(sessionFromCookie(request.headers.cookie), skip);
   } catch (error) {
     sendError(reply, error);
   }

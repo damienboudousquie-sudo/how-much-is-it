@@ -12,6 +12,7 @@ import {
 } from "@osu-pp/shared";
 import { playerData } from "./account";
 import { getProfile } from "./patternStore";
+import { calculatePlay } from "./pp";
 import { discover } from "./service";
 
 /**
@@ -40,17 +41,74 @@ function shares<T extends string>(items: { key: T; weight: number }[]): { key: T
   return [...map.entries()].map(([key, weight]) => ({ key, share: weight / total })).sort((a, b) => b.share - a.share);
 }
 
-export async function recommend(sessionId: string | undefined): Promise<RecommendResponse> {
+// SS pp of a map with given mods, kept so a refresh does not recompute the whole top.
+const ssCache = new Map<string, number | null>();
+
+async function ssPp(beatmapId: number, mods: readonly string[]): Promise<number | null> {
+  const key = `${beatmapId}:${[...mods].sort().join("")}`;
+  if (ssCache.has(key)) return ssCache.get(key)!;
+  let value: number | null = null;
+  try {
+    const result = await calculatePlay({ beatmapId, mode: "osu", mods: [...mods], clockRate: null, accuracy: 100, combo: null, misses: 0 }, "osu", 0, true);
+    value = result.score.pp > 0 ? result.score.pp : null;
+  } catch {
+    value = null;
+  }
+  if (ssCache.size > 20000) ssCache.clear();
+  ssCache.set(key, value);
+  return value;
+}
+
+/**
+ * How much of a map's SS pp the player really gets: their top plays are rarely SS, so a
+ * 400 pp play is often a map worth 450 pp at SS. The median over the best plays.
+ */
+async function scoreRatio(plays: TopPlay[]): Promise<number> {
+  const ratios: number[] = [];
+  const queue = [...plays];
+  await Promise.all(
+    Array.from({ length: 4 }, async () => {
+      for (let play = queue.shift(); play; play = queue.shift()) {
+        const ss = await ssPp(play.beatmapId, play.mods.filter((mod) => mod !== "CL"));
+        if (ss && ss > 0) ratios.push(Math.min(1, play.pp / ss));
+      }
+    }),
+  );
+  if (ratios.length < 5) return 0.92;
+  ratios.sort((a, b) => a - b);
+  return Math.max(0.55, Math.min(1, ratios[Math.floor(ratios.length / 2)]));
+}
+
+/** Picks without replacement, favouring high scores, so each refresh shows a new mix. */
+function sample<T extends { score: number }>(list: T[], count: number): T[] {
+  const pool = [...list].sort((a, b) => b.score - a.score).slice(0, Math.max(count * 3, 30));
+  const out: T[] = [];
+  while (out.length < count && pool.length > 0) {
+    const weights = pool.map((item, index) => Math.max(item.score, 1e-6) / (1 + index * 0.04));
+    let roll = Math.random() * weights.reduce((sum, weight) => sum + weight, 0);
+    let at = 0;
+    while (at < pool.length - 1 && roll > weights[at]) roll -= weights[at++];
+    out.push(pool.splice(at, 1)[0]);
+  }
+  return out;
+}
+
+const RESULTS = 40;
+
+export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set()): Promise<RecommendResponse> {
   const { top, marks } = playerData(sessionId);
   const plays = [...top].sort((a, b) => b.pp - a.pp);
-  if (plays.length === 0) return { ppMin: 0, ppMax: 0, mods: [], styles: [], results: [] };
+  if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], results: [] };
 
-  // Range: from around the 30th play (worth entering the top) to a little above the best.
+  // Range of the top plays (30th play to a bit above the best), turned into SS pp.
+  const best = plays.slice(0, 50);
+  const ratio = await scoreRatio(best);
   const ppMin = Math.max(0, Math.round(plays[Math.min(plays.length - 1, 30)].pp * 0.95));
   const ppMax = Math.round(plays[0].pp * 1.03);
+  const ssMin = Math.round(ppMin / ratio);
+  const ssMax = Math.round(ppMax / ratio);
 
   // Mod combos and map types of the best 50 plays, weighted by pp.
-  const best = plays.slice(0, 50);
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
   const combos = comboShares.filter((item, index) => index === 0 || item.share >= 0.15).slice(0, 3);
   const typed: { key: string; weight: number }[] = [];
@@ -60,21 +118,20 @@ export async function recommend(sessionId: string | undefined): Promise<Recommen
     typed.push({ key: primaryStyle(styleScores(profile, { version: "" }, modRate(play.mods))), weight: play.pp });
   }
   const styleShares = shares(typed);
-  const styleShare = (style: string | null) => styleShares.find((item) => item.key === style)?.share ?? 0;
 
   const played = new Set(plays.map((play) => play.beatmapId));
   const picked = new Map<number, RecommendHit & { score: number }>();
   for (const combo of combos) {
     const mods = combo.key === "NM" ? [] : (PP_MODS.filter((mod) => combo.key.includes(mod)) as ModKey[]);
     let offset = 0;
-    for (let page = 0; page < 3; page++) {
+    for (let page = 0; page < 4; page++) {
       const answer = await discover({
         query: "",
         mode: "osu",
         styles: [],
         mods: modRecord(mods),
-        ppMin,
-        ppMax,
+        ppMin: ssMin,
+        ppMax: ssMax,
         offset,
         sort: [{ key: "farm", dir: "desc" }],
         ranges: emptyRanges(),
@@ -87,22 +144,45 @@ export async function recommend(sessionId: string | undefined): Promise<Recommen
 
   function consider(hit: DiscoverHit, comboShare: number): void {
     if (played.has(hit.beatmapId) || marks[String(hit.beatmapId)] === "done") return;
-    // A realistic score, not an SS: about 98 % accuracy.
-    const gain = ppGain(plays as TopPlay[], hit.beatmapId, hit.pp * 0.94);
+    // What the player would really get, at their usual share of the SS pp.
+    const gain = ppGain(plays, hit.beatmapId, hit.pp * ratio);
     if (gain <= 0) return;
-    const styleFit = styleShares.length ? Math.max(0.12, styleShare(hit.style)) : 0.5;
-    const score = gain * (0.5 + hit.farm / 200) * (0.35 + 0.65 * styleFit) * (0.6 + 0.4 * comboShare);
+    const score = gain * (0.5 + hit.farm / 200) * (0.6 + 0.4 * comboShare);
     const previous = picked.get(hit.beatmapId);
     if (!previous || previous.score < score) picked.set(hit.beatmapId, { ...hit, gain, score });
   }
 
-  const results = [...picked.values()]
+  // Leave out what the last refresh showed, while there is enough else to show.
+  let candidates = [...picked.values()];
+  const fresh = candidates.filter((hit) => !skip.has(hit.beatmapId));
+  if (fresh.length >= RESULTS) candidates = fresh;
+
+  // Each map type gets its share of the list, so a jump-heavy top still sees its streams.
+  const byStyle = new Map<string, (RecommendHit & { score: number })[]>();
+  for (const hit of candidates) {
+    const key = hit.style ?? "hybrid";
+    byStyle.set(key, [...(byStyle.get(key) ?? []), hit]);
+  }
+  const quotas = styleShares.length ? styleShares : [{ key: "jump", share: 1 / 3 }, { key: "stream", share: 1 / 3 }, { key: "hybrid", share: 1 / 3 }];
+  const chosen: (RecommendHit & { score: number })[] = [];
+  for (const { key, share } of quotas) {
+    const want = share < 0.05 ? 0 : Math.max(4, Math.round(RESULTS * share));
+    chosen.push(...sample(byStyle.get(key) ?? [], want));
+  }
+  // Fill up with the best of what is left.
+  if (chosen.length < RESULTS) {
+    const taken = new Set(chosen.map((hit) => hit.beatmapId));
+    chosen.push(...sample(candidates.filter((hit) => !taken.has(hit.beatmapId)), RESULTS - chosen.length));
+  }
+
+  const results = chosen
     .sort((a, b) => b.score - a.score)
-    .slice(0, 40)
+    .slice(0, RESULTS)
     .map(({ score: _score, ...hit }) => hit);
   return {
     ppMin,
     ppMax,
+    ratio,
     mods: combos.map((item) => ({ mods: item.key === "NM" ? [] : item.key.match(/.{2}/g) ?? [], share: item.share })),
     styles: styleShares.map((item) => ({ style: item.key, share: item.share })),
     results,

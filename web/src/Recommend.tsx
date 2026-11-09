@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DiscoverHit, MapStyle, RecommendResponse } from "@osu-pp/shared";
 import { useAccount } from "./account";
 import { MapCard } from "./Finder";
 import { formatPp } from "./format";
-import { currentLang, useI18n } from "./i18n";
+import { currentLang, fill, useI18n } from "./i18n";
 
 const pct = (share: number) => `${Math.round(share * 100)} %`;
 
@@ -15,6 +15,8 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [round, setRound] = useState(0);
+  // Maps shown before a refresh, so the next list brings new ones.
+  const shown = useRef<number[]>([]);
   const signedIn = account.profile != null;
 
   useEffect(() => {
@@ -22,7 +24,8 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
     let alive = true;
     setLoading(true);
     setError(null);
-    fetch("/api/recommend", { headers: { "x-lang": currentLang() }, cache: "no-store" })
+    const skip = round > 0 ? `?skip=${shown.current.slice(-400).join(",")}` : "";
+    fetch(`/api/recommend${skip}`, { headers: { "x-lang": currentLang() }, cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
@@ -30,7 +33,12 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
         }
         return (await response.json()) as RecommendResponse;
       })
-      .then((answer) => alive && setData(answer))
+      .then((answer) => {
+        if (!alive) return;
+        shown.current = [...shown.current, ...answer.results.map((hit) => hit.beatmapId)];
+        // Show the pp the player would really get, not the SS pp.
+        setData({ ...answer, results: answer.results.map((hit) => ({ ...hit, pp: Math.round(hit.pp * answer.ratio) })) });
+      })
       .catch((failure) => alive && setError(failure instanceof Error ? failure.message : String(failure)))
       .finally(() => alive && setLoading(false));
     return () => {
@@ -43,7 +51,7 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
   return (
     <section className="finder pinned for-you">
       <div className="panel pinned-head for-you-head">
-        <h2>✨ {t.forYou}</h2>
+        <h2>{t.forYou}</h2>
         {signedIn && (
           <button type="button" className="button ghost small" disabled={loading} onClick={() => setRound((value) => value + 1)}>
             {t.forYouRefresh}
@@ -57,6 +65,10 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
               <dd>
                 {formatPp(data.ppMin)}–{formatPp(data.ppMax)} pp
               </dd>
+            </div>
+            <div>
+              <dt>{t.forYouLevel}</dt>
+              <dd>{fill(t.forYouRatio, { pct: pct(data.ratio) })}</dd>
             </div>
             <div>
               <dt>{t.forYouMods}</dt>

@@ -158,6 +158,8 @@ export type Copy = {
   forYouSignIn: string;
   forYouLoading: string;
   forYouRefresh: string;
+  forYouLevel: string;
+  forYouRatio: string;
 };
 
 const en: Copy = {
@@ -328,7 +330,7 @@ const en: Copy = {
   feedbackOpen: "To do",
   creatorProfile: "The creator's osu! profile",
   forYou: "Maps for you",
-  forYouIntro: "Farm maps picked from your top plays: same pp range, same mods, same map types, none you already have in your top or marked done.",
+  forYouIntro: "Farm maps picked from your top plays: same pp range, same mods, same mix of map types, none already in your top or marked done. The pp shown is what you would really get at your level.",
   forYouRange: "pp range",
   forYouMods: "Your mods",
   forYouTypes: "Your map types",
@@ -336,6 +338,8 @@ const en: Copy = {
   forYouSignIn: "Sign in with osu! to get maps picked from your top plays.",
   forYouLoading: "Looking through your top plays…",
   forYouRefresh: "Refresh",
+  forYouLevel: "Your level",
+  forYouRatio: "≈ {pct} of the SS pp",
 };
 
 const fr: Copy = {
@@ -506,7 +510,7 @@ const fr: Copy = {
   feedbackOpen: "À traiter",
   creatorProfile: "Le profil osu! du créateur",
   forYou: "Maps pour toi",
-  forYouIntro: "Des maps farm choisies d'après ton top : même tranche de pp, mêmes mods, mêmes types de maps, sans celles déjà dans ton top ou marquées « Déjà fait ».",
+  forYouIntro: "Des maps farm choisies d'après ton top : même tranche de pp, mêmes mods, même mélange de types de maps, sans celles déjà dans ton top ou marquées « Déjà fait ». Les pp affichés sont ceux que tu ferais vraiment à ton niveau.",
   forYouRange: "Tranche de pp",
   forYouMods: "Tes mods",
   forYouTypes: "Tes types de maps",
@@ -514,6 +518,8 @@ const fr: Copy = {
   forYouSignIn: "Connecte-toi avec osu! pour avoir des maps choisies d'après ton top.",
   forYouLoading: "Analyse de ton top…",
   forYouRefresh: "Actualiser",
+  forYouLevel: "Ton niveau",
+  forYouRatio: "≈ {pct} des pp du SS",
 };
 
 const es: Copy = {
@@ -684,7 +690,7 @@ const es: Copy = {
   feedbackOpen: "Pendientes",
   creatorProfile: "El perfil de osu! del creador",
   forYou: "Mapas para ti",
-  forYouIntro: "Mapas para farmear elegidos según tu top: mismo rango de pp, mismos mods, mismos tipos de mapa, sin los que ya están en tu top o marcados como hechos.",
+  forYouIntro: "Mapas para farmear elegidos según tu top: mismo rango de pp, mismos mods, misma mezcla de tipos, sin los que ya están en tu top o marcados como hechos. Los pp mostrados son los que harías de verdad a tu nivel.",
   forYouRange: "Rango de pp",
   forYouMods: "Tus mods",
   forYouTypes: "Tus tipos de mapa",
@@ -692,6 +698,8 @@ const es: Copy = {
   forYouSignIn: "Inicia sesión con osu! para recibir mapas elegidos según tu top.",
   forYouLoading: "Revisando tu top…",
   forYouRefresh: "Actualizar",
+  forYouLevel: "Tu nivel",
+  forYouRatio: "≈ {pct} de los pp del SS",
 };
 
 const de: Copy = {
@@ -890,7 +898,7 @@ const de: Copy = {
   feedbackOpen: "Offen",
   creatorProfile: "Das osu!-Profil des Erstellers",
   forYou: "Maps für dich",
-  forYouIntro: "Farm-Maps passend zu deinen Top-Plays: gleicher pp-Bereich, gleiche Mods, gleiche Map-Typen, ohne Maps aus deinem Top oder als erledigt markierte.",
+  forYouIntro: "Farm-Maps passend zu deinen Top-Plays: gleicher pp-Bereich, gleiche Mods, gleiche Mischung der Map-Typen, ohne Maps aus deinem Top oder als erledigt markierte. Die pp sind das, was du auf deinem Niveau wirklich bekommst.",
   forYouRange: "pp-Bereich",
   forYouMods: "Deine Mods",
   forYouTypes: "Deine Map-Typen",
@@ -898,6 +906,8 @@ const de: Copy = {
   forYouSignIn: "Melde dich mit osu! an, um Maps passend zu deinem Top zu bekommen.",
   forYouLoading: "Dein Top wird ausgewertet…",
   forYouRefresh: "Aktualisieren",
+  forYouLevel: "Dein Niveau",
+  forYouRatio: "≈ {pct} der SS-pp",
 };
 
 const pt: Copy = {
@@ -1096,7 +1106,7 @@ const pt: Copy = {
   feedbackOpen: "A fazer",
   creatorProfile: "O perfil osu! do criador",
   forYou: "Mapas para você",
-  forYouIntro: "Mapas de farm escolhidos pelo seu top: mesma faixa de pp, mesmos mods, mesmos tipos de mapa, sem os que já estão no seu top ou marcados como feitos.",
+  forYouIntro: "Mapas de farm escolhidos pelo seu top: mesma faixa de pp, mesmos mods, mesma mistura de tipos, sem os que já estão no top ou marcados como feitos. Os pp mostrados são os que você faria de verdade no seu nível.",
   forYouRange: "Faixa de pp",
   forYouMods: "Seus mods",
   forYouTypes: "Seus tipos de mapa",
@@ -1104,6 +1114,8 @@ const pt: Copy = {
   forYouSignIn: "Entre com o osu! para receber mapas escolhidos pelo seu top.",
   forYouLoading: "Analisando seu top…",
   forYouRefresh: "Atualizar",
+  forYouLevel: "Seu nível",
+  forYouRatio: "≈ {pct} dos pp do SS",
 };
 
 const pl: Copy = {
@@ -1302,7 +1314,7 @@ const pl: Copy = {
   feedbackOpen: "Do zrobienia",
   creatorProfile: "Profil osu! twórcy",
   forYou: "Mapy dla ciebie",
-  forYouIntro: "Mapy do farmienia dobrane do twojego topu: ten sam zakres pp, te same mody, te same typy map, bez map z topu ani oznaczonych jako zrobione.",
+  forYouIntro: "Mapy do farmienia dobrane do twojego topu: ten sam zakres pp, te same mody, ta sama mieszanka typów, bez map z topu ani oznaczonych jako zrobione. Pokazane pp to tyle, ile naprawdę zrobisz na swoim poziomie.",
   forYouRange: "Zakres pp",
   forYouMods: "Twoje mody",
   forYouTypes: "Twoje typy map",
@@ -1310,6 +1322,8 @@ const pl: Copy = {
   forYouSignIn: "Zaloguj się przez osu!, aby dostać mapy dobrane do twojego topu.",
   forYouLoading: "Analizuję twój top…",
   forYouRefresh: "Odśwież",
+  forYouLevel: "Twój poziom",
+  forYouRatio: "≈ {pct} pp za SS",
 };
 
 const ru: Copy = {
@@ -1508,7 +1522,7 @@ const ru: Copy = {
   feedbackOpen: "К обработке",
   creatorProfile: "Профиль osu! создателя",
   forYou: "Карты для вас",
-  forYouIntro: "Фарм-карты по вашему топу: тот же диапазон pp, те же моды, те же типы карт, без карт из топа и отмеченных как сделанные.",
+  forYouIntro: "Фарм-карты по вашему топу: тот же диапазон pp, те же моды, то же сочетание типов карт, без карт из топа и отмеченных как сделанные. Показаны pp, которые вы реально получите на своём уровне.",
   forYouRange: "Диапазон pp",
   forYouMods: "Ваши моды",
   forYouTypes: "Ваши типы карт",
@@ -1516,6 +1530,8 @@ const ru: Copy = {
   forYouSignIn: "Войдите через osu!, чтобы получить карты по вашему топу.",
   forYouLoading: "Анализ вашего топа…",
   forYouRefresh: "Обновить",
+  forYouLevel: "Ваш уровень",
+  forYouRatio: "≈ {pct} от pp за SS",
 };
 
 const ko: Copy = {
@@ -1714,7 +1730,7 @@ const ko: Copy = {
   feedbackOpen: "할 일",
   creatorProfile: "제작자의 osu! 프로필",
   forYou: "추천 맵",
-  forYouIntro: "내 탑 플레이 기준으로 고른 파밍 맵: 같은 pp 구간, 같은 모드, 같은 맵 유형이며 이미 탑에 있거나 완료한 맵은 빠져요.",
+  forYouIntro: "내 탑 플레이 기준으로 고른 파밍 맵: 같은 pp 구간, 같은 모드, 같은 맵 유형 비율이며 이미 탑에 있거나 완료한 맵은 빠져요. 표시된 pp는 내 실력으로 실제로 얻을 수 있는 값이에요.",
   forYouRange: "pp 구간",
   forYouMods: "내 모드",
   forYouTypes: "내 맵 유형",
@@ -1722,6 +1738,8 @@ const ko: Copy = {
   forYouSignIn: "osu!로 로그인하면 탑 플레이 기준으로 맵을 추천해 드려요.",
   forYouLoading: "탑 플레이 분석 중…",
   forYouRefresh: "새로고침",
+  forYouLevel: "내 수준",
+  forYouRatio: "SS pp의 약 {pct}",
 };
 
 const ja: Copy = {
@@ -1920,7 +1938,7 @@ const ja: Copy = {
   feedbackOpen: "未対応",
   creatorProfile: "制作者の osu! プロフィール",
   forYou: "あなたへのおすすめ",
-  forYouIntro: "トップスコアに合わせて選んだ farm 譜面：同じ pp 帯、同じ Mod、同じ譜面タイプ。トップにある譜面や「プレイ済み」は除外。",
+  forYouIntro: "トップスコアに合わせて選んだ farm 譜面：同じ pp 帯、同じ Mod、同じ譜面タイプの割合。トップにある譜面や「プレイ済み」は除外。表示される pp はあなたのレベルで実際に取れる値です。",
   forYouRange: "pp 帯",
   forYouMods: "よく使う Mod",
   forYouTypes: "得意な譜面タイプ",
@@ -1928,6 +1946,8 @@ const ja: Copy = {
   forYouSignIn: "osu! でログインすると、トップスコアに合わせた譜面をおすすめします。",
   forYouLoading: "トップスコアを分析中…",
   forYouRefresh: "更新",
+  forYouLevel: "あなたのレベル",
+  forYouRatio: "SS の pp の約 {pct}",
 };
 
 const zh: Copy = {
@@ -2126,7 +2146,7 @@ const zh: Copy = {
   feedbackOpen: "待处理",
   creatorProfile: "作者的 osu! 个人资料",
   forYou: "为你推荐",
-  forYouIntro: "根据你的最佳成绩挑选的刷分谱面：相同 pp 区间、相同 Mod、相同谱面类型，不含已在最佳成绩中或标记为已完成的谱面。",
+  forYouIntro: "根据你的最佳成绩挑选的刷分谱面：相同 pp 区间、相同 Mod、相同谱面类型比例，不含已在最佳成绩中或标记为已完成的谱面。显示的 pp 是你以当前水平实际能拿到的。",
   forYouRange: "pp 区间",
   forYouMods: "你的 Mod",
   forYouTypes: "你的谱面类型",
@@ -2134,6 +2154,8 @@ const zh: Copy = {
   forYouSignIn: "使用 osu! 登录，即可获得根据你的最佳成绩挑选的谱面。",
   forYouLoading: "正在分析你的最佳成绩…",
   forYouRefresh: "刷新",
+  forYouLevel: "你的水平",
+  forYouRatio: "约为 SS pp 的 {pct}",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };
