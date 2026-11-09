@@ -185,6 +185,8 @@ export type Copy = {
   statsMapPage: string;
   loginShort: string;
   experimental: string;
+  globalRank: string;
+  countryRank: string;
 };
 
 const en: Copy = {
@@ -390,6 +392,8 @@ const en: Copy = {
   statsMapPage: "Map page",
   loginShort: "Sign in",
   experimental: "Beta",
+  globalRank: "Global rank",
+  countryRank: "Country rank",
 };
 
 const fr: Copy = {
@@ -595,6 +599,8 @@ const fr: Copy = {
   statsMapPage: "Page d'une map",
   loginShort: "Connexion",
   experimental: "Beta",
+  globalRank: "Rang mondial",
+  countryRank: "Rang pays",
 };
 
 const es: Copy = {
@@ -800,6 +806,8 @@ const es: Copy = {
   statsMapPage: "Página de mapa",
   loginShort: "Entrar",
   experimental: "Beta",
+  globalRank: "Rango global",
+  countryRank: "Rango nacional",
 };
 
 const de: Copy = {
@@ -1033,6 +1041,8 @@ const de: Copy = {
   statsMapPage: "Map-Seite",
   loginShort: "Anmelden",
   experimental: "Beta",
+  globalRank: "Weltrang",
+  countryRank: "Landesrang",
 };
 
 const pt: Copy = {
@@ -1266,6 +1276,8 @@ const pt: Copy = {
   statsMapPage: "Página de mapa",
   loginShort: "Entrar",
   experimental: "Beta",
+  globalRank: "Rank global",
+  countryRank: "Rank nacional",
 };
 
 const pl: Copy = {
@@ -1499,6 +1511,8 @@ const pl: Copy = {
   statsMapPage: "Strona mapy",
   loginShort: "Zaloguj",
   experimental: "Beta",
+  globalRank: "Ranking światowy",
+  countryRank: "Ranking krajowy",
 };
 
 const ru: Copy = {
@@ -1732,6 +1746,8 @@ const ru: Copy = {
   statsMapPage: "Страница карты",
   loginShort: "Войти",
   experimental: "Beta",
+  globalRank: "Мировой ранг",
+  countryRank: "Ранг в стране",
 };
 
 const ko: Copy = {
@@ -1965,6 +1981,8 @@ const ko: Copy = {
   statsMapPage: "맵 페이지",
   loginShort: "로그인",
   experimental: "Beta",
+  globalRank: "글로벌 순위",
+  countryRank: "국가 순위",
 };
 
 const ja: Copy = {
@@ -2198,6 +2216,8 @@ const ja: Copy = {
   statsMapPage: "譜面ページ",
   loginShort: "ログイン",
   experimental: "Beta",
+  globalRank: "世界ランク",
+  countryRank: "国内ランク",
 };
 
 const zh: Copy = {
@@ -2431,6 +2451,8 @@ const zh: Copy = {
   statsMapPage: "谱面页面",
   loginShort: "登录",
   experimental: "Beta",
+  globalRank: "全球排名",
+  countryRank: "国家/地区排名",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

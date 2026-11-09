@@ -187,7 +187,7 @@ interface ApiUser {
   username: string;
   avatar_url?: string;
   country_code?: string;
-  statistics?: { pp?: number; global_rank?: number | null };
+  statistics?: { pp?: number; global_rank?: number | null; country_rank?: number | null };
 }
 
 function toProfile(user: ApiUser): UserProfile {
@@ -198,6 +198,7 @@ function toProfile(user: ApiUser): UserProfile {
     country: user.country_code ?? null,
     pp: user.statistics?.pp ?? null,
     rank: user.statistics?.global_rank ?? null,
+    countryRank: user.statistics?.country_rank ?? null,
   };
 }
 

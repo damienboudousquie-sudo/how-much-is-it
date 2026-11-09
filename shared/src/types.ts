@@ -240,6 +240,8 @@ export interface UserProfile {
   country: string | null;
   pp: number | null;
   rank: number | null;
+  /** Rank in the player's country (missing on profiles saved before it was kept). */
+  countryRank?: number | null;
 }
 
 /** One of the player's top 100 plays. */
