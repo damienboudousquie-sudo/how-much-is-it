@@ -97,7 +97,10 @@ export function styleScores(profile: PatternProfile, names?: { version?: string;
   const streamMass = p.streamShare + 0.6 * p.burstShare;
   // A map carried by streams and bursts is a stream map even with jumps in between
   // (FREEDOM DiVE). How pure it is decides its rank, see streamPurity.
-  const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7));
+  // Bursts and streams on an uneven rhythm (triplets, 1/3 and 1/6 mixed in, doubles) are
+  // finger control and alternating, not stream maps (Sapphire On Fire [Extravaganza]).
+  const uneven = 1 - 0.7 * ramp(p.irregularShare, 0.12, 0.25);
+  const streamCore = ramp(streamMass, 0.25, 0.55) * (1 - 0.6 * ramp(p.jumpShare, 0.35, 0.7)) * uneven;
   // Speed starts around 240 BPM: 200 BPM streams are plain streams.
   const fast = ramp(bpm, 228, 248);
 
