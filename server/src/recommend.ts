@@ -3,6 +3,8 @@ import {
   modRate,
   ppGain,
   primaryStyle,
+  secondaryStyles,
+  type ConcreteStyle,
   styleScores,
   type DiscoverHit,
   type DiscoverRequest,
@@ -103,7 +105,7 @@ const RESULTS = 40;
 export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set()): Promise<RecommendResponse> {
   const { top, marks } = playerData(sessionId);
   const plays = [...top].sort((a, b) => b.pp - a.pp);
-  if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], results: [] };
+  if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
 
   // Range: the FC (SS) pp of the maps in the top, from the lowest to the highest, since
   // the player's plays are not all SS. One very low map does not pull the range down.
@@ -116,49 +118,76 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
   const combos = comboShares.filter((item, index) => index === 0 || item.share >= 0.15).slice(0, 3);
   const typed: { key: string; weight: number }[] = [];
+  const tagCount = new Map<string, number>();
+  let hybridWeight = 0;
   for (const play of best) {
     const profile = getProfile(play.beatmapId);
     if (!profile) continue;
-    typed.push({ key: primaryStyle(styleScores(profile, { version: "" }, modRate(play.mods))), weight: play.pp });
+    const scores = styleScores(profile, { version: "" }, modRate(play.mods));
+    const main = primaryStyle(scores);
+    typed.push({ key: main, weight: play.pp });
+    if (main === "hybrid") {
+      hybridWeight += play.pp;
+      for (const tag of secondaryStyles(scores, main)) tagCount.set(tag, (tagCount.get(tag) ?? 0) + play.pp);
+    }
   }
   const styleShares = shares(typed);
+  const shareOf = (style: string) => styleShares.find((item) => item.key === style)?.share ?? 0;
+
+  // The top is read like a map: 81 % of stream maps makes a stream player, who gets only
+  // stream maps; same for jump. A top with no clear type is a hybrid player: hybrid maps
+  // with the leanings their top shows (jump, stream, tech, alt, finger control).
+  const dominant = styleShares[0];
+  let wanted: ConcreteStyle[];
+  if (dominant && dominant.key !== "hybrid" && dominant.share >= 0.55) wanted = [dominant.key as ConcreteStyle];
+  else {
+    const tags = new Set<ConcreteStyle>();
+    if (shareOf("jump") >= 0.25) tags.add("hjump");
+    if (shareOf("stream") >= 0.25) tags.add("hstream");
+    for (const [tag, weight] of tagCount) if (hybridWeight > 0 && weight / hybridWeight >= 0.3) tags.add(tag as ConcreteStyle);
+    wanted = tags.size ? [...tags] : ["hybrid"];
+  }
+
+  // The FC range in three slices, each searched on its own and given a third of the list:
+  // otherwise the most farmable maps, often in the lower part, fill everything.
+  const SLICES = 3;
+  const step = (ssMax - ssMin) / SLICES;
+  const slices = Array.from({ length: SLICES }, (_, i) => ({ min: Math.round(ssMin + step * i), max: Math.round(ssMin + step * (i + 1)) }));
 
   const played = new Set(plays.map((play) => play.beatmapId));
-  const picked = new Map<number, RecommendHit & { score: number }>();
-  // Look for each map type of the top on its own: the best farm maps overall are mostly
-  // jump maps, so a stream player would otherwise get too few streams to choose from.
-  const wanted = (styleShares.length ? styleShares.filter((item) => item.share >= 0.05).map((item) => item.key) : ["jump", "stream", "hybrid"]) as ("jump" | "stream" | "hybrid")[];
+  type Pick = RecommendHit & { score: number; slice: number };
+  const picked = new Map<number, Pick>();
   for (const combo of combos) {
     const mods = combo.key === "NM" ? [] : (PP_MODS.filter((mod) => combo.key.includes(mod)) as ModKey[]);
-    for (const style of wanted) {
+    for (const [slice, range] of slices.entries()) {
       let offset = 0;
       for (let page = 0; page < 2; page++) {
         const answer = await discover({
           query: "",
           mode: "osu",
-          styles: [style],
+          styles: wanted,
           mods: modRecord(mods),
-          ppMin: ssMin,
-          ppMax: ssMax,
+          ppMin: range.min,
+          ppMax: range.max,
           offset,
           sort: [{ key: "farm", dir: "desc" }],
           ranges: emptyRanges(),
         });
-        for (const hit of answer.results) consider(hit, combo.share);
+        for (const hit of answer.results) consider(hit, combo.share, slice);
         if (!answer.hasMore) break;
         offset = answer.nextOffset;
       }
     }
   }
 
-  function consider(hit: DiscoverHit, comboShare: number): void {
+  function consider(hit: DiscoverHit, comboShare: number, slice: number): void {
     if (played.has(hit.beatmapId) || marks[String(hit.beatmapId)] === "done") return;
     // What the player would really get, at their usual share of the SS pp.
     const gain = ppGain(plays, hit.beatmapId, hit.pp * ratio);
     if (gain <= 0) return;
     const score = gain * (0.5 + hit.farm / 200) * (0.6 + 0.4 * comboShare);
     const previous = picked.get(hit.beatmapId);
-    if (!previous || previous.score < score) picked.set(hit.beatmapId, { ...hit, gain, score });
+    if (!previous || previous.score < score) picked.set(hit.beatmapId, { ...hit, gain, score, slice });
   }
 
   // Leave out what the last refresh showed, while there is enough else to show.
@@ -166,17 +195,9 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const fresh = candidates.filter((hit) => !skip.has(hit.beatmapId));
   if (fresh.length >= RESULTS) candidates = fresh;
 
-  // Each map type gets its share of the list, so a jump-heavy top still sees its streams.
-  const byStyle = new Map<string, (RecommendHit & { score: number })[]>();
-  for (const hit of candidates) {
-    const key = hit.style ?? "hybrid";
-    byStyle.set(key, [...(byStyle.get(key) ?? []), hit]);
-  }
-  const quotas = styleShares.length ? styleShares : [{ key: "jump", share: 1 / 3 }, { key: "stream", share: 1 / 3 }, { key: "hybrid", share: 1 / 3 }];
-  const chosen: (RecommendHit & { score: number })[] = [];
-  for (const { key, share } of quotas) {
-    const want = share < 0.05 ? 0 : Math.max(4, Math.round(RESULTS * share));
-    chosen.push(...sample(byStyle.get(key) ?? [], want));
+  const chosen: Pick[] = [];
+  for (let slice = 0; slice < SLICES; slice++) {
+    chosen.push(...sample(candidates.filter((hit) => hit.slice === slice), Math.ceil(RESULTS / SLICES)));
   }
   // Fill up with the best of what is left.
   if (chosen.length < RESULTS) {
@@ -185,15 +206,16 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   }
 
   const results = chosen
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.pp - a.pp)
     .slice(0, RESULTS)
-    .map(({ score: _score, ...hit }) => hit);
+    .map(({ score: _score, slice: _slice, ...hit }) => hit);
   return {
     ppMin: ssMin,
     ppMax: ssMax,
     ratio,
     mods: combos.map((item) => ({ mods: item.key === "NM" ? [] : item.key.match(/.{2}/g) ?? [], share: item.share })),
     styles: styleShares.map((item) => ({ style: item.key, share: item.share })),
+    wanted,
     results,
   };
 }

@@ -3018,3 +3018,71 @@ button:disabled {
 .preview-toggle svg {
   display: block;
 }
+
+/* ---------- "?" info in the top-right corner ---------- */
+
+.info {
+  position: relative;
+  flex: none;
+}
+
+.info-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.info:hover .info-button,
+.info.open .info-button,
+.info-button:focus-visible {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.info-card {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: 300px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.info-card p {
+  margin: 0;
+}
+
+.info-card p + p {
+  margin-top: 8px;
+  color: var(--text);
+}
+
+.info:hover .info-card,
+.info.open .info-card,
+.info-button:focus-visible + .info-card {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}

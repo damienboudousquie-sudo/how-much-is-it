@@ -311,5 +311,7 @@ export interface RecommendResponse {
   mods: { mods: string[]; share: number }[];
   /** Map types of the top plays (share 0–1). */
   styles: { style: string; share: number }[];
+  /** Map types the suggestions are taken from, read from the top like a map's type. */
+  wanted: string[];
   results: RecommendHit[];
 }

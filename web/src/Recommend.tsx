@@ -85,6 +85,12 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
                 </dd>
               </div>
             )}
+            {data.wanted.length > 0 && (
+              <div>
+                <dt>{t.forYouShown}</dt>
+                <dd>{data.wanted.map((style) => t.styles[style as MapStyle] ?? style).join(" · ")}</dd>
+              </div>
+            )}
           </dl>
         )}
         {!signedIn && (

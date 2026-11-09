@@ -160,6 +160,9 @@ export type Copy = {
   forYouRefresh: string;
   forYouLevel: string;
   forYouRatio: string;
+  forYouShown: string;
+  ppDisclaimer: string;
+  infoLabel: string;
 };
 
 const en: Copy = {
@@ -340,6 +343,9 @@ const en: Copy = {
   forYouRefresh: "Refresh",
   forYouLevel: "Your level",
   forYouRatio: "≈ {pct} of the SS pp",
+  forYouShown: "Suggested types",
+  ppDisclaimer: "PP values may differ from the latest pp rework: they are estimates, not exact.",
+  infoLabel: "About",
 };
 
 const fr: Copy = {
@@ -520,6 +526,9 @@ const fr: Copy = {
   forYouRefresh: "Actualiser",
   forYouLevel: "Ton niveau",
   forYouRatio: "≈ {pct} des pp du SS",
+  forYouShown: "Types proposés",
+  ppDisclaimer: "Les valeurs de pp peuvent différer de celles du dernier pp rework : ce sont des estimations, pas des valeurs exactes.",
+  infoLabel: "Infos",
 };
 
 const es: Copy = {
@@ -700,6 +709,9 @@ const es: Copy = {
   forYouRefresh: "Actualizar",
   forYouLevel: "Tu nivel",
   forYouRatio: "≈ {pct} de los pp del SS",
+  forYouShown: "Tipos sugeridos",
+  ppDisclaimer: "Los valores de pp pueden diferir del último pp rework: son estimaciones, no valores exactos.",
+  infoLabel: "Información",
 };
 
 const de: Copy = {
@@ -908,6 +920,9 @@ const de: Copy = {
   forYouRefresh: "Aktualisieren",
   forYouLevel: "Dein Niveau",
   forYouRatio: "≈ {pct} der SS-pp",
+  forYouShown: "Vorgeschlagene Typen",
+  ppDisclaimer: "Die pp-Werte können vom letzten pp-Rework abweichen: Es sind Schätzungen, keine exakten Werte.",
+  infoLabel: "Infos",
 };
 
 const pt: Copy = {
@@ -1116,6 +1131,9 @@ const pt: Copy = {
   forYouRefresh: "Atualizar",
   forYouLevel: "Seu nível",
   forYouRatio: "≈ {pct} dos pp do SS",
+  forYouShown: "Tipos sugeridos",
+  ppDisclaimer: "Os valores de pp podem diferir do último pp rework: são estimativas, não valores exatos.",
+  infoLabel: "Informações",
 };
 
 const pl: Copy = {
@@ -1324,6 +1342,9 @@ const pl: Copy = {
   forYouRefresh: "Odśwież",
   forYouLevel: "Twój poziom",
   forYouRatio: "≈ {pct} pp za SS",
+  forYouShown: "Proponowane typy",
+  ppDisclaimer: "Wartości pp mogą różnić się od ostatniego pp reworku: to szacunki, nie dokładne wartości.",
+  infoLabel: "Informacje",
 };
 
 const ru: Copy = {
@@ -1532,6 +1553,9 @@ const ru: Copy = {
   forYouRefresh: "Обновить",
   forYouLevel: "Ваш уровень",
   forYouRatio: "≈ {pct} от pp за SS",
+  forYouShown: "Предлагаемые типы",
+  ppDisclaimer: "Значения pp могут отличаться от последнего pp-реворка: это оценки, а не точные значения.",
+  infoLabel: "Информация",
 };
 
 const ko: Copy = {
@@ -1740,6 +1764,9 @@ const ko: Copy = {
   forYouRefresh: "새로고침",
   forYouLevel: "내 수준",
   forYouRatio: "SS pp의 약 {pct}",
+  forYouShown: "추천 유형",
+  ppDisclaimer: "pp 값은 최신 pp 리워크와 다를 수 있어요: 정확한 값이 아니라 추정치예요.",
+  infoLabel: "정보",
 };
 
 const ja: Copy = {
@@ -1948,6 +1975,9 @@ const ja: Copy = {
   forYouRefresh: "更新",
   forYouLevel: "あなたのレベル",
   forYouRatio: "SS の pp の約 {pct}",
+  forYouShown: "おすすめのタイプ",
+  ppDisclaimer: "pp の値は最新の pp リワークと異なる場合があります。正確な値ではなく推定値です。",
+  infoLabel: "情報",
 };
 
 const zh: Copy = {
@@ -2156,6 +2186,9 @@ const zh: Copy = {
   forYouRefresh: "刷新",
   forYouLevel: "你的水平",
   forYouRatio: "约为 SS pp 的 {pct}",
+  forYouShown: "推荐类型",
+  ppDisclaimer: "pp 数值可能与最新的 pp 重做不同：它们是估算值，并不精确。",
+  infoLabel: "说明",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

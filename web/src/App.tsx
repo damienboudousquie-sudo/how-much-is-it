@@ -6,6 +6,7 @@ import { Finder } from "./Finder";
 import { plainClick } from "./format";
 import { useI18n } from "./i18n";
 import { LangMenu } from "./LangMenu";
+import { InfoButton } from "./InfoButton";
 import { PreviewDock } from "./PreviewDock";
 import { FeedbackInbox, TopLinks } from "./Feedback";
 import { ForYou } from "./Recommend";
@@ -185,6 +186,7 @@ export function App() {
         <TopLinks />
         <AccountButton onPinned={() => (window.location.hash = PINNED_PATH)} onFeedback={() => (window.location.hash = FEEDBACK_PATH)} onForYou={() => (window.location.hash = FOR_YOU_PATH)} />
         <LangMenu />
+        <InfoButton />
       </header>
 
       <LoginError />
@@ -271,7 +273,6 @@ export function App() {
         />
       </div>
 
-      <footer className="footer">{t.footer}</footer>
       <PreviewDock />
     </div>
   );
