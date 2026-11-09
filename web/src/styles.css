@@ -3416,3 +3416,10 @@ h2 .beta-badge {
   margin-left: 10px;
   font-size: 0.6rem;
 }
+
+/* Browsers without text-box trimming: a bit more room above, where the line box is short. */
+@supports not (text-box: trim-both cap alphabetic) {
+  .beta-badge {
+    padding: 5px 7px 3px;
+  }
+}
