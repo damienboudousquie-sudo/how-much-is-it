@@ -3431,7 +3431,7 @@ h2 .beta-badge {
   flex-wrap: wrap;
   align-items: center;
   gap: 14px 18px;
-  margin-top: 10px;
+  margin: 10px 0 18px;
   padding: 14px 16px;
   border-radius: var(--radius);
   background: linear-gradient(120deg, rgba(255, 102, 170, 0.12), transparent 55%), var(--surface);
