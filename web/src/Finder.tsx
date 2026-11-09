@@ -621,22 +621,11 @@ function farmTier(score: number): string {
   return "";
 }
 
-// Rounded play triangle and pause bars, 44 x 48 px: the glass is cut to these shapes.
-const PLAY_SHAPE = "M10 6.2Q6 3.9 6 8.5L6 39.5Q6 44.1 10 41.8L39.2 26.2Q43 24 39.2 21.8Z";
-const PAUSE_SHAPE = "M9 8Q9 5 12 5L16 5Q19 5 19 8L19 40Q19 43 16 43L12 43Q9 43 9 40ZM25 8Q25 5 28 5L32 5Q35 5 35 8L35 40Q35 43 32 43L28 43Q25 43 25 40Z";
-
-/** Cuts the glass to a shape; a mask also clips the backdrop blur, where clip-path alone may not. */
-function glassMask(shape: string) {
-  const svg = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 48'><path d='${shape}'/></svg>`)}")`;
-  return { clipPath: `path("${shape}")`, WebkitMaskImage: svg, maskImage: svg, WebkitMaskSize: "100% 100%", maskSize: "100% 100%" };
-}
-
-/** Plays the map's osu! preview clip without opening the card: a frosted-glass triangle. */
+/** Plays the map's osu! preview clip without opening the card: just a small triangle. */
 function PreviewButton(props: { hit: DiscoverHit }) {
   const { t } = useI18n();
   const setId = props.hit.beatmapsetId!;
   const playing = usePreviewPlaying(setId);
-  const shape = playing ? PAUSE_SHAPE : PLAY_SHAPE;
   return (
     <button
       type="button"
@@ -650,18 +639,16 @@ function PreviewButton(props: { hit: DiscoverHit }) {
         togglePreview(setId, { title: props.hit.title, artist: props.hit.artist, cover: props.hit.cover });
       }}
     >
-      <span className="map-play-glass" style={glassMask(shape)} aria-hidden="true" />
-      <svg className="map-play-rim" viewBox="0 0 44 48" width="44" height="48" aria-hidden="true">
-        <defs>
-          <linearGradient id="map-play-rim" x1="0" y1="0" x2="0.4" y2="1">
-            <stop offset="0" stopColor="#fff" stopOpacity="0.95" />
-            <stop offset="0.5" stopColor="#fff" stopOpacity="0.25" />
-            <stop offset="1" stopColor="#fff" stopOpacity="0.55" />
-          </linearGradient>
-        </defs>
-        <path d={shape} fill="none" stroke="rgba(0,0,0,0.28)" strokeWidth="3" />
-        <path d={shape} fill="none" stroke="url(#map-play-rim)" strokeWidth="1.2" />
-      </svg>
+      {playing ? (
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
+          <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+        </svg>
+      )}
     </button>
   );
 }
