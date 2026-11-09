@@ -64,7 +64,7 @@ export function loadSkin(): Promise<Skin> {
               done();
             };
             image.onerror = () => done();
-            image.src = `${BASE}${encodeURIComponent(name)}.png`;
+            image.src = `${BASE}${name}.png`;
           }),
       ),
       ...SOUNDS.map(async (name) => {

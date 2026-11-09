@@ -41,6 +41,36 @@ export function AutoPlayerPopup(props: {
   const { t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
+  // Set once the window is resized by its corner; until then it keeps its natural size.
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const [full, setFull] = useState(false);
+
+  useEffect(() => {
+    const update = () => setFull(document.fullscreenElement === box.current && box.current != null);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
+
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    else void box.current?.requestFullscreen?.().catch(() => undefined);
+  };
+
+  // Resize by dragging the bottom-right corner.
+  const resize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = box.current?.getBoundingClientRect();
+    if (!rect) return;
+    const start = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height };
+    const move = (e: PointerEvent) =>
+      setSize({
+        width: Math.max(360, Math.min(window.innerWidth - rect.left - 4, start.width + e.clientX - start.x)),
+        height: Math.max(320, Math.min(window.innerHeight - rect.top - 4, start.height + e.clientY - start.y)),
+      });
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", () => window.removeEventListener("pointermove", move), { once: true });
+  };
 
   // Open just under the button, kept inside the window.
   useLayoutEffect(() => {
@@ -56,11 +86,12 @@ export function AutoPlayerPopup(props: {
   }, [props.anchor]);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && props.onClose();
+    // In full screen, Escape only leaves full screen (the browser handles it).
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !document.fullscreenElement && props.onClose();
     const onDown = (event: PointerEvent) => {
       const target = event.target as Node;
       // Mods stay usable while the player is open: it follows them live.
-      if (box.current?.contains(target) || props.anchor?.contains(target) || (target as Element).closest?.(".play-mods")) return;
+      if (document.fullscreenElement || box.current?.contains(target) || props.anchor?.contains(target) || (target as Element).closest?.(".play-mods")) return;
       props.onClose();
     };
     window.addEventListener("keydown", onKey);
@@ -87,18 +118,34 @@ export function AutoPlayerPopup(props: {
   return createPortal(
     <div
       ref={box}
-      className="auto-popup"
+      className={`auto-popup${size ? " sized" : ""}${full ? " full" : ""}`}
       role="dialog"
       aria-label={t.watchAuto}
-      style={{ width: Math.min(WIDTH, window.innerWidth - 24), ...(place ? { left: place.left, top: place.top } : { left: 0, top: 0, visibility: "hidden" }) }}
+      style={{
+        width: size?.width ?? Math.min(WIDTH, window.innerWidth - 24),
+        ...(size ? { height: size.height } : {}),
+        ...(place ? { left: place.left, top: place.top } : { left: 0, top: 0, visibility: "hidden" }),
+      }}
     >
-      <div className="auto-head" onPointerDown={drag}>
+      <div className="auto-head" onPointerDown={drag} onDoubleClick={toggleFull}>
         <span className="auto-title">{props.title}</span>
+        <button type="button" className="auto-close auto-full" aria-label={full ? t.exitFullscreen : t.fullscreen} title={full ? t.exitFullscreen : t.fullscreen} onClick={toggleFull}>
+          {full ? (
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+              <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
         <button type="button" className="auto-close" aria-label={t.hideAuto} onClick={props.onClose}>
           ×
         </button>
       </div>
       <AutoPlayerPanel beatmapId={props.beatmapId} setId={props.setId} mods={props.mods} rate={props.rate} />
+      {!full && <div className="auto-resize" onPointerDown={resize} aria-hidden="true" />}
     </div>,
     document.body,
   );

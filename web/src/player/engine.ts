@@ -532,6 +532,35 @@ export class AutoPlayer {
     }
   }
 
+  /**
+   * Reverse arrows at each end that still has a turn to come: at the tail before the
+   * slider is hit, and at the head too once the ball has left it.
+   */
+  private drawReverseArrows(o: HitObject, t: number, alpha: number): void {
+    if (o.slides < 2 || t >= o.endTime || alpha <= 0) return;
+    const images = this.skin.images;
+    const off = this.offset(o);
+    const flip = this.mods.hr ? -1 : 1;
+    const pulse = 1 + 0.12 * Math.max(0, 1 - ((((t % o.beat) + o.beat) % o.beat) / o.beat) * 2);
+    let tailTurn = false;
+    let headTurn = false;
+    for (let i = 1; i < o.slides; i++) {
+      if (o.time + i * o.slideTime <= t) continue;
+      if (i % 2 === 1) tailTurn = true;
+      else headTurn = true;
+    }
+    const near = Math.min(6, o.length / 2);
+    const draw = (atEnd: boolean) => {
+      const e = pointAt(o, atEnd ? o.length : 0);
+      const q = pointAt(o, atEnd ? o.length - near : near);
+      // Pointing back along the slider; a slider with no length points left.
+      const angle = near > 0.5 ? Math.atan2((q.y - e.y) * flip, q.x - e.x) : Math.PI;
+      this.sprite(images["reversearrow@2x"], e.x - off, e.y - off, (this.radius / 64) * 0.5 * pulse, alpha, angle);
+    };
+    if (tailTurn) draw(true);
+    if (headTurn && t >= o.time) draw(false);
+  }
+
   /** Opacity of a note: fades in, and with HD fades out before it is hit. */
   private opacity(o: HitObject, t: number): number {
     const appear = o.time - this.preempt;
@@ -583,29 +612,19 @@ export class AutoPlayer {
         const bodyAlpha = this.mods.hd && t > o.time ? Math.max(0, 1 - (t - o.time) / (o.endTime - o.time || 1)) : alpha;
         this.drawSliderBody(o, bodyAlpha);
         this.drawTicks(o, t, bodyAlpha);
-        if (o.slides > 1 && t < o.endTime) {
-          const done = Math.max(0, Math.floor((t - o.time) / o.slideTime));
-          if (done < o.slides - 1) {
-            const atEnd = done % 2 === 0;
-            const e = pointAt(o, atEnd ? o.length : 0);
-            const q = pointAt(o, atEnd ? o.length - 6 : 6);
-            const flip = this.mods.hr ? -1 : 1;
-            const angle = Math.atan2((q.y - e.y) * flip, q.x - e.x);
-            const pulse = 1 + 0.1 * Math.max(0, 1 - ((t % o.beat) / o.beat) * 2);
-            const off = this.offset(o);
-            this.sprite(images["reversearrow@2x"], e.x - off, e.y - off, (this.radius / 64) * 0.5 * pulse, bodyAlpha, angle);
-          }
-        }
         if (t < o.time) this.drawHitCircle(o, p, alpha, true);
-        else if (t <= o.endTime) {
+        else if (!this.mods.hd && t < o.time + HIT_FADE) {
+          const k = (t - o.time) / HIT_FADE;
+          this.drawHitCircle(o, p, 1 - k, false, 1 + 0.4 * k, false);
+        }
+        // Over the head circle (on buzz sliders, sliders that go back and forth on the
+        // spot, the arrows sit right on the head and were hidden under it), under the ball.
+        this.drawReverseArrows(o, t, bodyAlpha);
+        if (t >= o.time && t <= o.endTime) {
           const b = this.objectPos(o, t);
           const grow = Math.min(1, (t - o.time) / 120);
           this.sprite(images["sliderfollowcircle@2x"], b.x, b.y, (this.radius / 64) * 0.5 * (0.6 + 0.4 * grow), grow);
           this.sprite(tinted(this.skin, "sliderb0@2x", this.colour(o)), b.x, b.y, (this.radius / 64) * 0.5, 1);
-          if (!this.mods.hd && t < o.time + HIT_FADE) {
-            const k = (t - o.time) / HIT_FADE;
-            this.drawHitCircle(o, p, 1 - k, false, 1 + 0.4 * k, false);
-          }
         }
       } else if (t <= o.time) {
         this.drawHitCircle(o, p, alpha, false);

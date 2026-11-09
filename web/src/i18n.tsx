@@ -163,6 +163,8 @@ export type Copy = {
   forYouShown: string;
   ppDisclaimer: string;
   infoLabel: string;
+  fullscreen: string;
+  exitFullscreen: string;
 };
 
 const en: Copy = {
@@ -346,6 +348,8 @@ const en: Copy = {
   forYouShown: "Suggested types",
   ppDisclaimer: "PP values may differ from the latest pp rework: they are estimates, not exact.",
   infoLabel: "About",
+  fullscreen: "Full screen",
+  exitFullscreen: "Exit full screen",
 };
 
 const fr: Copy = {
@@ -529,6 +533,8 @@ const fr: Copy = {
   forYouShown: "Types proposés",
   ppDisclaimer: "Les valeurs de pp peuvent différer de celles du dernier pp rework : ce sont des estimations, pas des valeurs exactes.",
   infoLabel: "Infos",
+  fullscreen: "Plein écran",
+  exitFullscreen: "Quitter le plein écran",
 };
 
 const es: Copy = {
@@ -712,6 +718,8 @@ const es: Copy = {
   forYouShown: "Tipos sugeridos",
   ppDisclaimer: "Los valores de pp pueden diferir del último pp rework: son estimaciones, no valores exactos.",
   infoLabel: "Información",
+  fullscreen: "Pantalla completa",
+  exitFullscreen: "Salir de pantalla completa",
 };
 
 const de: Copy = {
@@ -923,6 +931,8 @@ const de: Copy = {
   forYouShown: "Vorgeschlagene Typen",
   ppDisclaimer: "Die pp-Werte können vom letzten pp-Rework abweichen: Es sind Schätzungen, keine exakten Werte.",
   infoLabel: "Infos",
+  fullscreen: "Vollbild",
+  exitFullscreen: "Vollbild beenden",
 };
 
 const pt: Copy = {
@@ -1134,6 +1144,8 @@ const pt: Copy = {
   forYouShown: "Tipos sugeridos",
   ppDisclaimer: "Os valores de pp podem diferir do último pp rework: são estimativas, não valores exatos.",
   infoLabel: "Informações",
+  fullscreen: "Tela cheia",
+  exitFullscreen: "Sair da tela cheia",
 };
 
 const pl: Copy = {
@@ -1345,6 +1357,8 @@ const pl: Copy = {
   forYouShown: "Proponowane typy",
   ppDisclaimer: "Wartości pp mogą różnić się od ostatniego pp reworku: to szacunki, nie dokładne wartości.",
   infoLabel: "Informacje",
+  fullscreen: "Pełny ekran",
+  exitFullscreen: "Zamknij pełny ekran",
 };
 
 const ru: Copy = {
@@ -1556,6 +1570,8 @@ const ru: Copy = {
   forYouShown: "Предлагаемые типы",
   ppDisclaimer: "Значения pp могут отличаться от последнего pp-реворка: это оценки, а не точные значения.",
   infoLabel: "Информация",
+  fullscreen: "Во весь экран",
+  exitFullscreen: "Выйти из полноэкранного режима",
 };
 
 const ko: Copy = {
@@ -1767,6 +1783,8 @@ const ko: Copy = {
   forYouShown: "추천 유형",
   ppDisclaimer: "pp 값은 최신 pp 리워크와 다를 수 있어요: 정확한 값이 아니라 추정치예요.",
   infoLabel: "정보",
+  fullscreen: "전체 화면",
+  exitFullscreen: "전체 화면 종료",
 };
 
 const ja: Copy = {
@@ -1978,6 +1996,8 @@ const ja: Copy = {
   forYouShown: "おすすめのタイプ",
   ppDisclaimer: "pp の値は最新の pp リワークと異なる場合があります。正確な値ではなく推定値です。",
   infoLabel: "情報",
+  fullscreen: "全画面",
+  exitFullscreen: "全画面を終了",
 };
 
 const zh: Copy = {
@@ -2189,6 +2209,8 @@ const zh: Copy = {
   forYouShown: "推荐类型",
   ppDisclaimer: "pp 数值可能与最新的 pp 重做不同：它们是估算值，并不精确。",
   infoLabel: "说明",
+  fullscreen: "全屏",
+  exitFullscreen: "退出全屏",
 };
 
 const tables: Record<Lang, Copy> = { en, fr, es, de, pt, pl, ru, ko, ja, zh };

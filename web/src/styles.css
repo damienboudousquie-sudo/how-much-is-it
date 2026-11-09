@@ -3086,3 +3086,49 @@ button:disabled {
   visibility: visible;
   transform: none;
 }
+
+/* ---------- auto player window: resize corner and full screen ---------- */
+
+.auto-popup.sized,
+.auto-popup.full {
+  display: flex;
+  flex-direction: column;
+}
+
+.auto-popup.sized .auto-player,
+.auto-popup.full .auto-player {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.auto-popup.sized .auto-stage,
+.auto-popup.full .auto-stage {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: auto;
+  max-height: none;
+}
+
+.auto-popup.full {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0;
+}
+
+.auto-full {
+  display: grid;
+  place-items: center;
+}
+
+.auto-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 58%, transparent 58%, transparent 70%, rgba(255, 255, 255, 0.25) 70%, rgba(255, 255, 255, 0.25) 78%, transparent 78%);
+}
