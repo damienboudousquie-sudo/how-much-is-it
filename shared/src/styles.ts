@@ -171,8 +171,8 @@ export function streamPurity(profile: PatternProfile): number {
 }
 
 /** Main type: jump, stream or hybrid, or null when none reaches 0.5. */
-export function primaryStyle(scores: StyleScores): MainStyle | null {
-  let best: MainStyle | null = null;
+export function primaryStyle(scores: StyleScores): MainStyle {
+  let best: MainStyle = "hybrid";
   let value = 0;
   for (const style of MAIN_STYLES) {
     if (scores[style] > value) {
@@ -180,7 +180,16 @@ export function primaryStyle(scores: StyleScores): MainStyle | null {
       best = style;
     }
   }
-  return value >= 0.5 ? best : null;
+  // A map that is clearly none of the three is a mix: it goes with the hybrids.
+  return value >= MAIN_MIN ? best : "hybrid";
+}
+
+/** Score a main type needs to count as the map's type. */
+const MAIN_MIN = 0.55;
+
+/** True when no main type is strong enough: such mixed maps are listed as hybrids. */
+function isMixed(scores: StyleScores): boolean {
+  return MAIN_STYLES.every((style) => scores[style] < MAIN_MIN);
 }
 
 /**
@@ -214,7 +223,8 @@ export function matchesAnyStyle(scores: StyleScores, wanted: readonly ConcreteSt
 }
 
 /**
- * Main type: strong (0.55) and close to the best main type (75 %).
+ * Main type: strong (0.55) and close to the best main type (75 %). A map with no strong
+ * main type (slider-heavy or mixed maps) counts as a hybrid, so every map has a list.
  * Secondary tag: its main type matches and the tag is strong; several tags can match.
  */
 export function matchesStyleScores(scores: StyleScores, wanted: MapStyle): boolean {
@@ -223,7 +233,8 @@ export function matchesStyleScores(scores: StyleScores, wanted: MapStyle): boole
   if (isMainStyle(wanted)) {
     let max = 0;
     for (const style of MAIN_STYLES) max = Math.max(max, scores[style]);
-    return value >= 0.55 && value >= 0.75 * max;
+    if (wanted === "hybrid" && isMixed(scores)) return true;
+    return value >= MAIN_MIN && value >= 0.75 * max;
   }
   // A tag needs its main type; a map can carry several tags.
   return matchesStyleScores(scores, PARENT_STYLE[wanted]) && value >= 0.55;
