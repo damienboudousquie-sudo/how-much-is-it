@@ -2744,22 +2744,21 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--faint);
-  font-size: 0.78rem;
-  font-weight: 600;
+  height: 32px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .top-osu {
   display: grid;
   place-items: center;
   color: var(--muted);
-  opacity: 0.75;
-  transition: color 0.15s, opacity 0.15s;
+  transition: color 0.15s;
 }
 
 .top-osu:hover {
   color: var(--pink);
-  opacity: 1;
 }
 
 @media (max-width: 760px) {

@@ -293,15 +293,21 @@ export interface MeAnswer {
   admin: boolean;
 }
 
-/** osu! names (or ids) allowed to read the feedback; the site owner by default. */
-function admins(): Set<string> {
-  return new Set((process.env.ADMIN_OSU_USERS ?? "TYROOOO").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean));
+/**
+ * osu! account ids allowed to read the feedback: the site owner (TYROOOO, 18188835) by
+ * default. Ids, not names: a name can change hands, an id never does.
+ */
+function admins(): Set<number> {
+  return new Set(
+    (process.env.ADMIN_OSU_IDS ?? "18188835")
+      .split(",")
+      .map((id) => Number(id.trim()))
+      .filter((id) => Number.isInteger(id) && id > 0),
+  );
 }
 
 export function isAdmin(profile: UserProfile | null): boolean {
-  if (!profile) return false;
-  const list = admins();
-  return list.has(profile.username.toLowerCase()) || list.has(String(profile.id));
+  return profile != null && admins().has(profile.id);
 }
 
 /** The signed-in player, without calling osu!. */
