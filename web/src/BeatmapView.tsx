@@ -1,5 +1,5 @@
 import { PinButton, PlayerBadges, pinSource } from "./Marks";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MODS_BY_MODE,
   defaultClockRate,
@@ -21,7 +21,7 @@ import {
 import { ApiError, fetchCalculate, fetchLookup } from "./api";
 import { formatBpm, formatLength, formatPercent, formatPp, formatRate, formatStars, formatStat, numberLocaleOf, osuDirectUrl, osuMapUrl } from "./format";
 import { StarPill } from "./Badges";
-import { AutoPlayerPanel } from "./AutoPlayerPanel";
+import { AutoPlayerPopup } from "./AutoPlayerPanel";
 import { togglePreview, usePreviewPlaying } from "./audioPreview";
 import { fill, useI18n, type Copy } from "./i18n";
 
@@ -128,6 +128,8 @@ export function BeatmapView(props: {
   const [copied, setCopied] = useState<string | null>(null);
   const calcGen = useRef(0);
   const [showAuto, setShowAuto] = useState(false);
+  const autoButton = useRef<HTMLButtonElement>(null);
+  const closeAuto = useCallback(() => setShowAuto(false), []);
   const previewing = usePreviewPlaying(data?.meta.beatmapsetId ?? null);
 
   const accuracy = parseAccuracy(accuracyText);
@@ -347,7 +349,13 @@ export function BeatmapView(props: {
               {t.osuDirect}
             </a>
             {meta.mode === "osu" && (
-              <button type="button" className={showAuto ? "button ghost on" : "button ghost"} aria-pressed={showAuto} onClick={() => setShowAuto((value) => !value)}>
+              <button
+                ref={autoButton}
+                type="button"
+                className={showAuto ? "button ghost on" : "button ghost"}
+                aria-pressed={showAuto}
+                onClick={() => setShowAuto((value) => !value)}
+              >
                 {showAuto ? t.hideAuto : `▶ ${t.watchAuto}`}
               </button>
             )}
@@ -362,7 +370,16 @@ export function BeatmapView(props: {
       </section>
 
       {showAuto && meta.mode === "osu" && (
-        <AutoPlayerPanel key={meta.beatmapId} beatmapId={meta.beatmapId} setId={meta.beatmapsetId ?? null} mods={mods} rate={rate} />
+        <AutoPlayerPopup
+          key={meta.beatmapId}
+          anchor={autoButton.current}
+          title={`${meta.artist} - ${meta.title} [${meta.version}]`}
+          beatmapId={meta.beatmapId}
+          setId={meta.beatmapsetId ?? null}
+          mods={mods}
+          rate={rate}
+          onClose={closeAuto}
+        />
       )}
 
       {meta.difficulties.length > 1 && (

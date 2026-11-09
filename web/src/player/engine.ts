@@ -41,6 +41,8 @@ export class AutoPlayer {
   playing = true;
   dance = true;
   hitsounds = true;
+  /** Overall volume, music and hitsounds together (0–1). */
+  private volume = 0.6;
   private mods: PlayerMods = { rate: 1, hr: false, ez: false, hd: false, nc: false };
   private frame = 0;
   private last = performance.now();
@@ -119,6 +121,11 @@ export class AutoPlayer {
     }
   }
 
+  setVolume(volume: number): void {
+    this.volume = Math.max(0, Math.min(1, volume));
+    if (this.music) this.music.volume = this.volume;
+  }
+
   togglePlay(): void {
     this.playing = !this.playing;
     if (this.music) {
@@ -143,7 +150,7 @@ export class AutoPlayer {
     const audio = new Audio(url);
     audio.preservesPitch = !this.mods.nc;
     audio.playbackRate = this.mods.rate;
-    audio.volume = 0.5;
+    audio.volume = this.volume;
     this.fullSong = fullSong;
     if (fullSong) {
       this.musicBase = 0;
@@ -264,7 +271,7 @@ export class AutoPlayer {
     if (!buffer || !this.audio) return;
     const source = this.audio.createBufferSource();
     const gain = this.audio.createGain();
-    gain.gain.value = (volume / 100) * 0.5;
+    gain.gain.value = (volume / 100) * 0.55 * this.volume;
     source.buffer = buffer;
     source.connect(gain).connect(this.audio.destination);
     source.start();

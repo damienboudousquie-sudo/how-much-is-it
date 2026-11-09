@@ -1,6 +1,7 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { seekPreview, setPreviewVolume, stopPreview, togglePreview, usePreview } from "./audioPreview";
 import { useI18n } from "./i18n";
+import { VolumeSlider } from "./VolumeSlider";
 
 const fmt = (s: number) => {
   const total = Math.max(0, Math.floor(s));
@@ -62,21 +63,7 @@ export function PreviewDock() {
             <div className="preview-fill" style={{ width: `${progress * 100}%` }} />
           </div>
           <span className="preview-time">{fmt(preview.duration)}</span>
-          <label className="preview-volume" title={t.playerMusic}>
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-              <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
-              {preview.volume > 0 && <path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}
-            </svg>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={preview.volume}
-              aria-label="Volume"
-              onChange={(event) => setPreviewVolume(Number(event.currentTarget.value))}
-            />
-          </label>
+          <VolumeSlider value={preview.volume} onChange={setPreviewVolume} />
         </div>
       </div>
     </div>
