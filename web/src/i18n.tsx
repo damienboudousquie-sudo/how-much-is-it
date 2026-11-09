@@ -471,7 +471,7 @@ const fr: Copy = {
   playerClipOnly: "Musique complète indisponible : extrait de 10 s",
   contact: "Contact :",
   feedback: "Avis",
-  feedbackTitle: "Donner ton avis",
+  feedbackTitle: "Donne ton avis",
   feedbackBug: "Bug",
   feedbackIdea: "Suggestion",
   feedbackOther: "Autre",
