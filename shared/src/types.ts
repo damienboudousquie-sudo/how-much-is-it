@@ -247,13 +247,9 @@ export interface UserProfile {
 /** One of the player's top 100 plays. */
 export interface TopPlay {
   beatmapId: number;
-  /** Official pp, from the osu! API. */
   pp: number;
   accuracy: number | null;
   mods: string[];
-  /** Misses and max combo of the score, to recompute it as played (older saves lack them). */
-  misses?: number | null;
-  combo?: number | null;
 }
 
 /** What a pinned map looked like when it was pinned, to list it without a lookup. */
@@ -315,11 +311,6 @@ export interface RecommendResponse {
   ppMax: number;
   /** Share of a map's SS pp the player usually gets (their top plays are not all SS). */
   ratio: number;
-  /**
-   * Official osu! pp ÷ our pp, read on the player's own top plays (the same scores recomputed
-   * here). Every pp shown in the suggestions is multiplied by it, so they match osu!'s pp.
-   */
-  calibration: number;
   /** Mod combos of the top plays, most played first (share 0–1). */
   mods: { mods: string[]; share: number }[];
   /** Map types of the top plays (share 0–1). */

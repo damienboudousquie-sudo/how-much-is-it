@@ -262,9 +262,6 @@ interface ApiScore {
   accuracy?: number;
   mods?: ({ acronym: string } | string)[];
   beatmap?: { id: number };
-  max_combo?: number;
-  /** Lazer-style keys (miss) or legacy ones (count_miss), depending on the score. */
-  statistics?: { miss?: number; count_miss?: number };
 }
 
 async function refreshTop(sessionId: string, session: Session, file: PlayerFile): Promise<void> {
@@ -282,8 +279,6 @@ async function refreshTop(sessionId: string, session: Session, file: PlayerFile)
       pp: Math.round(score.pp! * 100) / 100,
       accuracy: typeof score.accuracy === "number" ? Math.round(score.accuracy * 10000) / 100 : null,
       mods: (score.mods ?? []).map((mod) => (typeof mod === "string" ? mod : mod.acronym)).filter((mod) => mod !== "CL"),
-      misses: score.statistics?.miss ?? score.statistics?.count_miss ?? null,
-      combo: typeof score.max_combo === "number" ? score.max_combo : null,
     }));
   file.topAt = Date.now();
   await savePlayer(session.userId, file);

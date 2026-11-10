@@ -144,10 +144,6 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
               <dt>{t.forYouLevel}</dt>
               <dd>{fill(t.forYouRatio, { pct: pct(data.ratio) })}</dd>
             </div>
-            <div title={t.forYouCalHelp}>
-              <dt>{t.forYouCal}</dt>
-              <dd>{(data.calibration ?? 1) === 1 ? t.forYouCalSame : fill(t.forYouCalAdjusted, { x: (data.calibration ?? 1).toFixed(2) })}</dd>
-            </div>
             <div>
               <dt>{t.forYouMods}</dt>
               <dd>{data.mods.map((item) => `${item.mods.join("") || t.nm} ${pct(item.share)}`).join(" · ")}</dd>
