@@ -86,6 +86,49 @@ async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; ss: number
   return { ratio: Math.max(0.55, Math.min(1, ratios[Math.floor(ratios.length / 2)])), ss: ssList };
 }
 
+/**
+ * Official pp ÷ our pp on the player's own top plays: each score is recomputed here with its
+ * accuracy, misses and combo, and compared with the pp osu! gave it. When osu! changes its pp
+ * before our calculator catches up, this brings the suggestions back onto osu!'s numbers.
+ */
+const calibrationCache = new Map<string, number | null>();
+
+async function calibration(plays: TopPlay[]): Promise<number> {
+  const factors: number[] = [];
+  const queue = plays.filter((play) => play.accuracy != null);
+  await Promise.all(
+    Array.from({ length: 4 }, async () => {
+      for (let play = queue.shift(); play; play = queue.shift()) {
+        const mods = play.mods.filter((mod) => mod !== "CL");
+        const key = `${play.beatmapId}:${[...mods].sort().join("")}:${play.accuracy}:${play.misses ?? "?"}:${play.combo ?? "?"}`;
+        let ours = calibrationCache.get(key);
+        if (ours === undefined) {
+          try {
+            const result = await calculatePlay(
+              { beatmapId: play.beatmapId, mode: "osu", mods, clockRate: null, accuracy: play.accuracy!, combo: play.combo ?? null, misses: play.misses ?? 0 },
+              "osu",
+              0,
+              true,
+            );
+            ours = result.score.pp > 0 ? result.score.pp : null;
+          } catch {
+            ours = null;
+          }
+          if (calibrationCache.size > 20000) calibrationCache.clear();
+          calibrationCache.set(key, ours);
+        }
+        if (ours) factors.push(play.pp / ours);
+      }
+    }),
+  );
+  if (factors.length < 3) return 1;
+  factors.sort((a, b) => a - b);
+  const median = factors[Math.floor(factors.length / 2)];
+  // Within 1 % is the same calculator: keep exactly 1 so nothing moves for nothing.
+  if (Math.abs(median - 1) < 0.01) return 1;
+  return Math.max(0.6, Math.min(1.6, median));
+}
+
 /** Picks without replacement, favouring high scores, so each refresh shows a new mix. */
 function sample<T extends { score: number }>(list: T[], count: number): T[] {
   const pool = [...list].sort((a, b) => b.score - a.score).slice(0, Math.max(count * 3, 30));
@@ -105,13 +148,17 @@ const RESULTS = 40;
 export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set()): Promise<RecommendResponse> {
   const { top, marks } = playerData(sessionId);
   const plays = [...top].sort((a, b) => b.pp - a.pp);
-  if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
+  if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, calibration: 1, mods: [], styles: [], wanted: [], results: [] };
 
   // Everything is read from the top 20: the FC (SS) pp of those maps sets the range, from
   // the lowest to a bit above the highest. No suggestion is worth less at FC than the
   // weakest map of the top 20.
   const best = plays.slice(0, 20);
-  const { ratio, ss } = await scoreRatio(best);
+  // Our SS pp × calibration = osu!'s SS pp. The ratio (how much of the SS pp the player
+  // gets) is then read on osu!'s numbers, so it is about accuracy only.
+  const [raw, cal] = await Promise.all([scoreRatio(best), calibration(best)]);
+  const ratio = Math.max(0.55, Math.min(1, raw.ratio / cal));
+  const ss = raw.ss.map((value) => value * cal);
   const ssMin = ss.length >= 3 ? Math.round(ss[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
   const ssMax = ss.length >= 3 ? Math.round(ss[ss.length - 1] * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
 
@@ -168,8 +215,9 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
           mode: "osu",
           styles: wanted,
           mods: modRecord(mods),
-          ppMin: range.min,
-          ppMax: range.max,
+          // The index holds our pp: search it on our scale.
+          ppMin: Math.floor(range.min / cal),
+          ppMax: Math.ceil(range.max / cal),
           offset,
           sort: [{ key: "farm", dir: "desc" }],
           ranges: emptyRanges(),
@@ -181,7 +229,8 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     }
   }
 
-  function consider(hit: DiscoverHit, comboShare: number, slice: number): void {
+  function consider(found: DiscoverHit, comboShare: number, slice: number): void {
+    const hit = cal === 1 ? found : { ...found, pp: Math.round(found.pp * cal * 100) / 100 };
     if (played.has(hit.beatmapId) || marks[String(hit.beatmapId)] === "done" || hit.pp < ssMin) return;
     // What the player would really get, at their usual share of the SS pp.
     const gain = ppGain(plays, hit.beatmapId, hit.pp * ratio);
@@ -214,6 +263,7 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     ppMin: ssMin,
     ppMax: ssMax,
     ratio,
+    calibration: Math.round(cal * 1000) / 1000,
     mods: combos.map((item) => ({ mods: item.key === "NM" ? [] : item.key.match(/.{2}/g) ?? [], share: item.share })),
     styles: styleShares.map((item) => ({ style: item.key, share: item.share })),
     wanted,
