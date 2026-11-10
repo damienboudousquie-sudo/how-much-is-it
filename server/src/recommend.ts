@@ -243,6 +243,22 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     chosen.push(...sample(candidates.filter((hit) => !taken.has(hit.beatmapId)), RESULTS - chosen.length));
   }
 
+  // The lists' pp come from a mirror that may lag behind the pp rework: show the same pp as
+  // the map page (our calculator), and the gain that goes with it.
+  const deadline = Date.now() + 8000;
+  const queue = [...chosen];
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      for (let hit = queue.shift(); hit; hit = queue.shift()) {
+        if (Date.now() > deadline) break;
+        const ss = await ssPp(hit.beatmapId, hit.mods);
+        if (!ss) continue;
+        hit.pp = Math.round(ss * 100) / 100;
+        hit.gain = ppGain(plays, hit.beatmapId, ss * ratio);
+      }
+    }),
+  );
+
   const results = chosen
     .sort((a, b) => b.pp - a.pp)
     .slice(0, RESULTS)
