@@ -299,6 +299,12 @@ export function App() {
         />
       </div>
 
+      {route.page === "maps" && (
+        <footer className="site-foot">
+          {t.unofficialShort} · <a href={LEGAL_PATH}>{t.legalLink}</a>
+        </footer>
+      )}
+
       <PreviewDock />
     </div>
   );

@@ -168,9 +168,12 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
           </dl>
         )}
         {!signedIn && (
-          <a className="login-osu" href="/api/auth/login" onClick={() => trackEvent("login_click")}>
-            {t.login}
-          </a>
+          <div className="login-block">
+            <a className="login-osu" href="/api/auth/login" title={t.loginSafe} onClick={() => trackEvent("login_click")}>
+              {t.login}
+            </a>
+            <small>{t.loginSafe}</small>
+          </div>
         )}
       </div>
       <PlayerCard />

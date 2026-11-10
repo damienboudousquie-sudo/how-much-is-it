@@ -3871,3 +3871,36 @@ a.stats-key:hover {
     padding: 18px 16px;
   }
 }
+
+/* Sign-in reassurance and the discreet legal footer */
+.login-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.login-block .login-osu {
+  margin-left: 0;
+}
+
+.login-block small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.site-foot {
+  margin: 28px 0 8px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.site-foot a {
+  color: inherit;
+}
+
+.site-foot a:hover {
+  color: var(--pink);
+}

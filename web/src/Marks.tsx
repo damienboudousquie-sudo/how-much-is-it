@@ -277,7 +277,7 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
         </button>
       )}
       {account.loginAvailable && (
-        <a className="login-osu" href="/api/auth/login" onClick={() => trackEvent("login_click")}>
+        <a className="login-osu" href="/api/auth/login" title={t.loginSafe} onClick={() => trackEvent("login_click")}>
           <span className="login-full">{t.login}</span>
           <span className="login-short">{t.loginShort}</span>
         </a>

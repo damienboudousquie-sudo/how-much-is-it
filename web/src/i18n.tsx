@@ -166,6 +166,8 @@ export type Copy = {
   forYouShown: string;
   ppDisclaimer: string;
   unofficial: string;
+  loginSafe: string;
+  unofficialShort: string;
   modClassicHelp: string;
   legalLink: string;
   infoLabel: string;
@@ -413,6 +415,8 @@ const en: Copy = {
   forYouShown: "Suggested types",
   ppDisclaimer: "PP values may differ from the latest pp rework: they are estimates, not exact.",
   unofficial: "Unofficial site, not affiliated with osu! or ppy Pty Ltd.",
+  loginSafe: "Sign-in happens on osu.ppy.sh: this site never sees your password.",
+  unofficialShort: "Unofficial site",
   modClassicHelp: "Classic: a score set on osu!stable (slider ends do not count toward accuracy).",
   legalLink: "Legal notice & privacy",
   infoLabel: "About",
@@ -660,6 +664,8 @@ const fr: Copy = {
   forYouShown: "Types proposés",
   ppDisclaimer: "Les valeurs de pp peuvent différer de celles du dernier pp rework : ce sont des estimations, pas des valeurs exactes.",
   unofficial: "Site non officiel, sans lien avec osu! ni ppy Pty Ltd.",
+  loginSafe: "La connexion se fait sur osu.ppy.sh : ce site ne voit jamais ton mot de passe.",
+  unofficialShort: "Site non officiel",
   modClassicHelp: "Classic : un score fait sur osu!stable (les fins de sliders ne comptent pas dans la précision).",
   legalLink: "Mentions légales et confidentialité",
   infoLabel: "Infos",
@@ -907,6 +913,8 @@ const es: Copy = {
   forYouShown: "Tipos sugeridos",
   ppDisclaimer: "Los valores de pp pueden diferir del último pp rework: son estimaciones, no valores exactos.",
   unofficial: "Sitio no oficial, sin relación con osu! ni con ppy Pty Ltd.",
+  loginSafe: "El inicio de sesión se hace en osu.ppy.sh: este sitio nunca ve tu contraseña.",
+  unofficialShort: "Sitio no oficial",
   modClassicHelp: "Classic: una puntuación hecha en osu!stable (los finales de slider no cuentan para la precisión).",
   legalLink: "Aviso legal y privacidad",
   infoLabel: "Información",
@@ -1182,6 +1190,8 @@ const de: Copy = {
   forYouShown: "Vorgeschlagene Typen",
   ppDisclaimer: "Die pp-Werte können vom letzten pp-Rework abweichen: Es sind Schätzungen, keine exakten Werte.",
   unofficial: "Inoffizielle Seite, nicht mit osu! oder ppy Pty Ltd verbunden.",
+  loginSafe: "Die Anmeldung erfolgt auf osu.ppy.sh: Diese Seite sieht dein Passwort nie.",
+  unofficialShort: "Inoffizielle Seite",
   modClassicHelp: "Classic: ein Score auf osu!stable (Slider-Enden zählen nicht zur Genauigkeit).",
   legalLink: "Impressum & Datenschutz",
   infoLabel: "Infos",
@@ -1457,6 +1467,8 @@ const pt: Copy = {
   forYouShown: "Tipos sugeridos",
   ppDisclaimer: "Os valores de pp podem diferir do último pp rework: são estimativas, não valores exatos.",
   unofficial: "Site não oficial, sem ligação com o osu! nem com a ppy Pty Ltd.",
+  loginSafe: "O login é feito no osu.ppy.sh: este site nunca vê sua senha.",
+  unofficialShort: "Site não oficial",
   modClassicHelp: "Classic: uma pontuação feita no osu!stable (os finais dos sliders não contam na precisão).",
   legalLink: "Aviso legal e privacidade",
   infoLabel: "Informações",
@@ -1732,6 +1744,8 @@ const pl: Copy = {
   forYouShown: "Proponowane typy",
   ppDisclaimer: "Wartości pp mogą różnić się od ostatniego pp reworku: to szacunki, nie dokładne wartości.",
   unofficial: "Nieoficjalna strona, niezwiązana z osu! ani z ppy Pty Ltd.",
+  loginSafe: "Logowanie odbywa się na osu.ppy.sh: ta strona nigdy nie widzi twojego hasła.",
+  unofficialShort: "Nieoficjalna strona",
   modClassicHelp: "Classic: wynik zdobyty na osu!stable (końce sliderów nie liczą się do celności).",
   legalLink: "Nota prawna i prywatność",
   infoLabel: "Informacje",
@@ -2007,6 +2021,8 @@ const ru: Copy = {
   forYouShown: "Предлагаемые типы",
   ppDisclaimer: "Значения pp могут отличаться от последнего pp-реворка: это оценки, а не точные значения.",
   unofficial: "Неофициальный сайт, не связан с osu! и ppy Pty Ltd.",
+  loginSafe: "Вход выполняется на osu.ppy.sh: этот сайт никогда не видит твой пароль.",
+  unofficialShort: "Неофициальный сайт",
   modClassicHelp: "Classic: скор, поставленный в osu!stable (концы слайдеров не влияют на точность).",
   legalLink: "Правовая информация и конфиденциальность",
   infoLabel: "Информация",
@@ -2282,6 +2298,8 @@ const ko: Copy = {
   forYouShown: "추천 유형",
   ppDisclaimer: "pp 값은 최신 pp 리워크와 다를 수 있어요: 정확한 값이 아니라 추정치예요.",
   unofficial: "비공식 사이트이며 osu! 및 ppy Pty Ltd와 관련이 없습니다.",
+  loginSafe: "로그인은 osu.ppy.sh에서 진행돼요. 이 사이트는 비밀번호를 절대 보지 않아요.",
+  unofficialShort: "비공식 사이트",
   modClassicHelp: "Classic: osu!stable에서 낸 기록 (슬라이더 끝은 정확도에 포함되지 않음).",
   legalLink: "법적 고지 및 개인정보",
   infoLabel: "정보",
@@ -2557,6 +2575,8 @@ const ja: Copy = {
   forYouShown: "おすすめのタイプ",
   ppDisclaimer: "pp の値は最新の pp リワークと異なる場合があります。正確な値ではなく推定値です。",
   unofficial: "非公式サイトです。osu! および ppy Pty Ltd とは関係ありません。",
+  loginSafe: "ログインは osu.ppy.sh で行われます。このサイトがパスワードを見ることはありません。",
+  unofficialShort: "非公式サイト",
   modClassicHelp: "Classic：osu!stable でのスコア（スライダー終点は精度に含まれません）。",
   legalLink: "法的情報とプライバシー",
   infoLabel: "情報",
@@ -2832,6 +2852,8 @@ const zh: Copy = {
   forYouShown: "推荐类型",
   ppDisclaimer: "pp 数值可能与最新的 pp 重做不同：它们是估算值，并不精确。",
   unofficial: "非官方网站，与 osu! 及 ppy Pty Ltd 无关。",
+  loginSafe: "登录在 osu.ppy.sh 上完成，本站永远看不到你的密码。",
+  unofficialShort: "非官方网站",
   modClassicHelp: "Classic：在 osu!stable 上取得的成绩（滑条尾不计入准确率）。",
   legalLink: "法律声明与隐私",
   infoLabel: "说明",

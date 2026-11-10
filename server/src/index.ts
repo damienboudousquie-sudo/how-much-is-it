@@ -170,6 +170,19 @@ app.post("/api/prefetch", async (request, reply) => {
 
 /* ---------- sign in with osu!, marks, top plays ---------- */
 
+/**
+ * Sign-in pages are only hops to and from osu.ppy.sh: never cached, never indexed, and the
+ * one-time code never leaks through the Referer header.
+ */
+app.addHook("onSend", async (request, reply, payload) => {
+  if (request.url.startsWith("/api/")) reply.header("x-robots-tag", "noindex, nofollow");
+  if (request.url.startsWith("/api/auth/")) {
+    reply.header("cache-control", "no-store");
+    reply.header("referrer-policy", "no-referrer");
+  }
+  return payload;
+});
+
 app.get("/api/auth/login", async (_request, reply) => {
   try {
     return reply.redirect(loginRedirect());
@@ -187,7 +200,8 @@ app.get("/api/auth/callback", async (request, reply) => {
   try {
     const session = await completeLogin(params.code, params.state);
     reply.header("set-cookie", sessionCookie(session, SESSION_MAX_AGE));
-    return reply.redirect("/");
+    // 303: the browser lands on the home page with a clean address (no code in it).
+    return reply.redirect("/", 303);
   } catch (error) {
     request.log.warn({ err: error }, "osu! sign-in failed");
     const message = error instanceof Error ? error.message : "Sign-in failed.";
