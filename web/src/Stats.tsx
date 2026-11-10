@@ -130,15 +130,23 @@ export function StatsPage() {
     );
   };
 
-  const columns = (title: string, values: number[], labels: string[]) => {
+  const edge = (index: number, count: number) => (count > 6 && index < 2 ? "tip-left" : count > 6 && index >= count - 2 ? "tip-right" : "");
+
+  const columns = (title: string, values: number[], labels: string[], tips: string[], unit: string) => {
     const max = Math.max(1, ...values);
     return (
       <section className="panel stats-chart small">
         <h3>{title}</h3>
         <div className="stats-columns">
           {values.map((value, index) => (
-            <div key={index} className="stats-column" title={`${labels[index]} · ${number(value)}`}>
+            <div key={index} className={`stats-column ${edge(index, values.length)}`}>
               <span style={{ height: `${(value / max) * 100}%` }} />
+              <div className="stats-tip" role="tooltip">
+                <b>{tips[index]}</b>
+                <span>
+                  <strong>{number(value)}</strong> {unit}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -165,6 +173,10 @@ export function StatsPage() {
   const today = data?.days[data.days.length - 1];
   const series = data?.days.map((day) => (metric === "visitors" ? day.visitors : day.views)) ?? [];
   const maxDay = Math.max(1, ...series);
+  const weekdayLong = Array.from({ length: 7 }, (_, i) => {
+    const name = new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(lang, { weekday: "long", timeZone: "UTC" });
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  });
   const weekdayNames = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(lang, { weekday: "short", timeZone: "UTC" }));
 
   return (
@@ -251,8 +263,17 @@ export function StatsPage() {
               </div>
               <div className="stats-columns" role="img" aria-label={t.statsPerDay}>
                 {data.days.map((day, index) => (
-                  <div key={day.day} className="stats-column" title={`${new Date(`${day.day}T12:00:00`).toLocaleDateString(lang)} · ${number(day.visitors)} / ${number(day.views)}`}>
+                  <div key={day.day} className={`stats-column ${edge(index, data.days.length)}`}>
                     <span style={{ height: `${(series[index] / maxDay) * 100}%` }} />
+                    <div className="stats-tip" role="tooltip">
+                      <b>{new Date(`${day.day}T12:00:00`).toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })}</b>
+                      <span className={metric === "visitors" ? "on" : ""}>
+                        <strong>{number(day.visitors)}</strong> {t.statsChartVisitors.toLowerCase()}
+                      </span>
+                      <span className={metric === "views" ? "on" : ""}>
+                        <strong>{number(day.views)}</strong> {t.statsChartViews.toLowerCase()}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -264,8 +285,14 @@ export function StatsPage() {
           )}
 
           <div className="stats-grid two">
-            {columns(t.statsHours, data.hours, data.hours.map((_, hour) => `${hour}h`))}
-            {columns(t.statsWeekdays, data.weekdays, weekdayNames)}
+            {columns(
+              t.statsHours,
+              data.hours,
+              data.hours.map((_, hour) => `${hour}h`),
+              data.hours.map((_, hour) => `${hour}h – ${(hour + 1) % 24}h`),
+              t.statsChartViews.toLowerCase(),
+            )}
+            {columns(t.statsWeekdays, data.weekdays, weekdayNames, weekdayLong, t.statsChartVisitors.toLowerCase())}
           </div>
 
           <div className="stats-grid">

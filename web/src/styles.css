@@ -3687,3 +3687,83 @@ a.stats-key:hover {
 .stats-list li .stats-key:has(.stats-flag) {
   display: inline-flex;
 }
+
+/* Chart hover tooltips */
+.stats-column {
+  position: relative;
+}
+
+.stats-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(22, 20, 30, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--muted, #b9b4c7);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.stats-column:hover .stats-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.stats-column.tip-left .stats-tip {
+  left: 0;
+  transform: translate(0, 4px);
+}
+
+.stats-column.tip-left:hover .stats-tip {
+  transform: translate(0, 0);
+}
+
+.stats-column.tip-right .stats-tip {
+  right: 0;
+  left: auto;
+  transform: translate(0, 4px);
+}
+
+.stats-column.tip-right:hover .stats-tip {
+  transform: translate(0, 0);
+}
+
+.stats-tip b {
+  color: #fff;
+  font-weight: 600;
+}
+
+.stats-tip span {
+  width: auto;
+  min-height: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.stats-tip strong {
+  color: #fff;
+}
+
+.stats-tip span.on strong {
+  color: var(--pink);
+}
+
+.stats-column:hover .stats-tip span {
+  background: none;
+}
+
+.stats-chart {
+  overflow: visible;
+}
