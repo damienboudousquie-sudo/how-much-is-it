@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { trackEvent } from "./track";
 
 /** The 10 s preview clip osu! serves for every beatmapset. */
 export function previewUrl(setId: number): string {
@@ -55,6 +56,7 @@ export function togglePreview(setId: number, info: PreviewInfo | null = null): v
     return;
   }
   if (audio) audio.pause();
+  trackEvent("preview_play");
   const next = new Audio(previewUrl(setId));
   next.volume = state.volume;
   const mine = () => audio === next;

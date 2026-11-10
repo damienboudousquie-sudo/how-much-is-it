@@ -18,7 +18,7 @@ import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
 import { mapAudio } from "./audio";
 import { recommend } from "./recommend";
-import { readStats, recordHit } from "./stats";
+import { readStats, recordEvent, recordHit, recordLeave } from "./stats";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
 import { calculate, discover, lookup, prefetch, search, warmFinderIndex, type Timing } from "./service";
@@ -210,22 +210,33 @@ app.get("/api/recommend", async (request, reply) => {
 
 /* ---------- visit stats (owner only) ---------- */
 
-app.post("/api/hit", async (request, reply) => {
-  try {
-    await recordHit({
-      body: request.body,
-      ip: clientIp(request),
-      userAgent: String(request.headers["user-agent"] ?? ""),
-      country: typeof request.headers["cf-ipcountry"] === "string" ? request.headers["cf-ipcountry"].toUpperCase() : undefined,
-      lang: String(request.headers["x-lang"] ?? ""),
-      host: String(request.headers.host ?? ""),
-      signedIn: currentUser(sessionFromCookie(request.headers.cookie)) != null,
-    });
-  } catch (error) {
-    request.log.warn({ err: error }, "stats hit failed");
-  }
-  reply.code(204).send();
-});
+function hitInput(request: { body: unknown; headers: Record<string, string | string[] | undefined>; ip: string }) {
+  const country = request.headers["cf-ipcountry"];
+  return {
+    body: request.body,
+    ip: clientIp(request),
+    userAgent: String(request.headers["user-agent"] ?? ""),
+    country: typeof country === "string" ? country.toUpperCase() : undefined,
+    lang: String(request.headers["x-lang"] ?? ""),
+    host: String(request.headers.host ?? ""),
+    signedIn: currentUser(sessionFromCookie(request.headers.cookie as string | undefined)) != null,
+  };
+}
+
+for (const [path, record] of [
+  ["/api/hit", recordHit],
+  ["/api/leave", recordLeave],
+  ["/api/event", recordEvent],
+] as const) {
+  app.post(path, async (request, reply) => {
+    try {
+      await record(hitInput(request));
+    } catch (error) {
+      request.log.warn({ err: error }, "stats failed");
+    }
+    reply.code(204).send();
+  });
+}
 
 app.get("/api/stats", async (request, reply) => {
   try {

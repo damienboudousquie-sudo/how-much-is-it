@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { trackEvent } from "./track";
 import { createPortal } from "react-dom";
 import type { MapMark } from "@osu-pp/shared";
 import { useAccount, type PinSource } from "./account";
@@ -64,6 +65,7 @@ export function PinButton(props: { beatmapId: number; map: PinSource; large?: bo
   const choose = (value: MapMark | null) => (event: MouseEvent) => {
     hold(event);
     account.setMark(props.beatmapId, value, props.map);
+    trackEvent(value === "farm" ? "pin_farm" : value === "done" ? "pin_done" : "pin_clear");
     setMenu(null);
   };
   const stop = (event: { stopPropagation(): void }) => event.stopPropagation();
@@ -275,7 +277,7 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
         </button>
       )}
       {account.loginAvailable && (
-        <a className="login-osu" href="/api/auth/login">
+        <a className="login-osu" href="/api/auth/login" onClick={() => trackEvent("login_click")}>
           <span className="login-full">{t.login}</span>
           <span className="login-short">{t.loginShort}</span>
         </a>

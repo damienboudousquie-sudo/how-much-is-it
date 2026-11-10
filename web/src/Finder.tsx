@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "./track";
 import {
   DISCOVER_SORTS,
   FINDER_MODS,
@@ -358,7 +359,10 @@ export function Finder(props: { mode: Mode; onMode: (mode: Mode) => void; onOpen
                 role="radio"
                 aria-checked={mode === item.id}
                 className={mode === item.id ? "tab on" : "tab"}
-                onClick={() => props.onMode(item.id)}
+                onClick={() => {
+                  if (item.id !== mode) trackEvent("mode_change");
+                  props.onMode(item.id);
+                }}
               >
                 {item.label}
               </button>

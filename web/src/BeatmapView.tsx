@@ -1,4 +1,5 @@
 import { PinButton, PlayerBadges, pinSource } from "./Marks";
+import { trackEvent } from "./track";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MODS_BY_MODE,
@@ -354,7 +355,12 @@ export function BeatmapView(props: {
                 type="button"
                 className={showAuto ? "button ghost on" : "button ghost"}
                 aria-pressed={showAuto}
-                onClick={() => setShowAuto((value) => !value)}
+                onClick={() =>
+                  setShowAuto((value) => {
+                    if (!value) trackEvent("auto_open");
+                    return !value;
+                  })
+                }
               >
                 {showAuto ? t.hideAuto : `▶ ${t.watchAuto}`}
               </button>

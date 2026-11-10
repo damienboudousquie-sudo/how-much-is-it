@@ -320,18 +320,49 @@ export interface RecommendResponse {
   results: RecommendHit[];
 }
 
-/** Visit counts for the owner's stats page (no personal data). */
-export interface StatsResponse {
-  span: number;
+export interface StatsCount {
+  key: string;
+  value: number;
+}
+
+export interface StatsRates {
   views: number;
   /** Visitors counted once per day, added up over the period. */
   visits: number;
+  /** Share of visits with a single page seen (0–1). */
+  bounceRate: number;
+  pagesPerVisit: number;
+  /** Average time on the site per visit, in seconds. */
+  avgSeconds: number;
+}
+
+/** Visit counts for the owner's stats page (no personal data). */
+export interface StatsResponse extends StatsRates {
+  span: number;
+  /** The same figures for the period just before, to compare. */
+  previous: StatsRates;
+  newVisits: number;
+  returning: number;
   signedIn: number;
-  /** Visitors seen in the last 5 minutes. */
+  /** Visitors seen in the last 5 minutes, and on which pages. */
   online: number;
+  onlinePages: StatsCount[];
+  avgLoadMs: number;
   days: { day: string; views: number; visitors: number }[];
-  countries: { key: string; value: number }[];
-  sources: { key: string; value: number }[];
-  pages: { key: string; value: number }[];
-  langs: { key: string; value: number }[];
+  /** Visits by hour of day (Paris time) and by weekday (Monday first). */
+  hours: number[];
+  weekdays: number[];
+  countries: StatsCount[];
+  sources: StatsCount[];
+  referrers: StatsCount[];
+  campaigns: StatsCount[];
+  pages: StatsCount[];
+  langs: StatsCount[];
+  browserLangs: StatsCount[];
+  browsers: StatsCount[];
+  systems: StatsCount[];
+  devices: StatsCount[];
+  screens: StatsCount[];
+  events: StatsCount[];
+  maps: { id: number; title: string; value: number }[];
 }

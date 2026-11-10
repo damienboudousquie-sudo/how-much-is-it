@@ -3567,3 +3567,123 @@ h2 .beta-badge {
   background: linear-gradient(120deg, rgba(255, 229, 140, 0.28), rgba(255, 140, 210, 0.2), rgba(140, 220, 255, 0.24));
   box-shadow: 0 0 18px rgba(255, 220, 140, 0.3);
 }
+
+/* ---------- stats: more figures ---------- */
+
+.stats-card em {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-card strong small {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.stats-delta {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.stats-delta.up {
+  color: #5fdc96;
+}
+
+.stats-delta.down {
+  color: #ff7a8a;
+}
+
+.stats-delta.flat {
+  color: var(--faint);
+}
+
+.stats-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.stats-chart-head h3 {
+  margin: 0;
+}
+
+.stats-switch {
+  display: flex;
+  gap: 4px;
+}
+
+.stats-switch button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-4);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stats-switch button.on {
+  background: var(--pink);
+  color: #33001a;
+}
+
+.stats-chart.small .stats-columns {
+  height: 90px;
+}
+
+.stats-axis.many {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 3px;
+  text-align: center;
+  font-size: 0.62rem;
+}
+
+.stats-grid.two {
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+}
+
+.stats-list.wide {
+  margin-top: 10px;
+}
+
+.stats-value small {
+  margin-left: 8px;
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+a.stats-key {
+  position: relative;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.stats-key:hover {
+  color: var(--pink);
+}
+
+.stats-value {
+  flex: none;
+  white-space: nowrap;
+}
+
+.stats-key {
+  display: block;
+  min-width: 0;
+}
+
+.stats-list li .stats-key:has(.stats-flag) {
+  display: inline-flex;
+}

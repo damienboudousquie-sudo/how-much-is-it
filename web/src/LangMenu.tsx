@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { trackEvent } from "./track";
 import { LANGS, type Lang } from "@osu-pp/shared";
 import { useI18n } from "./i18n";
 
@@ -57,6 +58,7 @@ export function LangMenu() {
               lang={code}
               onClick={() => {
                 setLang(code);
+                trackEvent("lang_change");
                 setOpen(false);
               }}
             >

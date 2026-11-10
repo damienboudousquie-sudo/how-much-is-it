@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { trackEvent } from "./track";
 import { createPortal } from "react-dom";
 import type { FeedbackItem, FeedbackKind } from "@osu-pp/shared";
 import { useAccount } from "./account";
@@ -17,7 +18,10 @@ export function TopLinks() {
   const [open, setOpen] = useState(false);
   return (
     <div className="top-links">
-      <button type="button" className="top-feedback" onClick={() => setOpen(true)}>
+      <button type="button" className="top-feedback" onClick={() => {
+          setOpen(true);
+          trackEvent("feedback_open");
+        }}>
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
           <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
         </svg>
@@ -71,6 +75,7 @@ function FeedbackDialog(props: { onClose: () => void }) {
         throw new Error(body?.error?.message ?? response.statusText);
       }
       setState("sent");
+      trackEvent("feedback_sent");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
       setState("edit");

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { trackEvent } from "./track";
 import type { DiscoverHit, MapStyle, RecommendResponse } from "@osu-pp/shared";
 import { useAccount } from "./account";
 import { MapCard } from "./Finder";
@@ -123,7 +124,10 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
           <span className="beta-badge">{t.experimental}</span>
         </h2>
         {signedIn && (
-          <button type="button" className="button ghost small" disabled={loading} onClick={() => setRound((value) => value + 1)}>
+          <button type="button" className="button ghost small" disabled={loading} onClick={() => {
+              trackEvent("foryou_refresh");
+              setRound((value) => value + 1);
+            }}>
             {t.forYouRefresh}
           </button>
         )}
@@ -164,7 +168,7 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
           </dl>
         )}
         {!signedIn && (
-          <a className="login-osu" href="/api/auth/login">
+          <a className="login-osu" href="/api/auth/login" onClick={() => trackEvent("login_click")}>
             {t.login}
           </a>
         )}

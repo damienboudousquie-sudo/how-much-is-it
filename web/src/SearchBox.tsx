@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "./track";
 import { modeLabel, parseInput, type Mode, type SearchHit } from "@osu-pp/shared";
 import { fetchSearch, prefetchMap } from "./api";
 import { StarPill } from "./Badges";
@@ -112,6 +113,7 @@ export function SearchBox(props: {
       role="search"
       onSubmit={(event) => {
         event.preventDefault();
+        trackEvent("search");
         submit();
       }}
     >
