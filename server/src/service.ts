@@ -35,6 +35,7 @@ import { tr } from "./locale";
 import { analyzeLater, analyzeNow, getProfile, rememberProfile } from "./patternStore";
 import { coverFor, loadRangeMaps, loadTextMaps, type PpDbMap } from "./ppDb";
 import { calculatePlay } from "./pp";
+import { withOfficialStars } from "./stars";
 
 export async function search(query: string, signal?: AbortSignal, ranked = false): Promise<SearchResponse> {
   const trimmed = query.trim();
@@ -318,8 +319,9 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
   const matched = rank(pool.filter((item) => keep(item, effective, true)), effective);
   const slice = matched.slice(effective.offset, effective.offset + PAGE);
   const nextOffset = effective.offset + slice.length;
+  const results = await withOfficialStars(slice.map((item) => toHit(item, effective)));
   return {
-    results: slice.map((item) => toHit(item, effective)),
+    results,
     scanned: maps.length,
     total: matched.length,
     hasMore: nextOffset < matched.length,

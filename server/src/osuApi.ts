@@ -336,6 +336,31 @@ async function apiGet(path: string, signal?: AbortSignal): Promise<unknown> {
   return response.json();
 }
 
+/**
+ * Official star rating of a difficulty with mods, from osu! itself (POST
+ * /beatmaps/{id}/attributes). Exact after every rework, unlike precomputed lists.
+ */
+export async function officialStars(beatmapId: number, mods: readonly string[], ruleset: string, signal?: AbortSignal): Promise<number | null> {
+  if (!apiKeyConfigured() || Date.now() < limitedUntil) return null;
+  const access = await getToken();
+  const timeout = AbortSignal.timeout(8_000);
+  const response = await fetch(`${API}/beatmaps/${beatmapId}/attributes`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${access}` },
+    body: JSON.stringify({ mods: [...mods], ruleset }),
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  });
+  if (response.status === 401) token = null;
+  if (response.status === 429) {
+    limitedUntil = Date.now() + (Number(response.headers.get("retry-after")) || 2) * 1000;
+    return null;
+  }
+  if (!response.ok) return null;
+  const json = (await response.json()) as { attributes?: { star_rating?: unknown } };
+  const stars = json.attributes?.star_rating;
+  return typeof stars === "number" && Number.isFinite(stars) ? stars : null;
+}
+
 export async function getBeatmapset(id: number, signal?: AbortSignal): Promise<RemoteSet> {
   const cached = setCache.get(String(id));
   if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.set;
