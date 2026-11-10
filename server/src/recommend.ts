@@ -61,29 +61,65 @@ async function ssPp(beatmapId: number, mods: readonly string[]): Promise<number 
   return value;
 }
 
+/** pp of a full combo at the given accuracy (no miss), cached like ssPp. */
+const fcCache = new Map<string, number | null>();
+
+async function fcPp(beatmapId: number, mods: readonly string[], accuracy: number): Promise<number | null> {
+  const key = `${beatmapId}:${[...mods].sort().join("")}:${accuracy.toFixed(2)}`;
+  if (fcCache.has(key)) return fcCache.get(key)!;
+  let value: number | null = null;
+  try {
+    const result = await calculatePlay({ beatmapId, mode: "osu", mods: [...mods], clockRate: null, accuracy, combo: null, misses: 0 }, "osu", 0, true);
+    value = result.score.pp > 0 ? result.score.pp : null;
+  } catch {
+    value = null;
+  }
+  if (fcCache.size > 20000) fcCache.clear();
+  fcCache.set(key, value);
+  return value;
+}
+
+function median(values: number[], fallback: number): number {
+  if (values.length < 3) return fallback;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
 /**
- * How much of a map's SS pp the player really gets: their top plays are rarely SS, so a
- * 400 pp play is often a map worth 450 pp at SS. The median over the best plays.
+ * How much of a map's SS pp the player really gets (their top plays are rarely SS), and
+ * the SS level each top play stands for.
+ *
+ * A choked play (misses) on a hard map does not mean the player can FC maps that hard: its
+ * level is the SS pp they would need, at their usual accuracy, to score what they really
+ * scored (play pp ÷ accuracy share), capped by the map's SS pp. So a 230 pp play with 4
+ * misses on a map worth 420 at SS counts as ~280, not 420.
  */
-async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; ss: number[] }> {
+async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; levels: number[] }> {
   const ratios: number[] = [];
-  const ssList: number[] = [];
+  const accShares: number[] = [];
+  const found: { play: TopPlay; ss: number }[] = [];
   const queue = [...plays];
   await Promise.all(
     Array.from({ length: 4 }, async () => {
       for (let play = queue.shift(); play; play = queue.shift()) {
-        const ss = await ssPp(play.beatmapId, play.mods.filter((mod) => mod !== "CL"));
-        if (ss && ss > 0) {
-          ratios.push(Math.min(1, play.pp / ss));
-          ssList.push(ss);
+        const mods = play.mods.filter((mod) => mod !== "CL");
+        const ss = await ssPp(play.beatmapId, mods);
+        if (!ss || ss <= 0) continue;
+        ratios.push(Math.min(1, play.pp / ss));
+        found.push({ play, ss });
+        if (play.accuracy != null && play.accuracy < 100) {
+          const fc = await fcPp(play.beatmapId, mods, play.accuracy);
+          if (fc) accShares.push(Math.min(1, fc / ss));
+        } else if (play.accuracy === 100) {
+          accShares.push(1);
         }
       }
     }),
   );
-  ssList.sort((a, b) => a - b);
-  if (ratios.length < 3) return { ratio: 0.92, ss: ssList };
-  ratios.sort((a, b) => a - b);
-  return { ratio: Math.max(0.55, Math.min(1, ratios[Math.floor(ratios.length / 2)])), ss: ssList };
+  const accShare = Math.max(0.6, Math.min(1, median(accShares, 0.92)));
+  const levels = found.map(({ play, ss }) => Math.min(ss, play.pp / accShare)).sort((a, b) => a - b);
+  const ratio = ratios.length < 3 ? 0.92 : Math.max(0.55, Math.min(1, median(ratios, 0.92)));
+  return { ratio, levels };
 }
 
 /** Picks without replacement, favouring high scores, so each refresh shows a new mix. */
@@ -107,13 +143,13 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const plays = [...top].sort((a, b) => b.pp - a.pp);
   if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
 
-  // Everything is read from the top 20: the FC (SS) pp of those maps sets the range, from
-  // the lowest to a bit above the highest. No suggestion is worth less at FC than the
-  // weakest map of the top 20.
+  // Everything is read from the top 20: the SS level of those plays sets the range, from
+  // the lowest to a bit above the highest. A choke on a much harder map counts for what the
+  // player really scored there, not for the map's SS pp (see scoreRatio).
   const best = plays.slice(0, 20);
-  const { ratio, ss } = await scoreRatio(best);
-  const ssMin = ss.length >= 3 ? Math.round(ss[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
-  const ssMax = ss.length >= 3 ? Math.round(ss[ss.length - 1] * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
+  const { ratio, levels } = await scoreRatio(best);
+  const ssMin = levels.length >= 3 ? Math.round(levels[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
+  const ssMax = levels.length >= 3 ? Math.round(levels[levels.length - 1] * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
 
   // Mod combos and map types of the top 20, weighted by pp.
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
