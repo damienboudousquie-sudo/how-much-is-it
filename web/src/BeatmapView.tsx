@@ -123,6 +123,7 @@ export function BeatmapView(props: {
   });
   const [accuracyText, setAccuracyText] = useState("100");
   const [missesText, setMissesText] = useState("0");
+  const [endsText, setEndsText] = useState("0");
   const [comboText, setComboText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
@@ -136,6 +137,10 @@ export function BeatmapView(props: {
   const accuracy = parseAccuracy(accuracyText);
   const misses = parseCount(missesText) ?? 0;
   const combo = parseCount(comboText);
+  // Missed slider ends only count on osu!lazer: CL (stable) greys the field out.
+  const classic = mods.includes("CL");
+  const endsParsed = parseCount(endsText) ?? 0;
+  const sliderEndMisses = classic || !Number.isInteger(endsParsed) ? 0 : endsParsed;
   const playValid = accuracy != null && Number.isInteger(misses) && (combo == null || Number.isInteger(combo)) && !(accuracy === 100 && misses > 0);
 
   // Load the map once per id. Mods and score fields are sent so the first answer is complete.
@@ -188,7 +193,7 @@ export function BeatmapView(props: {
     const id = ++calcGen.current;
     const timer = window.setTimeout(() => {
       setCalculating(true);
-      fetchCalculate({ beatmapId: loadedId, mode: loadedMode, mods, clockRate, accuracy: accuracy!, misses, combo })
+      fetchCalculate({ beatmapId: loadedId, mode: loadedMode, mods, clockRate, accuracy: accuracy!, misses, combo, sliderEndMisses })
         .then((response) => {
           if (id !== calcGen.current) return;
           setData((current) => (current ? { ...current, ...response, meta: current.meta } : current));
@@ -203,7 +208,7 @@ export function BeatmapView(props: {
     }, 90);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedId, loadedMode, mods.join(), clockRate, accuracy, misses, combo]);
+  }, [loadedId, loadedMode, mods.join(), clockRate, accuracy, misses, combo, sliderEndMisses]);
 
   async function copyValue(value: number, key: string) {
     try {
@@ -509,6 +514,20 @@ export function BeatmapView(props: {
                 onChange={(event) => setMissesText(event.target.value)}
               />
             </label>
+            {meta.mode === "osu" && (
+              <label className={classic ? "off" : undefined} title={classic ? t.sliderEndsClassic : t.sliderEndsHelp}>
+                <span>{t.sliderEnds}</span>
+                <input
+                  data-testid="slider-ends"
+                  inputMode="numeric"
+                  value={classic ? "" : endsText}
+                  placeholder={classic ? "—" : "0"}
+                  disabled={classic}
+                  aria-invalid={!classic && !Number.isInteger(endsParsed)}
+                  onChange={(event) => setEndsText(event.target.value)}
+                />
+              </label>
+            )}
           </div>
           <button type="button" className="pp" data-testid="pp-value" onClick={() => void copyValue(score.pp, "pp")}>
             <strong>{formatPp(score.pp, 2)}</strong>

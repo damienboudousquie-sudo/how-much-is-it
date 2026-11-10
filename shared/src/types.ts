@@ -199,6 +199,8 @@ export interface CalculateRequest {
   accuracy: number;
   combo: number | null;
   misses: number;
+  /** Slider ends missed (osu!lazer scores only; ignored with CL). */
+  sliderEndMisses?: number;
 }
 
 export interface LookupRequest {

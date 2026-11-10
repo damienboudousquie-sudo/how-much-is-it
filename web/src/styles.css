@@ -1527,8 +1527,16 @@ button:disabled {
 
 .sim .fields {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 10px;
+}
+
+.sim label.off {
+  opacity: 0.45;
+}
+
+.sim label.off input {
+  cursor: not-allowed;
 }
 
 .sim label {

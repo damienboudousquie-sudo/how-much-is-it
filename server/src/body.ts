@@ -94,6 +94,7 @@ function readPlay(body: Record<string, unknown>): Omit<CalculateRequest, "beatma
     accuracy,
     combo: readCombo(body.combo),
     misses,
+    sliderEndMisses: readMisses(body.sliderEndMisses),
   };
 }
 
