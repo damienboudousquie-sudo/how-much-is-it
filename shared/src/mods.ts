@@ -1,14 +1,22 @@
 import type { BeatmapStatus, Mode } from "./types";
 
-export const MOD_ORDER = ["EZ", "HD", "HR", "DT", "NC", "HT", "FL"] as const;
+/** CL (Classic) = a score set on osu!stable: slider ends do not count, as in the game. */
+export const MOD_ORDER = ["EZ", "HD", "HR", "DT", "NC", "HT", "FL", "CL"] as const;
 export type ModId = (typeof MOD_ORDER)[number];
+
+const GAMEPLAY_MODS: readonly ModId[] = ["EZ", "HD", "HR", "DT", "NC", "HT", "FL"];
 
 export const MODS_BY_MODE: Record<Mode, readonly ModId[]> = {
   osu: MOD_ORDER,
-  taiko: MOD_ORDER,
-  catch: MOD_ORDER,
-  mania: MOD_ORDER,
+  taiko: GAMEPLAY_MODS,
+  catch: GAMEPLAY_MODS,
+  mania: GAMEPLAY_MODS,
 };
+
+/** Scores with CL are computed as osu!stable scores (no slider-end accuracy). */
+export function isClassic(mods: readonly string[]): boolean {
+  return mods.includes("CL");
+}
 
 export class InputError extends Error {
   readonly vars?: Record<string, string | number>;

@@ -423,6 +423,7 @@ export function BeatmapView(props: {
               data-testid={`mod-${mod}`}
               aria-pressed={mods.includes(mod)}
               className={`mod mod-${mod}${mods.includes(mod) ? " on" : ""}`}
+              title={mod === "CL" ? t.modClassicHelp : undefined}
               onClick={() => onToggle(mod)}
             >
               {mod}
