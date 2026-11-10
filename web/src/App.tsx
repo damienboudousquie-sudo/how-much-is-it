@@ -48,6 +48,9 @@ interface Navigation {
   prefetched: LookupResponse | null;
 }
 
+/** Also in index.html: what search engines and link previews show. */
+const HOME_TITLE = "how much is it ? · osu! pp calculator & farm map finder";
+
 export function App() {
   const { t } = useI18n();
   const [route, setRoute] = useState<AppRoute>(() => parseRoute(window.location.hash, window.location.search));
@@ -95,7 +98,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.title = route.page === "beatmap" && title ? `${title} · how much is it ?` : "how much is it ?";
+    document.title = route.page === "beatmap" && title ? `${title} · how much is it ?` : HOME_TITLE;
   }, [route, title]);
 
   function open(target: OpenTarget, preset: PlayPreset | null = null, prefetched: LookupResponse | null = null, preview: MapPreview | null = null) {
