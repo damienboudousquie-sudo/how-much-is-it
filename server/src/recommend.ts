@@ -244,20 +244,38 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   }
 
   // The lists' pp come from a mirror that may lag behind the pp rework: show the same pp as
-  // the map page (our calculator), and the gain that goes with it.
+  // the map page (our calculator), with the gain that goes with it, and drop what our pp put
+  // outside the range (replaced from the other candidates while time remains).
   const deadline = Date.now() + 8000;
-  const queue = [...chosen];
-  await Promise.all(
-    Array.from({ length: 6 }, async () => {
-      for (let hit = queue.shift(); hit; hit = queue.shift()) {
-        if (Date.now() > deadline) break;
-        const ss = await ssPp(hit.beatmapId, hit.mods);
-        if (!ss) continue;
-        hit.pp = Math.round(ss * 100) / 100;
-        hit.gain = ppGain(plays, hit.beatmapId, ss * ratio);
-      }
-    }),
-  );
+  const exact = new Set<number>();
+  async function recompute(list: Pick[]): Promise<void> {
+    const queue = [...list];
+    await Promise.all(
+      Array.from({ length: 6 }, async () => {
+        for (let hit = queue.shift(); hit; hit = queue.shift()) {
+          if (Date.now() > deadline) break;
+          const ss = await ssPp(hit.beatmapId, hit.mods);
+          if (!ss) continue;
+          hit.pp = Math.round(ss * 100) / 100;
+          hit.gain = ppGain(plays, hit.beatmapId, ss * ratio);
+          exact.add(hit.beatmapId);
+        }
+      }),
+    );
+  }
+  const inRange = (hit: Pick) => !exact.has(hit.beatmapId) || (hit.pp >= ssMin && hit.pp <= ssMax && hit.gain > 0);
+  await recompute(chosen);
+  let kept = chosen.filter(inRange);
+  for (let round = 0; round < 3 && kept.length < RESULTS && Date.now() < deadline; round++) {
+    const taken = new Set(chosen.map((hit) => hit.beatmapId));
+    const more = sample(candidates.filter((hit) => !taken.has(hit.beatmapId)), RESULTS - kept.length);
+    if (more.length === 0) break;
+    chosen.push(...more);
+    await recompute(more);
+    kept = [...kept, ...more.filter(inRange)];
+  }
+  chosen.length = 0;
+  chosen.push(...kept);
 
   const results = chosen
     .sort((a, b) => b.pp - a.pp)

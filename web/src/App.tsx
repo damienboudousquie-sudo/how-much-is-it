@@ -82,7 +82,7 @@ export function App() {
     function onHash() {
       const next = parseRoute(window.location.hash, "");
       const previous = routeRef.current;
-      if ((previous.page === "maps" || previous.page === "pinned") && next.page === "beatmap") {
+      if ((previous.page === "maps" || previous.page === "pinned" || previous.page === "foryou") && next.page === "beatmap") {
         fromList.current = true;
         mapsScroll.current = window.scrollY;
         window.scrollTo(0, 0);

@@ -76,19 +76,25 @@ function PlayerCard() {
 }
 
 /** Tillerino-style suggestions built from the signed-in player's top plays. */
+/** The last list, kept so coming back from a map shows the same suggestions. */
+let lastList: { player: number; data: RecommendResponse; shown: number[] } | null = null;
+
 export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
   const { t } = useI18n();
   const account = useAccount();
-  const [data, setData] = useState<RecommendResponse | null>(null);
+  const player = account.profile?.id ?? 0;
+  const kept = lastList && lastList.player === player ? lastList : null;
+  const [data, setData] = useState<RecommendResponse | null>(kept?.data ?? null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [round, setRound] = useState(0);
   // Maps shown before a refresh, so the next list brings new ones.
-  const shown = useRef<number[]>([]);
+  const shown = useRef<number[]>(kept?.shown ?? []);
   const signedIn = account.profile != null;
 
   useEffect(() => {
     if (!signedIn) return;
+    if (round === 0 && data && lastList?.player === player) return;
     let alive = true;
     setLoading(true);
     setError(null);
@@ -105,7 +111,9 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
         if (!alive) return;
         shown.current = [...shown.current, ...answer.results.map((hit) => hit.beatmapId)];
         // Cards show the FC pp (the range is in FC pp); the gain uses what the player would really get.
-        setData({ ...answer, results: answer.results.map((hit) => ({ ...hit, expectedPp: Math.round(hit.pp * answer.ratio) })) });
+        const next = { ...answer, results: answer.results.map((hit) => ({ ...hit, expectedPp: Math.round(hit.pp * answer.ratio) })) };
+        lastList = { player, data: next, shown: shown.current };
+        setData(next);
       })
       .catch((failure) => alive && setError(failure instanceof Error ? failure.message : String(failure)))
       .finally(() => alive && setLoading(false));
