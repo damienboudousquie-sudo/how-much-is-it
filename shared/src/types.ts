@@ -341,8 +341,6 @@ export interface StatsResponse extends StatsRates {
   span: number;
   /** The same figures for the period just before, to compare. */
   previous: StatsRates;
-  newVisits: number;
-  returning: number;
   signedIn: number;
   /** Visitors seen in the last 5 minutes, and on which pages. */
   online: number;

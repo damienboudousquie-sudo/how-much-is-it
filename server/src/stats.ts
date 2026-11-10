@@ -7,9 +7,8 @@ import { repoRoot } from "./env";
 /**
  * Visit counts for the owner's stats page. No cookie and no IP is stored: a visitor is a
  * hash of IP + browser with a salt that changes every day, so a person can be counted
- * once per day but never followed from one day to the next. Whether a visitor came before
- * is told by the browser itself (a flag in its own storage, no id). The country comes
- * from the Cloudflare header.
+ * once per day but never followed from one day to the next. Nothing is stored in the
+ * browser for stats. The country comes from the Cloudflare header.
  */
 
 const DIR = join(repoRoot, "cache", "stats");
@@ -53,7 +52,6 @@ interface Day {
   devices: Record<string, number>;
   screens: Record<string, number>;
   hours: number[];
-  returning: number;
   signedIn: number;
   maps: Record<string, { title: string; n: number }>;
   events: Record<string, number>;
@@ -87,7 +85,6 @@ function emptyDay(): Day {
     devices: {},
     screens: {},
     hours: Array(24).fill(0),
-    returning: 0,
     signedIn: 0,
     maps: {},
     events: {},
@@ -262,7 +259,6 @@ export async function recordHit(input: HitInput): Promise<void> {
     bump(data.devices, deviceOf(ua, width));
     bump(data.screens, screenOf(width));
     data.hours[hourOf()] += 1;
-    if (raw.returning === true) data.returning += 1;
     if (input.signedIn) data.signedIn += 1;
     const source = sourceOf(text(raw.ref, 300), input.host);
     bump(data.sources, source?.host ?? "direct");
@@ -385,7 +381,6 @@ export async function readStats(span: number): Promise<StatsResponse> {
   const weekdays: number[] = Array(7).fill(0);
   const now: Totals = { views: 0, visits: 0, bounces: 0, seconds: 0, timed: 0 };
   const before: Totals = { views: 0, visits: 0, bounces: 0, seconds: 0, timed: 0 };
-  let returning = 0;
   let signedIn = 0;
   let load = { sum: 0, n: 0 };
 
@@ -396,7 +391,6 @@ export async function readStats(span: number): Promise<StatsResponse> {
     series.push({ day, views: data?.views ?? 0, visitors: data?.visitors.length ?? 0 });
     if (!data) continue;
     totalsOf(data, now);
-    returning += data.returning;
     signedIn += data.signedIn;
     load = { sum: load.sum + data.loadMs.sum, n: load.n + data.loadMs.n };
     for (const key of Object.keys(sum) as (keyof typeof sum)[]) merge(sum[key], data[key]);
@@ -430,8 +424,6 @@ export async function readStats(span: number): Promise<StatsResponse> {
     span: wanted,
     ...rates(now),
     previous: rates(before),
-    newVisits: Math.max(0, now.visits - returning),
-    returning,
     signedIn,
     online: active.size,
     onlinePages: top(online, 10),

@@ -162,6 +162,8 @@ export type Copy = {
   forYouRatio: string;
   forYouShown: string;
   ppDisclaimer: string;
+  unofficial: string;
+  legalLink: string;
   infoLabel: string;
   fullscreen: string;
   exitFullscreen: string;
@@ -190,7 +192,6 @@ export type Copy = {
   statsPagesPerVisit: string;
   statsAvgTime: string;
   statsBounce: string;
-  statsNewReturning: string;
   statsLoad: string;
   statsHours: string;
   statsWeekdays: string;
@@ -404,6 +405,8 @@ const en: Copy = {
   forYouRatio: "≈ {pct} of the SS pp",
   forYouShown: "Suggested types",
   ppDisclaimer: "PP values may differ from the latest pp rework: they are estimates, not exact.",
+  unofficial: "Unofficial site, not affiliated with osu! or ppy Pty Ltd.",
+  legalLink: "Legal notice & privacy",
   infoLabel: "About",
   fullscreen: "Full screen",
   exitFullscreen: "Exit full screen",
@@ -432,7 +435,6 @@ const en: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -646,6 +648,8 @@ const fr: Copy = {
   forYouRatio: "≈ {pct} des pp du SS",
   forYouShown: "Types proposés",
   ppDisclaimer: "Les valeurs de pp peuvent différer de celles du dernier pp rework : ce sont des estimations, pas des valeurs exactes.",
+  unofficial: "Site non officiel, sans lien avec osu! ni ppy Pty Ltd.",
+  legalLink: "Mentions légales et confidentialité",
   infoLabel: "Infos",
   fullscreen: "Plein écran",
   exitFullscreen: "Quitter le plein écran",
@@ -674,7 +678,6 @@ const fr: Copy = {
   statsPagesPerVisit: "Pages par visite",
   statsAvgTime: "Temps par visite",
   statsBounce: "Taux de rebond",
-  statsNewReturning: "Nouveaux / revenus",
   statsLoad: "Chargement moyen",
   statsHours: "Visites par heure (heure de Paris)",
   statsWeekdays: "Visites par jour de la semaine",
@@ -888,6 +891,8 @@ const es: Copy = {
   forYouRatio: "≈ {pct} de los pp del SS",
   forYouShown: "Tipos sugeridos",
   ppDisclaimer: "Los valores de pp pueden diferir del último pp rework: son estimaciones, no valores exactos.",
+  unofficial: "Sitio no oficial, sin relación con osu! ni con ppy Pty Ltd.",
+  legalLink: "Aviso legal y privacidad",
   infoLabel: "Información",
   fullscreen: "Pantalla completa",
   exitFullscreen: "Salir de pantalla completa",
@@ -916,7 +921,6 @@ const es: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -1158,6 +1162,8 @@ const de: Copy = {
   forYouRatio: "≈ {pct} der SS-pp",
   forYouShown: "Vorgeschlagene Typen",
   ppDisclaimer: "Die pp-Werte können vom letzten pp-Rework abweichen: Es sind Schätzungen, keine exakten Werte.",
+  unofficial: "Inoffizielle Seite, nicht mit osu! oder ppy Pty Ltd verbunden.",
+  legalLink: "Impressum & Datenschutz",
   infoLabel: "Infos",
   fullscreen: "Vollbild",
   exitFullscreen: "Vollbild beenden",
@@ -1186,7 +1192,6 @@ const de: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -1428,6 +1433,8 @@ const pt: Copy = {
   forYouRatio: "≈ {pct} dos pp do SS",
   forYouShown: "Tipos sugeridos",
   ppDisclaimer: "Os valores de pp podem diferir do último pp rework: são estimativas, não valores exatos.",
+  unofficial: "Site não oficial, sem ligação com o osu! nem com a ppy Pty Ltd.",
+  legalLink: "Aviso legal e privacidade",
   infoLabel: "Informações",
   fullscreen: "Tela cheia",
   exitFullscreen: "Sair da tela cheia",
@@ -1456,7 +1463,6 @@ const pt: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -1698,6 +1704,8 @@ const pl: Copy = {
   forYouRatio: "≈ {pct} pp za SS",
   forYouShown: "Proponowane typy",
   ppDisclaimer: "Wartości pp mogą różnić się od ostatniego pp reworku: to szacunki, nie dokładne wartości.",
+  unofficial: "Nieoficjalna strona, niezwiązana z osu! ani z ppy Pty Ltd.",
+  legalLink: "Nota prawna i prywatność",
   infoLabel: "Informacje",
   fullscreen: "Pełny ekran",
   exitFullscreen: "Zamknij pełny ekran",
@@ -1726,7 +1734,6 @@ const pl: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -1968,6 +1975,8 @@ const ru: Copy = {
   forYouRatio: "≈ {pct} от pp за SS",
   forYouShown: "Предлагаемые типы",
   ppDisclaimer: "Значения pp могут отличаться от последнего pp-реворка: это оценки, а не точные значения.",
+  unofficial: "Неофициальный сайт, не связан с osu! и ppy Pty Ltd.",
+  legalLink: "Правовая информация и конфиденциальность",
   infoLabel: "Информация",
   fullscreen: "Во весь экран",
   exitFullscreen: "Выйти из полноэкранного режима",
@@ -1996,7 +2005,6 @@ const ru: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -2238,6 +2246,8 @@ const ko: Copy = {
   forYouRatio: "SS pp의 약 {pct}",
   forYouShown: "추천 유형",
   ppDisclaimer: "pp 값은 최신 pp 리워크와 다를 수 있어요: 정확한 값이 아니라 추정치예요.",
+  unofficial: "비공식 사이트이며 osu! 및 ppy Pty Ltd와 관련이 없습니다.",
+  legalLink: "법적 고지 및 개인정보",
   infoLabel: "정보",
   fullscreen: "전체 화면",
   exitFullscreen: "전체 화면 종료",
@@ -2266,7 +2276,6 @@ const ko: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -2508,6 +2517,8 @@ const ja: Copy = {
   forYouRatio: "SS の pp の約 {pct}",
   forYouShown: "おすすめのタイプ",
   ppDisclaimer: "pp の値は最新の pp リワークと異なる場合があります。正確な値ではなく推定値です。",
+  unofficial: "非公式サイトです。osu! および ppy Pty Ltd とは関係ありません。",
+  legalLink: "法的情報とプライバシー",
   infoLabel: "情報",
   fullscreen: "全画面",
   exitFullscreen: "全画面を終了",
@@ -2536,7 +2547,6 @@ const ja: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",
@@ -2778,6 +2788,8 @@ const zh: Copy = {
   forYouRatio: "约为 SS pp 的 {pct}",
   forYouShown: "推荐类型",
   ppDisclaimer: "pp 数值可能与最新的 pp 重做不同：它们是估算值，并不精确。",
+  unofficial: "非官方网站，与 osu! 及 ppy Pty Ltd 无关。",
+  legalLink: "法律声明与隐私",
   infoLabel: "说明",
   fullscreen: "全屏",
   exitFullscreen: "退出全屏",
@@ -2806,7 +2818,6 @@ const zh: Copy = {
   statsPagesPerVisit: "Pages per visit",
   statsAvgTime: "Time per visit",
   statsBounce: "Bounce rate",
-  statsNewReturning: "New / returning",
   statsLoad: "Average load time",
   statsHours: "Visits by hour (Paris time)",
   statsWeekdays: "Visits by weekday",

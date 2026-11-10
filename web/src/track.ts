@@ -1,7 +1,6 @@
 import { currentLang } from "./i18n";
 
 let sentFirst = false;
-const SEEN_KEY = "osu-pp-lookup:seen";
 
 function post(url: string, payload: unknown): void {
   try {
@@ -16,24 +15,19 @@ function post(url: string, payload: unknown): void {
   }
 }
 
-/** Was this browser here before? Only a yes/no kept in its own storage, no id. */
-function returningVisitor(): boolean {
-  try {
-    const before = localStorage.getItem(SEEN_KEY) != null;
-    localStorage.setItem(SEEN_KEY, "1");
-    return before;
-  } catch {
-    return false;
-  }
-}
-
 function campaign(): string {
   const params = new URLSearchParams(window.location.search);
   return params.get("utm_source") ?? params.get("ref") ?? "";
 }
 
-/** Counts a page view (no cookie, no personal data; see server/src/stats.ts). */
+/** Counts a page view (no cookie, nothing stored in the browser, no personal data; see server/src/stats.ts). */
 export function trackView(path: string): void {
+  // Drop the "seen before" flag older versions left behind.
+  try {
+    localStorage.removeItem("osu-pp-lookup:seen");
+  } catch {
+    // ignore
+  }
   const first = !sentFirst;
   sentFirst = true;
   const send = () => {
@@ -42,7 +36,6 @@ export function trackView(path: string): void {
     if (/\/b\/\d+/.test(path)) payload.title = document.title.replace(/\s*·\s*how much is it \?\s*$/, "");
     if (first) {
       payload.ref = document.referrer;
-      payload.returning = returningVisitor();
       payload.utm = campaign();
       const nav = performance.getEntriesByType?.("navigation")[0] as PerformanceNavigationTiming | undefined;
       if (nav && nav.loadEventEnd > 0) payload.load = Math.round(nav.loadEventEnd);

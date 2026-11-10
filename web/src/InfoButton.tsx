@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "./i18n";
+import { LEGAL_PATH } from "./route";
 
 /** A small "?" in the top-right corner: how the pp are computed, on hover or tap. */
 export function InfoButton() {
@@ -33,6 +34,12 @@ export function InfoButton() {
       <div className="info-card" role="tooltip">
         <p>{t.footer}</p>
         <p>{t.ppDisclaimer}</p>
+        <p className="info-legal">
+          {t.unofficial}{" "}
+          <a href={LEGAL_PATH} onClick={() => setPinned(false)}>
+            {t.legalLink}
+          </a>
+        </p>
       </div>
     </div>
   );

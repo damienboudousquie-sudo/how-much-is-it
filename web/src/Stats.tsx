@@ -233,12 +233,6 @@ export function StatsPage() {
               <Delta now={data.bounceRate} before={data.previous.bounceRate} lowerIsBetter />
             </div>
             <div className="panel stats-card">
-              <span>{t.statsNewReturning}</span>
-              <strong>
-                {number(data.newVisits)} <small>/ {number(data.returning)}</small>
-              </strong>
-            </div>
-            <div className="panel stats-card">
               <span>{t.statsSignedIn}</span>
               <strong>{number(data.signedIn)}</strong>
             </div>

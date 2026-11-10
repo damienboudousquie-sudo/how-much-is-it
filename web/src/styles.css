@@ -3767,3 +3767,99 @@ a.stats-key:hover {
 .stats-chart {
   overflow: visible;
 }
+
+/* Info card: the last line (unofficial + legal link) is quieter, and the gap
+   between the "?" and the card stays hoverable so the link can be reached. */
+.info-card::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 12px;
+}
+
+.info-card p.info-legal {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.info-legal a {
+  color: var(--pink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.info-legal a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- legal notice & privacy ---------- */
+
+.legal-page {
+  max-width: 760px;
+  margin: 18px auto 40px;
+  padding: 22px 26px;
+  line-height: 1.6;
+}
+
+.legal-page h2 {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+}
+
+.legal-page .legal-updated {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.legal-page h3 {
+  margin: 22px 0 6px;
+  font-size: 1rem;
+  color: var(--pink);
+}
+
+.legal-page p,
+.legal-page li {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.legal-page p {
+  margin: 0 0 8px;
+}
+
+.legal-page ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.legal-page li + li {
+  margin-top: 4px;
+}
+
+.legal-page address {
+  margin: 0 0 8px;
+  font-style: normal;
+  font-size: 0.9rem;
+}
+
+.legal-page a {
+  color: var(--pink);
+}
+
+.legal-page code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+  .legal-page {
+    padding: 18px 16px;
+  }
+}
