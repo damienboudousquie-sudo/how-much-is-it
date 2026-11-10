@@ -150,8 +150,8 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const { ratio, levels } = await scoreRatio(best);
   const ssMin = levels.length >= 3 ? Math.round(levels[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
   // Top: the 80th percentile, not the very best play, so one lucky score does not lift it.
-  const top = levels[Math.min(levels.length - 1, Math.round((levels.length - 1) * 0.8))];
-  const ssMax = levels.length >= 3 ? Math.round(top * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
+  const upper = levels[Math.min(levels.length - 1, Math.round((levels.length - 1) * 0.8))];
+  const ssMax = levels.length >= 3 ? Math.round(upper * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
 
   // Mod combos and map types of the top 20, weighted by pp.
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
