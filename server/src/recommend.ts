@@ -144,14 +144,13 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
 
   // Everything is read from the top 20: the SS level of those plays sets the range, from
-  // the lowest to a bit above most of them. A choke on a much harder map counts for what the
+  // the lowest to 10 % above the highest. A choke on a much harder map counts for what the
   // player really scored there, not for the map's SS pp (see scoreRatio).
   const best = plays.slice(0, 20);
   const { ratio, levels } = await scoreRatio(best);
   const ssMin = levels.length >= 3 ? Math.round(levels[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
-  // Top: the 80th percentile, not the very best play, so one lucky score does not lift it.
-  const upper = levels[Math.min(levels.length - 1, Math.round((levels.length - 1) * 0.8))];
-  const ssMax = levels.length >= 3 ? Math.round(upper * 1.03) : Math.round((plays[0].pp * 1.03) / ratio);
+  // Top: 10 % above the best level, to leave room to progress.
+  const ssMax = levels.length >= 3 ? Math.round(levels[levels.length - 1] * 1.1) : Math.round((plays[0].pp * 1.1) / ratio);
 
   // Mod combos and map types of the top 20, weighted by pp.
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
