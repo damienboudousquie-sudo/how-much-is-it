@@ -4,6 +4,7 @@ import { AppError } from "./errors";
 import { rankForPp } from "./osuApi";
 import { getProfile } from "./patternStore";
 import { calculatePlay } from "./pp";
+import { farmOf } from "./service";
 
 /**
  * "My profile": the player card (weighted skills, map types, mods) and "if I had FC'd":
@@ -179,6 +180,15 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
   for (const play of plays) modCount.set(comboName(play.mods), (modCount.get(comboName(play.mods)) ?? 0) + 1);
   const accs = plays.map((play) => play.accuracy).filter((acc): acc is number => acc != null);
 
+  // Farm score of the top 10, as the finder gives it (a slow catalogue does not hold the page).
+  const farms = await Promise.all(
+    plays.slice(0, 10).map((play) =>
+      Promise.race([farmOf(play.beatmapId, play.mods, play.pp).catch(() => null), new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000))]),
+    ),
+  );
+  const farmValues = farms.filter((value): value is number => value != null);
+  const farm = farmValues.length >= 3 ? { average: Math.round(farmValues.reduce((sum, value) => sum + value, 0) / farmValues.length), counted: farmValues.length } : null;
+
   const value: ProfileInsights = {
     username: profile.username,
     avatarUrl: profile.avatarUrl,
@@ -190,6 +200,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     skills,
     styles: [...styleCount].map(([style, count]) => ({ style, share: count / (styled || 1) })).sort((a, b) => b.share - a.share),
     mods: [...modCount].map(([mods, count]) => ({ mods, share: count / (plays.length || 1) })).sort((a, b) => b.share - a.share).slice(0, 5),
+    farm,
     averageAccuracy: accs.length ? round(accs.reduce((sum, acc) => sum + acc, 0) / accs.length, 0.01) : null,
     medianLength: medianOf(reads.slice(0, 20).map((read) => read?.length ?? null)),
     medianBpm: medianOf(reads.slice(0, 20).map((read) => read?.bpm ?? null)),

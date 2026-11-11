@@ -34,6 +34,13 @@ const STYLE_COLOR: Record<string, string> = {
   fingercontrol: "#f2df5e",
 };
 
+/** The farm verdict for a top-10 farm score: above 90, 75 to 90, below 75. */
+function farmTier(score: number): "king" | "respectable" | "not" {
+  return score > 90 ? "king" : score >= 75 ? "respectable" : "not";
+}
+
+const FARM_COLOR = { king: "#ffd966", respectable: "#b3ff66", not: "#ff99cc" } as const;
+
 let kept: { player: number; data: ProfileInsights } | null = null;
 
 function StyleBar(props: { styles: ProfileInsights["styles"]; names: (style: string) => string }) {
@@ -93,6 +100,8 @@ function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: nu
 }
 
 interface CardText {
+  farmLabel: string;
+  farmVerdict: string | null;
   styles: (style: string) => string;
   globalRank: string;
   countryRank: string;
@@ -156,6 +165,21 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   ctx.fillStyle = "#a3919a";
   ctx.font = `600 22px ${font}`;
   ctx.fillText(data.country ?? "", AX + AS + 32, 298);
+  if (data.farm && text.farmVerdict) {
+    // Farm verdict at the top right, over the banner.
+    const tier = farmTier(data.farm.average);
+    ctx.font = `800 26px ${font}`;
+    const label = `${text.farmVerdict} · ${data.farm.average}`;
+    const w = ctx.measureText(label).width + 44;
+    roundRect(ctx, W - 56 - w, 56, w, 52, 26);
+    ctx.fillStyle = "rgba(20,16,18,0.78)";
+    ctx.fill();
+    ctx.strokeStyle = FARM_COLOR[tier];
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = FARM_COLOR[tier];
+    ctx.fillText(label, W - 56 - w + 22, 91);
+  }
 
   // Figures.
   const figures: [string, string, string][] = [
@@ -240,6 +264,8 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
     // Keep the code.
   }
   const number = (value: number) => Math.round(value).toLocaleString(lang);
+  const tier = data.farm ? farmTier(data.farm.average) : null;
+  const verdict = tier === "king" ? t.farmKing : tier === "respectable" ? t.farmRespectable : tier === "not" ? t.farmNot : null;
 
   async function save() {
     setSaving(true);
@@ -248,7 +274,7 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
       const blob = await drawCard(
         data,
         props.userId,
-        { styles: styleName, globalRank: t.globalRank, countryRank: t.countryRank, acc: t.cardAcc, ifFc: t.ifFcTitle },
+        { farmLabel: t.farmLabel, farmVerdict: verdict, styles: styleName, globalRank: t.globalRank, countryRank: t.countryRank, acc: t.cardAcc, ifFc: t.ifFcTitle },
         lang,
       );
       if (!blob) return;
@@ -286,6 +312,13 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
             </span>
           )}
         </div>
+        {data.farm && tier && (
+          <div className={`pcard-farm is-${tier}`} title={`${t.farmLabel} : ${data.farm.average}/100`}>
+            <span className="pcard-label">{t.farmLabel}</span>
+            <b>{data.farm.average}</b>
+            <span className="verdict">{verdict}</span>
+          </div>
+        )}
       </div>
       <dl className="pcard-figures">
         <div>
