@@ -43,22 +43,32 @@ function shares<T extends string>(items: { key: T; weight: number }[]): { key: T
   return [...map.entries()].map(([key, weight]) => ({ key, share: weight / total })).sort((a, b) => b.share - a.share);
 }
 
-// SS pp of a map with given mods, kept so a refresh does not recompute the whole top.
-const ssCache = new Map<string, number | null>();
+// SS pp of a map with given mods (and its length and BPM with those mods), kept so a
+// refresh does not recompute the whole top.
+interface SsInfo {
+  pp: number;
+  bpm: number;
+  length: number;
+}
+const ssCache = new Map<string, SsInfo | null>();
 
-async function ssPp(beatmapId: number, mods: readonly string[]): Promise<number | null> {
+async function ssInfo(beatmapId: number, mods: readonly string[]): Promise<SsInfo | null> {
   const key = `${beatmapId}:${[...mods].sort().join("")}`;
   if (ssCache.has(key)) return ssCache.get(key)!;
-  let value: number | null = null;
+  let value: SsInfo | null = null;
   try {
     const result = await calculatePlay({ beatmapId, mode: "osu", mods: [...mods], clockRate: null, accuracy: 100, combo: null, misses: 0 }, "osu", 0, true);
-    value = result.score.pp > 0 ? result.score.pp : null;
+    value = result.score.pp > 0 ? { pp: result.score.pp, bpm: result.stats.bpm, length: result.stats.lengthSeconds } : null;
   } catch {
     value = null;
   }
   if (ssCache.size > 20000) ssCache.clear();
   ssCache.set(key, value);
   return value;
+}
+
+async function ssPp(beatmapId: number, mods: readonly string[]): Promise<number | null> {
+  return (await ssInfo(beatmapId, mods))?.pp ?? null;
 }
 
 /** pp of a full combo at the given accuracy (no miss), cached like ssPp. */
@@ -152,80 +162,136 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   // Top: 10 % above the best level, to leave room to progress.
   const ssMax = levels.length >= 3 ? Math.round(levels[levels.length - 1] * 1.1) : Math.round((plays[0].pp * 1.1) / ratio);
 
-  // Mod combos and map types of the top 20, weighted by pp.
-  const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: play.pp })));
-  const combos = comboShares.filter((item, index) => index === 0 || item.share >= 0.15).slice(0, 3);
-  const typed: { key: string; weight: number }[] = [];
-  const tagCount = new Map<string, number>();
-  let hybridWeight = 0;
-  for (const play of best) {
-    const profile = getProfile(play.beatmapId);
-    if (!profile) continue;
-    const scores = styleScores(profile, { version: "" }, modRate(play.mods));
-    const main = primaryStyle(scores);
-    typed.push({ key: main, weight: play.pp });
-    if (main === "hybrid") {
-      hybridWeight += play.pp;
-      for (const tag of secondaryStyles(scores, main)) tagCount.set(tag, (tagCount.get(tag) ?? 0) + play.pp);
+  // Each top-20 play is read like a map: jump, stream or hybrid (with its leanings), with
+  // its mods, length and BPM. The list then mirrors the top: a player with half streams
+  // and half jumps gets half stream maps and half jump maps, each group with the mods that
+  // group is played with, and maps close in length (and BPM, for streams) come first.
+  type Group = "jump" | "stream" | "hybrid";
+  interface Read {
+    group: Group;
+    combo: string;
+    tags: ConcreteStyle[];
+    length: number | null;
+    bpm: number | null;
+  }
+  const reads: Read[] = [];
+  await Promise.all(
+    best.map(async (play) => {
+      const profile = getProfile(play.beatmapId);
+      if (!profile) return;
+      const scores = styleScores(profile, { version: "" }, modRate(play.mods));
+      const main = primaryStyle(scores) as Group;
+      const info = await ssInfo(play.beatmapId, play.mods.filter((mod) => mod !== "CL"));
+      reads.push({
+        group: main,
+        combo: comboOf(play.mods).join("") || "NM",
+        tags: main === "hybrid" ? secondaryStyles(scores, main) : [],
+        length: info?.length ?? null,
+        bpm: info?.bpm ?? null,
+      });
+    }),
+  );
+  const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: 1 })));
+  const styleShares = shares(reads.map((read) => ({ key: read.group as string, weight: 1 })));
+
+  const groups: Group[] = (["stream", "jump", "hybrid"] as Group[]).filter((group) => reads.some((read) => read.group === group));
+  if (groups.length === 0) groups.push("hybrid");
+  const quota = new Map<Group, number>();
+  {
+    const total = reads.length || 1;
+    let left = RESULTS;
+    const raw = groups.map((group) => ({ group, exact: (RESULTS * (reads.filter((read) => read.group === group).length || (reads.length ? 0 : 1))) / total }));
+    for (const item of raw) {
+      const count = Math.floor(item.exact);
+      quota.set(item.group, count);
+      left -= count;
+    }
+    // Largest remainders get the last places.
+    for (const item of [...raw].sort((a, b) => (b.exact % 1) - (a.exact % 1))) {
+      if (left <= 0) break;
+      quota.set(item.group, (quota.get(item.group) ?? 0) + 1);
+      left--;
     }
   }
-  const styleShares = shares(typed);
-  const shareOf = (style: string) => styleShares.find((item) => item.key === style)?.share ?? 0;
 
-  // The top is read like a map: 81 % of stream maps makes a stream player, who gets only
-  // stream maps; same for jump. A top with no clear type is a hybrid player: hybrid maps
-  // with the leanings their top shows (jump, stream, tech, alt, finger control).
-  const dominant = styleShares[0];
-  let wanted: ConcreteStyle[];
-  if (dominant && dominant.key !== "hybrid" && dominant.share >= 0.55) wanted = [dominant.key as ConcreteStyle];
-  else {
-    const tags = new Set<ConcreteStyle>();
-    if (shareOf("jump") >= 0.25) tags.add("hjump");
-    if (shareOf("stream") >= 0.25) tags.add("hstream");
-    for (const [tag, weight] of tagCount) if (hybridWeight > 0 && weight / hybridWeight >= 0.3) tags.add(tag as ConcreteStyle);
-    wanted = tags.size ? [...tags] : ["hybrid"];
+  const median = (values: (number | null)[]) => {
+    const list = values.filter((value): value is number => value != null && value > 0).sort((a, b) => a - b);
+    return list.length ? list[Math.floor(list.length / 2)] : null;
+  };
+  const plan = groups.map((group) => {
+    const mine = reads.filter((read) => read.group === group);
+    const source = mine.length ? mine : reads;
+    const groupCombos = shares(source.map((read) => ({ key: read.combo, weight: 1 })));
+    const combos = (groupCombos.length ? groupCombos : comboShares).filter((item, index) => index === 0 || item.share >= 0.15).slice(0, 3);
+    let styles: ConcreteStyle[];
+    if (group !== "hybrid") styles = [group];
+    else {
+      const tagCount = new Map<ConcreteStyle, number>();
+      for (const read of mine) for (const tag of read.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
+      styles = [...tagCount].filter(([, count]) => mine.length && count / mine.length >= 0.3).map(([tag]) => tag);
+      if (styles.length === 0) styles = ["hybrid"];
+    }
+    return {
+      group,
+      combos,
+      styles,
+      length: median(mine.map((read) => read.length)),
+      bpm: group === "stream" ? median(mine.map((read) => read.bpm)) : null,
+    };
+  });
+  const wanted = [...new Set(plan.flatMap((item) => item.styles))];
+
+  /** 1 for the same length (and BPM for streams), lower the further away. */
+  function similarity(hit: DiscoverHit, target: (typeof plan)[number]): number {
+    let value = 1;
+    if (target.length && hit.lengthSeconds) value *= Math.exp(-Math.abs(Math.log(hit.lengthSeconds / target.length)) / 0.35);
+    if (target.bpm && hit.bpm) value *= Math.exp(-Math.abs(hit.bpm - target.bpm) / 18);
+    return value;
   }
 
-  // The FC range in three slices, each searched on its own and given a third of the list:
+  // The FC range in three slices, each searched on its own and given a third of each group:
   // otherwise the most farmable maps, often in the lower part, fill everything.
   const SLICES = 3;
   const step = (ssMax - ssMin) / SLICES;
   const slices = Array.from({ length: SLICES }, (_, i) => ({ min: Math.round(ssMin + step * i), max: Math.round(ssMin + step * (i + 1)) }));
 
   const played = new Set(plays.map((play) => play.beatmapId));
-  type Pick = RecommendHit & { score: number; slice: number };
+  type Pick = RecommendHit & { score: number; slice: number; group: Group; sim: number };
   const picked = new Map<number, Pick>();
-  for (const combo of combos) {
-    const mods = combo.key === "NM" ? [] : (PP_MODS.filter((mod) => combo.key.includes(mod)) as ModKey[]);
-    for (const [slice, range] of slices.entries()) {
-      let offset = 0;
-      for (let page = 0; page < 2; page++) {
-        const answer = await discover({
-          query: "",
-          mode: "osu",
-          styles: wanted,
-          mods: modRecord(mods),
-          ppMin: range.min,
-          ppMax: range.max,
-          offset,
-          sort: [{ key: "farm", dir: "desc" }],
-          ranges: emptyRanges(),
-        });
-        for (const hit of answer.results) consider(hit, combo.share, slice);
-        if (!answer.hasMore) break;
-        offset = answer.nextOffset;
+  for (const target of plan) {
+    for (const combo of target.combos) {
+      const mods = combo.key === "NM" ? [] : (PP_MODS.filter((mod) => combo.key.includes(mod)) as ModKey[]);
+      for (const [slice, range] of slices.entries()) {
+        let offset = 0;
+        for (let page = 0; page < 2; page++) {
+          const answer = await discover({
+            query: "",
+            mode: "osu",
+            styles: target.styles,
+            mods: modRecord(mods),
+            ppMin: range.min,
+            ppMax: range.max,
+            offset,
+            sort: [{ key: "farm", dir: "desc" }],
+            ranges: emptyRanges(),
+          });
+          for (const hit of answer.results) consider(hit, combo.share, slice, target);
+          if (!answer.hasMore) break;
+          offset = answer.nextOffset;
+        }
       }
     }
   }
 
-  function consider(hit: DiscoverHit, comboShare: number, slice: number): void {
+  function consider(hit: DiscoverHit, comboShare: number, slice: number, target: (typeof plan)[number]): void {
     if (played.has(hit.beatmapId) || marks[String(hit.beatmapId)] === "done" || hit.pp < ssMin) return;
     // What the player would really get, at their usual share of the SS pp.
     const gain = ppGain(plays, hit.beatmapId, hit.pp * ratio);
     if (gain <= 0) return;
-    const score = gain * (0.5 + hit.farm / 200) * (0.6 + 0.4 * comboShare);
+    const sim = similarity(hit, target);
+    const score = gain * (0.5 + hit.farm / 200) * (0.6 + 0.4 * comboShare) * (0.2 + 0.8 * sim);
     const previous = picked.get(hit.beatmapId);
-    if (!previous || previous.score < score) picked.set(hit.beatmapId, { ...hit, gain, score, slice });
+    if (!previous || previous.score < score) picked.set(hit.beatmapId, { ...hit, gain, score, slice, group: target.group, sim });
   }
 
   // Leave out what the last refresh showed, while there is enough else to show.
@@ -233,19 +299,28 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const fresh = candidates.filter((hit) => !skip.has(hit.beatmapId));
   if (fresh.length >= RESULTS) candidates = fresh;
 
+  // Each group gets its share of the list, spread over the three slices.
+  function draw(group: Group, count: number, taken: Set<number>): Pick[] {
+    const pool = candidates.filter((hit) => hit.group === group && !taken.has(hit.beatmapId));
+    const out: Pick[] = [];
+    for (let slice = 0; slice < SLICES && out.length < count; slice++) {
+      const want = Math.ceil((count - out.length) / (SLICES - slice));
+      out.push(...sample(pool.filter((hit) => hit.slice === slice && !out.includes(hit)), want));
+    }
+    if (out.length < count) out.push(...sample(pool.filter((hit) => !out.includes(hit)), count - out.length));
+    for (const hit of out) taken.add(hit.beatmapId);
+    return out;
+  }
+  const taken = new Set<number>();
   const chosen: Pick[] = [];
-  for (let slice = 0; slice < SLICES; slice++) {
-    chosen.push(...sample(candidates.filter((hit) => hit.slice === slice), Math.ceil(RESULTS / SLICES)));
-  }
-  // Fill up with the best of what is left.
-  if (chosen.length < RESULTS) {
-    const taken = new Set(chosen.map((hit) => hit.beatmapId));
-    chosen.push(...sample(candidates.filter((hit) => !taken.has(hit.beatmapId)), RESULTS - chosen.length));
-  }
+  for (const group of groups) chosen.push(...draw(group, quota.get(group) ?? 0, taken));
+  // A group short of maps: fill up with the others.
+  if (chosen.length < RESULTS) chosen.push(...sample(candidates.filter((hit) => !taken.has(hit.beatmapId)), RESULTS - chosen.length));
+  for (const hit of chosen) taken.add(hit.beatmapId);
 
   // The lists' pp come from a mirror that may lag behind the pp rework: show the same pp as
   // the map page (our calculator), with the gain that goes with it, and drop what our pp put
-  // outside the range (replaced from the other candidates while time remains).
+  // outside the range (replaced from the same group while time remains).
   const deadline = Date.now() + 8000;
   const exact = new Set<number>();
   async function recompute(list: Pick[]): Promise<void> {
@@ -267,25 +342,28 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   await recompute(chosen);
   let kept = chosen.filter(inRange);
   for (let round = 0; round < 3 && kept.length < RESULTS && Date.now() < deadline; round++) {
-    const taken = new Set(chosen.map((hit) => hit.beatmapId));
-    const more = sample(candidates.filter((hit) => !taken.has(hit.beatmapId)), RESULTS - kept.length);
+    const more: Pick[] = [];
+    for (const group of groups) {
+      const missing = (quota.get(group) ?? 0) - kept.filter((hit) => hit.group === group).length;
+      if (missing > 0) more.push(...draw(group, missing, taken));
+    }
     if (more.length === 0) break;
-    chosen.push(...more);
     await recompute(more);
     kept = [...kept, ...more.filter(inRange)];
   }
   chosen.length = 0;
   chosen.push(...kept);
 
+  // Closest to what the player usually plays (length, and BPM for streams) first.
   const results = chosen
-    .sort((a, b) => b.pp - a.pp)
+    .sort((a, b) => b.sim - a.sim || b.pp - a.pp)
     .slice(0, RESULTS)
-    .map(({ score: _score, slice: _slice, ...hit }) => hit);
+    .map(({ score: _score, slice: _slice, group: _group, sim: _sim, ...hit }) => hit);
   return {
     ppMin: ssMin,
     ppMax: ssMax,
     ratio,
-    mods: combos.map((item) => ({ mods: item.key === "NM" ? [] : item.key.match(/.{2}/g) ?? [], share: item.share })),
+    mods: comboShares.slice(0, 4).map((item) => ({ mods: item.key === "NM" ? [] : item.key.match(/.{2}/g) ?? [], share: item.share })),
     styles: styleShares.map((item) => ({ style: item.key, share: item.share })),
     wanted,
     results,
