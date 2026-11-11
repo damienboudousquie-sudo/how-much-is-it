@@ -37,13 +37,18 @@ const STYLE_COLOR: Record<string, string> = {
 const PINK = "#ff66b3";
 const SKILLS = PROFILE_SKILLS;
 type Skill = ProfileSkill;
-/** Radar edge: 60 % more weight on a skill than the usual player. */
-const RADAR_MAX = 1.6;
+/**
+ * Radar scale, logarithmic: the usual player sits at AVERAGE_RING, 3x the usual at the
+ * edge and a third of it near the centre, so "twice as much" and "half as much" look as
+ * far from the average.
+ */
+const AVERAGE_RING = 0.55;
 
 let kept: { player: number; data: ProfileInsights } | null = null;
 
 function radius(index: number): number {
-  return Math.min(1, Math.max(0.12, index / RADAR_MAX));
+  const value = AVERAGE_RING + ((1 - AVERAGE_RING) * Math.log(Math.max(index, 0.01))) / Math.log(3);
+  return Math.min(1, Math.max(0.08, value));
 }
 
 /** Where a skill name sits: just outside its axis tip, anchored away from the shape. */
@@ -74,7 +79,7 @@ function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; av
     <svg className="radar" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={SKILLS.map((skill) => props.labels[skill]).join(", ")}>
       <polygon className="radar-ring" points={ring(1)} />
       <polygon className="radar-ring" points={ring(0.5)} />
-      <polygon className="radar-avg" points={ring(1 / RADAR_MAX)}>
+      <polygon className="radar-avg" points={ring(AVERAGE_RING)}>
         <title>{props.average}</title>
       </polygon>
       {SKILLS.map((skill, index) => {
@@ -285,7 +290,7 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   ctx.stroke();
   ctx.setLineDash([6, 6]);
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  path(() => 1 / RADAR_MAX);
+  path(() => AVERAGE_RING);
   ctx.stroke();
   ctx.setLineDash([]);
   path((skill) => radius(data.skillIndex[skill]));
