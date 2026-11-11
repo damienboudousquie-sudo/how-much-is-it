@@ -6,7 +6,8 @@ import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyReply } from "fastify";
-import { apiKeyConfigured, mirrorHealth } from "./osuApi";
+import { apiKeyConfigured, mirrorHealth, rankForPp } from "./osuApi";
+import { InputError } from "@osu-pp/shared";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
@@ -207,6 +208,20 @@ app.get("/api/auth/callback", async (request, reply) => {
     const message = error instanceof Error ? error.message : "Sign-in failed.";
     reply.header("set-cookie", loginErrorCookie(message));
     return reply.redirect("/");
+  }
+});
+
+/** Global rank for a pp total (signed-in players get an estimate below the top 10,000). */
+app.get("/api/rank", async (request, reply) => {
+  try {
+    reply.header("cache-control", "no-store");
+    const pp = Number((request.query as { pp?: string }).pp);
+    if (!Number.isFinite(pp) || pp <= 0 || pp > 100000) throw new InputError("pp must be a positive number.");
+    const profile = currentUser(sessionFromCookie(request.headers.cookie));
+    const anchor = profile?.pp && profile.rank ? { pp: profile.pp, rank: profile.rank } : undefined;
+    return { result: await rankForPp(pp, anchor) };
+  } catch (error) {
+    sendError(reply, error);
   }
 });
 

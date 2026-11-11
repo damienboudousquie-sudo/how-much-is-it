@@ -477,3 +477,61 @@ function toChip(beatmap: RemoteBeatmap): DifficultyChip {
 export function chipsFrom(set: RemoteSet): DifficultyChip[] {
   return set.beatmaps.map(toChip);
 }
+
+/* ---------- pp -> global rank (for "your rank after this play") ---------- */
+
+interface RankRow {
+  pp: number;
+  rank: number;
+}
+
+/** Ranking pages (50 players each, 200 pages = the top 10,000), kept for an hour. */
+const rankPages = new Map<number, { at: number; rows: RankRow[] }>();
+const RANK_PAGE_TTL = 60 * 60 * 1000;
+const RANK_PAGES = 200;
+
+async function rankingPage(page: number): Promise<RankRow[]> {
+  const kept = rankPages.get(page);
+  if (kept && Date.now() - kept.at < RANK_PAGE_TTL) return kept.rows;
+  const json = (await apiGet(`/rankings/osu/performance?cursor%5Bpage%5D=${page}`)) as {
+    ranking?: { pp?: number; global_rank?: number }[];
+  };
+  const rows = (json.ranking ?? [])
+    .map((row, index) => ({ pp: Number(row.pp), rank: Number(row.global_rank) || (page - 1) * 50 + index + 1 }))
+    .filter((row) => Number.isFinite(row.pp));
+  rankPages.set(page, { at: Date.now(), rows });
+  return rows;
+}
+
+/**
+ * Global osu! rank a player with `pp` would have. Exact (from the rankings) inside the top
+ * 10,000; below, estimated on a log-log line through the 10,000th player and the player's
+ * own current pp and rank (`anchor`), which fits the pp curve well over short distances.
+ */
+export async function rankForPp(pp: number, anchor?: { pp: number; rank: number }): Promise<{ rank: number; exact: boolean } | null> {
+  if (!apiKeyConfigured() || !(pp > 0)) return null;
+  const last = await rankingPage(RANK_PAGES);
+  const floor = last[last.length - 1];
+  if (!floor) return null;
+  if (pp >= floor.pp) {
+    // Binary search on pages: rows are sorted by pp, high to low.
+    let low = 1;
+    let high = RANK_PAGES;
+    while (low < high) {
+      const mid = (low + high) >> 1;
+      const rows = await rankingPage(mid);
+      const end = rows[rows.length - 1];
+      if (!end || pp >= end.pp) high = mid;
+      else low = mid + 1;
+    }
+    const rows = await rankingPage(low);
+    const above = rows.filter((row) => row.pp > pp).length;
+    return { rank: (low - 1) * 50 + above + 1, exact: true };
+  }
+  if (!anchor || !(anchor.pp > 0) || !(anchor.rank > floor.rank) || anchor.pp >= floor.pp) return null;
+  // log(rank) = a + b * log(pp) through (floor.pp, floor.rank) and (anchor.pp, anchor.rank).
+  const b = (Math.log(anchor.rank) - Math.log(floor.rank)) / (Math.log(anchor.pp) - Math.log(floor.pp));
+  if (!Number.isFinite(b) || b >= 0) return null;
+  const rank = Math.exp(Math.log(floor.rank) + b * (Math.log(pp) - Math.log(floor.pp)));
+  return { rank: Math.max(floor.rank + 1, Math.round(rank)), exact: false };
+}

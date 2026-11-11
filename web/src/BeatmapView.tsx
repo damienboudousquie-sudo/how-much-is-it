@@ -8,6 +8,7 @@ import {
   secondaryStyles,
   modRate,
   modeLabel,
+  ppGain,
   sanitizeMods,
   styleScores,
   toggleMod,
@@ -25,6 +26,7 @@ import { StarPill } from "./Badges";
 import { AutoPlayerPopup } from "./AutoPlayerPanel";
 import { togglePreview, usePreviewPlaying } from "./audioPreview";
 import { fill, useI18n, type Copy } from "./i18n";
+import { useAccount } from "./account";
 
 export interface PlayPreset {
   mods: string[];
@@ -541,6 +543,7 @@ export function BeatmapView(props: {
               misses: score.misses,
             })}
           </p>
+          {meta.mode === "osu" && <ProfileImpact beatmapId={meta.beatmapId} pp={score.pp} />}
           {parts.length > 0 && (
             <div className="parts">
               {parts.map(([label, value]) => (
@@ -567,5 +570,54 @@ export function BeatmapView(props: {
         </section>
       </div>
     </main>
+  );
+}
+
+/**
+ * What this score would do to the signed-in player's profile: raw pp gained (with the 95 %
+ * weighting of the top 100) and the global rank that total would have. "≈" when the rank is
+ * estimated (beyond the top 10,000, where osu! publishes no list).
+ */
+function ProfileImpact(props: { beatmapId: number; pp: number }) {
+  const { t, lang } = useI18n();
+  const account = useAccount();
+  const profile = account.profile;
+  const current = profile?.pp ?? 0;
+  const gain = current > 0 && account.top.length > 0 ? ppGain(account.top, props.beatmapId, props.pp) : 0;
+  const total = current + gain;
+  const [rank, setRank] = useState<{ rank: number; exact: boolean } | null>(null);
+  const key = Math.round(total * 10);
+
+  useEffect(() => {
+    setRank(null);
+    if (!(gain > 0)) return;
+    const control = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch(`/api/rank?pp=${total.toFixed(2)}`, { signal: control.signal, cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((answer: { result?: { rank: number; exact: boolean } | null } | null) => setRank(answer?.result ?? null))
+        .catch(() => undefined);
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      control.abort();
+    };
+  }, [key, gain > 0]);
+
+  if (!profile || current <= 0 || account.top.length === 0) return null;
+  const locale = numberLocaleOf(lang);
+  const number = (value: number) => value.toLocaleString(locale);
+  if (!(gain > 0)) return <p className="impact none">{t.impactNone}</p>;
+  return (
+    <p className="impact" data-testid="impact">
+      <span className="impact-gain">
+        +{gain.toLocaleString(locale, { maximumFractionDigits: 1 })} pp <small>{t.impactRaw}</small>
+      </span>
+      {profile.rank != null && (
+        <span className="impact-rank" title={rank && !rank.exact ? t.impactEstimated : undefined}>
+          #{number(profile.rank)} → {rank ? <strong>{(rank.exact ? "#" : "≈ #") + number(rank.rank)}</strong> : <small>…</small>}
+        </span>
+      )}
+    </p>
   );
 }
