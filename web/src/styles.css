@@ -4099,7 +4099,7 @@ a.stats-key:hover {
 
 .pcard-body {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 340px minmax(0, 1fr);
   gap: 8px 28px;
   padding: 16px 24px 22px;
 }
@@ -4122,7 +4122,7 @@ a.stats-key:hover {
 
 .radar {
   width: 100%;
-  max-width: 290px;
+  max-width: 340px;
   overflow: visible;
 }
 

@@ -46,6 +46,17 @@ function radius(index: number): number {
   return Math.min(1, Math.max(0.12, index / RADAR_MAX));
 }
 
+/** Where a skill name sits: just outside its axis tip, anchored away from the shape. */
+function labelPlace(index: number, r: number, cx: number, cy: number): { x: number; y: number; anchor: "start" | "middle" | "end" } {
+  const angle = -Math.PI / 2 + (index * Math.PI * 2) / PROFILE_SKILLS.length;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const anchor = cos > 0.25 ? "start" : cos < -0.25 ? "end" : "middle";
+  // Top and bottom names need more room than side ones (text height, not width).
+  const gap = anchor === "middle" ? 14 : 10;
+  return { x: cx + cos * (r + gap), y: cy + sin * (r + gap) + (sin > 0.5 ? 6 : sin < -0.5 ? -2 : 0), anchor };
+}
+
 function radarPoint(index: number, r: number, cx: number, cy: number): [number, number] {
   const angle = -Math.PI / 2 + (index * Math.PI * 2) / SKILLS.length;
   return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r];
@@ -53,32 +64,34 @@ function radarPoint(index: number, r: number, cx: number, cy: number): [number, 
 
 function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; average: string }) {
   const { skillIndex } = props.data;
-  const size = 320;
-  const c = size / 2;
+  const width = 380;
+  const height = 290;
+  const cx = width / 2;
+  const cy = 148;
   const r = 96;
-  const ring = (scale: number) => SKILLS.map((_, index) => radarPoint(index, r * scale, c, c).join(",")).join(" ");
+  const ring = (scale: number) => SKILLS.map((_, index) => radarPoint(index, r * scale, cx, cy).join(",")).join(" ");
   return (
-    <svg className="radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={SKILLS.map((skill) => props.labels[skill]).join(", ")}>
+    <svg className="radar" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={SKILLS.map((skill) => props.labels[skill]).join(", ")}>
       <polygon className="radar-ring" points={ring(1)} />
       <polygon className="radar-ring" points={ring(0.5)} />
       <polygon className="radar-avg" points={ring(1 / RADAR_MAX)}>
         <title>{props.average}</title>
       </polygon>
       {SKILLS.map((skill, index) => {
-        const [x, y] = radarPoint(index, r, c, c);
-        return <line key={skill} className="radar-axis" x1={c} y1={c} x2={x} y2={y} />;
+        const [x, y] = radarPoint(index, r, cx, cy);
+        return <line key={skill} className="radar-axis" x1={cx} y1={cy} x2={x} y2={y} />;
       })}
-      <g className="radar-shape" style={{ transformOrigin: `${c}px ${c}px` }}>
-        <polygon points={SKILLS.map((skill, index) => radarPoint(index, r * radius(skillIndex[skill]), c, c).join(",")).join(" ")} />
+      <g className="radar-shape" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+        <polygon points={SKILLS.map((skill, index) => radarPoint(index, r * radius(skillIndex[skill]), cx, cy).join(",")).join(" ")} />
         {SKILLS.map((skill, index) => {
-          const [x, y] = radarPoint(index, r * radius(skillIndex[skill]), c, c);
+          const [x, y] = radarPoint(index, r * radius(skillIndex[skill]), cx, cy);
           return <circle key={skill} cx={x} cy={y} r="3.5" />;
         })}
       </g>
       {SKILLS.map((skill, index) => {
-        const [x, y] = radarPoint(index, r + 24, c, c);
+        const place = labelPlace(index, r, cx, cy);
         return (
-          <text key={skill} x={x} y={y + 4} textAnchor="middle" className="radar-label">
+          <text key={skill} x={place.x} y={place.y} textAnchor={place.anchor} dominantBaseline="middle" className="radar-label">
             {props.labels[skill]}
           </text>
         );
@@ -281,14 +294,16 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   ctx.strokeStyle = PINK;
   ctx.lineWidth = 3;
   ctx.stroke();
-  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   SKILLS.forEach((skill, index) => {
-    const [x, y] = radarPoint(index, r + 34, cx, cy);
+    const place = labelPlace(index, r, cx, cy);
+    ctx.textAlign = place.anchor === "start" ? "left" : place.anchor === "end" ? "right" : "center";
     ctx.fillStyle = "#e9e1e5";
     ctx.font = `700 19px ${font}`;
-    ctx.fillText(text.labels[skill], x, y + 7, 190);
+    ctx.fillText(text.labels[skill], place.x, place.y + (place.anchor === "middle" ? Math.sign(place.y - cy) * 6 : 0), 200);
   });
   ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 
   ctx.fillStyle = "#6f6168";
   ctx.font = `700 18px ${font}`;
