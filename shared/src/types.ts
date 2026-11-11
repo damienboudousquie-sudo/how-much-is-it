@@ -419,8 +419,6 @@ export interface ProfileInsights {
   styles: { style: string; share: number }[];
   mods: { mods: string; share: number }[];
   averageAccuracy: number | null;
-  /** Mean finder farm score (0 to 100) of the top 10 plays, over the ones in the catalogue. */
-  farm: { average: number; counted: number } | null;
   medianLength: number | null;
   medianBpm: number | null;
   topPlay: { title: string; version: string; pp: number; mods: string[] } | null;

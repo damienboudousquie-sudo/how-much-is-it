@@ -385,30 +385,3 @@ function buildMeta(
     difficulties,
   };
 }
-
-/**
- * The farm score the finder gives a map with these mods (0 to 100), against the maps of
- * the same mods within 15 % of its pp, as in a list sorted by farm. null when the map is
- * not in the catalogue with these mods (loved, unranked, odd mods).
- */
-export async function farmOf(beatmapId: number, mods: readonly string[], pp: number): Promise<number | null> {
-  const set = new Set(mods.map((mod) => (mod === "NC" ? "DT" : mod)));
-  const record = Object.fromEntries((["EZ", "HD", "HR", "DT", "HT", "FL"] as const).map((mod) => [mod, set.has(mod) ? "on" : "off"])) as DiscoverRequest["mods"];
-  const combos = matchingCombos(record);
-  if (combos.length !== 1 || !(pp > 0)) return null;
-  // The catalogue pp is an SS: look a bit above the play, and a bit below for old formulas.
-  const wide = await loadRangeMaps({ mode: "osu", mods: combos[0]!, ppMin: pp * 0.7, ppMax: pp * 1.8 });
-  const target = wide.maps.find((map) => map.beatmapId === beatmapId);
-  if (!target) return null;
-  const pool = wide.maps.filter((map) => map.pp >= target.pp * 0.85 && map.pp <= target.pp * 1.15);
-  const unique = [...new Map(pool.map((map) => [map.beatmapId, map])).values()];
-  const scores = farmScores(
-    unique.map((map) => {
-      const read = scoresFor(map, true);
-      return { pp: map.pp, stars: map.stars, lengthSeconds: map.lengthSeconds, hint: map.hint, scores: read.scores, known: read.known, purity: purityOf(map.beatmapId) };
-    }),
-    [],
-  );
-  const index = unique.findIndex((map) => map.beatmapId === beatmapId);
-  return index >= 0 ? scores[index]! : null;
-}

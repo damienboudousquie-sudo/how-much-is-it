@@ -4069,45 +4069,6 @@ a.stats-key:hover {
   border-radius: 2px;
 }
 
-.pcard-farm {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  gap: 0 10px;
-  margin-left: auto;
-  padding: 10px 16px;
-  border: 1px solid currentColor;
-  border-radius: var(--radius);
-  background: rgba(20, 16, 18, 0.7);
-  backdrop-filter: blur(6px);
-}
-
-.pcard-farm .pcard-label {
-  grid-column: 1 / -1;
-}
-
-.pcard-farm b {
-  font-size: 1.5rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.pcard-farm .verdict {
-  font-weight: 700;
-}
-
-.pcard-farm.is-king {
-  color: var(--warn);
-}
-
-.pcard-farm.is-respectable {
-  color: var(--good);
-}
-
-.pcard-farm.is-not {
-  color: var(--pink-2);
-}
-
 .pcard-figures {
   display: flex;
   flex-wrap: wrap;
@@ -4566,14 +4527,6 @@ a.stats-key:hover {
     width: 80px;
     height: 80px;
     border-radius: 16px;
-  }
-
-  .pcard-head {
-    flex-wrap: wrap;
-  }
-
-  .pcard-farm {
-    margin-left: 0;
   }
 
   .pcard-figures {
