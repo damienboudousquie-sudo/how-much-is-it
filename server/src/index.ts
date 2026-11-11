@@ -19,7 +19,7 @@ import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
 import { mapAudio } from "./audio";
 import { recommend } from "./recommend";
-import { avatarBytes, profileInsights } from "./profile";
+import { avatarBytes, coverBytes, profileInsights } from "./profile";
 import { readStats, recordEvent, recordHit, recordLeave } from "./stats";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
@@ -245,6 +245,21 @@ app.get("/api/profile", async (request, reply) => {
     return await profileInsights(sessionFromCookie(request.headers.cookie));
   } catch (error) {
     sendError(reply, error);
+  }
+});
+
+/** The signed-in player's banner from this origin, for the PNG card. */
+app.get("/api/profile/cover", async (request, reply) => {
+  const profile = currentUser(sessionFromCookie(request.headers.cookie));
+  if (!profile) return reply.code(401).send();
+  try {
+    const image = await coverBytes(profile.coverUrl);
+    if (!image) return reply.code(404).send();
+    reply.header("cache-control", "private, max-age=3600");
+    reply.header("content-type", image.type);
+    return reply.send(image.body);
+  } catch {
+    return reply.code(502).send();
   }
 });
 

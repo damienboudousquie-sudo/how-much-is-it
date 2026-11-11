@@ -246,6 +246,8 @@ export interface UserProfile {
   rank: number | null;
   /** Rank in the player's country (missing on profiles saved before it was kept). */
   countryRank?: number | null;
+  /** Profile banner (missing on profiles saved before it was kept). */
+  coverUrl?: string | null;
 }
 
 /** One of the player's top 100 plays. */
@@ -399,6 +401,8 @@ export interface ProfileChoke {
   pp: number;
   /** pp of the same score as a full combo (misses turned into 300s). */
   fcPp: number;
+  /** What the FC would add to the player's total (weighted). */
+  gain: number;
 }
 
 export interface ProfileInsights {
@@ -408,8 +412,14 @@ export interface ProfileInsights {
   pp: number;
   rank: number | null;
   countryRank: number | null;
+  coverUrl: string | null;
   /** Weighted skill pp over the top plays (aim, speed, accuracy, reading). */
   skills: { aim: number; speed: number; accuracy: number; reading: number };
+  /**
+   * Each skill's share of the player's pp against the same share on the farm maps most
+   * players play: 1 = like most players, 1.3 = 30 % more weight on that skill.
+   */
+  skillIndex: { aim: number; speed: number; accuracy: number; reading: number };
   /** Share of the top 20 per map type, and per mod combo over the top 100. */
   styles: { style: string; share: number }[];
   mods: { mods: string; share: number }[];

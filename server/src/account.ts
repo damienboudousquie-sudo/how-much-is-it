@@ -187,6 +187,8 @@ interface ApiUser {
   username: string;
   avatar_url?: string;
   country_code?: string;
+  cover_url?: string;
+  cover?: { url?: string | null; custom_url?: string | null };
   statistics?: { pp?: number; global_rank?: number | null; country_rank?: number | null };
 }
 
@@ -195,6 +197,7 @@ function toProfile(user: ApiUser): UserProfile {
     id: user.id,
     username: user.username,
     avatarUrl: user.avatar_url ?? null,
+    coverUrl: user.cover?.custom_url ?? user.cover?.url ?? user.cover_url ?? null,
     country: user.country_code ?? null,
     pp: user.statistics?.pp ?? null,
     rank: user.statistics?.global_rank ?? null,
@@ -269,7 +272,7 @@ interface ApiScore {
 
 async function refreshTop(sessionId: string, session: Session, file: PlayerFile): Promise<void> {
   // Saves from before score details were kept (no misses field) are fetched again at once.
-  const detailed = file.top.length === 0 || file.top[0].misses !== undefined;
+  const detailed = (file.top.length === 0 || file.top[0].misses !== undefined) && file.profile?.coverUrl !== undefined;
   if (detailed && Date.now() - file.topAt < TOP_TTL_MS) return;
   const access = await freshToken(sessionId, session);
   const [me, scores] = await Promise.all([

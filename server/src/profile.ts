@@ -1,9 +1,10 @@
-import { modRate, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
+import { modRate, ppGain, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
 import { me } from "./account";
 import { AppError } from "./errors";
 import { rankForPp } from "./osuApi";
 import { getProfile } from "./patternStore";
 import { calculatePlay } from "./pp";
+import { sharesOf, skillBase, type SkillShares } from "./skillBase";
 
 /**
  * "My profile": the player card (weighted skills, map types, mods) and "if I had FC'd":
@@ -118,12 +119,28 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     accuracy: round(weighted(parts.accuracy.sort((a, b) => b - a))),
     reading: round(weighted(parts.reading.sort((a, b) => b - a))),
   };
+  // Each play's split between the skills, weighted like pp, next to the usual split.
+  const mix: SkillShares = { aim: 0, speed: 0, accuracy: 0, reading: 0 };
+  let mixWeight = 0;
+  reads.forEach((read, index) => {
+    const shares = read && sharesOf(read);
+    if (!shares) return;
+    const weight = 0.95 ** index;
+    mix.aim += shares.aim * weight;
+    mix.speed += shares.speed * weight;
+    mix.accuracy += shares.accuracy * weight;
+    mix.reading += shares.reading * weight;
+    mixWeight += weight;
+  });
+  const base = await skillBase();
+  const index = (key: keyof SkillShares) => (mixWeight > 0 && base.shares[key] > 0 ? round(mix[key] / mixWeight / base.shares[key], 0.01) : 1);
+  const skillIndex = { aim: index("aim"), speed: index("speed"), accuracy: index("accuracy"), reading: index("reading") };
 
   // If FC: a play counts for its FC pp when that is higher than what it gave.
   const chokes: ProfileChoke[] = [];
-  const fcValues = plays.map((play, index) => {
+  plays.forEach((play, index) => {
     const read = reads[index];
-    if (!read) return play.pp;
+    if (!read) return;
     const misses = play.misses ?? 0;
     const broke = read.maxCombo != null && play.combo != null && play.combo < read.maxCombo * 0.97;
     const fc = Math.max(play.pp, read.pp);
@@ -142,11 +159,15 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
         maxCombo: read.maxCombo,
         pp: play.pp,
         fcPp: round(fc, 0.01),
+        gain: ppGain(plays, play.beatmapId, fc),
       });
-      return fc;
     }
-    return play.pp;
   });
+  // The ten chokes that would add the most to the total, and the total with those ten FC'd.
+  chokes.sort((a, b) => b.gain - a.gain || b.fcPp - b.pp - (a.fcPp - a.pp));
+  const shown = chokes.slice(0, 10);
+  const fcById = new Map(shown.map((choke) => [`${choke.beatmapId}`, choke.fcPp]));
+  const fcValues = plays.map((play) => fcById.get(`${play.beatmapId}`) ?? play.pp);
   const now = weighted(plays.map((play) => play.pp));
   const totalPp = profile.pp ?? now;
   const bonus = Math.max(0, totalPp - now);
@@ -158,7 +179,6 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
   } catch {
     rank = null;
   }
-  chokes.sort((a, b) => b.fcPp - b.pp - (a.fcPp - a.pp));
 
   // Map types over the top 20, mods over the whole top.
   const styleCount = new Map<string, number>();
@@ -181,7 +201,9 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     pp: totalPp,
     rank: profile.rank,
     countryRank: profile.countryRank ?? null,
+    coverUrl: profile.coverUrl ?? null,
     skills,
+    skillIndex,
     styles: [...styleCount].map(([style, count]) => ({ style, share: count / (styled || 1) })).sort((a, b) => b.share - a.share),
     mods: [...modCount].map(([mods, count]) => ({ mods, share: count / (plays.length || 1) })).sort((a, b) => b.share - a.share).slice(0, 5),
     averageAccuracy: accs.length ? round(accs.reduce((sum, acc) => sum + acc, 0) / accs.length, 0.01) : null,
@@ -192,11 +214,12 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
       pp: ifFcPp,
       gain: round(Math.max(0, ifFcPp - totalPp), 0.01),
       rank,
-      chokes: chokes.slice(0, 30),
-      lost: round(chokes.reduce((sum, choke) => sum + choke.fcPp - choke.pp, 0), 0.01),
+      chokes: shown,
+      lost: round(shown.reduce((sum, choke) => sum + choke.fcPp - choke.pp, 0), 0.01),
     },
   };
-  answers.set(profile.id, { at: Date.now(), topKey, value });
+  // Not kept while the usual split is still being measured, so the next view gets it.
+  if (base.measured) answers.set(profile.id, { at: Date.now(), topKey, value });
   return value;
 }
 
@@ -208,4 +231,15 @@ export async function avatarBytes(userId: number): Promise<{ type: string; body:
   if (!type.startsWith("image/")) return null;
   const body = Buffer.from(await response.arrayBuffer());
   return body.length < 2_000_000 ? { type, body } : null;
+}
+
+/** The player's banner from our own origin (osu! asset hosts only), for the PNG card. */
+export async function coverBytes(url: string | null | undefined): Promise<{ type: string; body: Buffer } | null> {
+  if (!url || !/^https:\/\/(assets\.ppy\.sh|osu\.ppy\.sh)\//.test(url)) return null;
+  const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!response.ok) return null;
+  const type = response.headers.get("content-type") ?? "image/jpeg";
+  if (!type.startsWith("image/")) return null;
+  const body = Buffer.from(await response.arrayBuffer());
+  return body.length < 8_000_000 ? { type, body } : null;
 }
