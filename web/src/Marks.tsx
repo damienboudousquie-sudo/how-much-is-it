@@ -262,9 +262,6 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
                 {t.stats}
               </button>
             )}
-            <a role="menuitem" href={`https://osu.ppy.sh/users/${profile.id}`} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
-              {t.profileHelp} ↗
-            </a>
             <button
               type="button"
               role="menuitem"

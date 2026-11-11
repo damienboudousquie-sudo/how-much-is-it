@@ -27,6 +27,17 @@ export function TopLinks() {
         </svg>
         <span>{t.feedback}</span>
       </button>
+      <span className="top-contact">
+        <span className="top-contact-label">{t.contact}</span>
+        <a className="top-osu" href={CREATOR_PROFILE} target="_blank" rel="noreferrer" title={t.creatorProfile} aria-label={t.creatorProfile}>
+          <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true">
+            <circle cx="16" cy="16" r="14.5" fill="none" stroke="currentColor" strokeWidth="2.4" />
+            <text x="16" y="16" dy="0.36em" textAnchor="middle" fontSize="11" fontWeight="900" fill="currentColor">
+              osu!
+            </text>
+          </svg>
+        </a>
+      </span>
       {open && <FeedbackDialog onClose={() => setOpen(false)} />}
     </div>
   );
