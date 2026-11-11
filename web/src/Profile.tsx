@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { MapStyle, ProfileChoke, ProfileInsights } from "@osu-pp/shared";
+import { PROFILE_SKILLS, type MapStyle, type ProfileChoke, type ProfileInsights, type ProfileSkill } from "@osu-pp/shared";
 import { useAccount } from "./account";
 import { fetchProfile } from "./api";
 import { ModBadges, StarPill } from "./Badges";
@@ -35,8 +35,8 @@ const STYLE_COLOR: Record<string, string> = {
 };
 
 const PINK = "#ff66b3";
-const SKILLS = ["aim", "speed", "accuracy", "reading"] as const;
-type Skill = (typeof SKILLS)[number];
+const SKILLS = PROFILE_SKILLS;
+type Skill = ProfileSkill;
 /** Radar edge: 60 % more weight on a skill than the usual player. */
 const RADAR_MAX = 1.6;
 
@@ -59,15 +59,17 @@ function delta(index: number): string {
 function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; average: string }) {
   const { lang } = useI18n();
   const { skillIndex, skills } = props.data;
-  const size = 280;
+  const size = 320;
   const c = size / 2;
-  const r = 88;
+  const r = 96;
   const ring = (scale: number) => SKILLS.map((_, index) => radarPoint(index, r * scale, c, c).join(",")).join(" ");
   return (
     <svg className="radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={SKILLS.map((skill) => `${props.labels[skill]} ${delta(skillIndex[skill])}`).join(", ")}>
       <polygon className="radar-ring" points={ring(1)} />
       <polygon className="radar-ring" points={ring(0.5)} />
-      <polygon className="radar-avg" points={ring(1 / RADAR_MAX)} />
+      <polygon className="radar-avg" points={ring(1 / RADAR_MAX)}>
+        <title>{props.average}</title>
+      </polygon>
       {SKILLS.map((skill, index) => {
         const [x, y] = radarPoint(index, r, c, c);
         return <line key={skill} className="radar-axis" x1={c} y1={c} x2={x} y2={y} />;
@@ -80,11 +82,11 @@ function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; av
         })}
       </g>
       {SKILLS.map((skill, index) => {
-        const [x, y] = radarPoint(index, r + 30, c, c);
+        const [x, y] = radarPoint(index, r + 32, c, c);
         const up = skillIndex[skill] >= 1.05;
         return (
           <g key={skill} className="radar-label">
-            <title>{`${Math.round(skills[skill]).toLocaleString(lang)} pp`}</title>
+            {skill in skills && <title>{`${Math.round(skills[skill as keyof typeof skills]).toLocaleString(lang)} pp`}</title>}
             <text x={x} y={y - 5} textAnchor="middle">
               {props.labels[skill]}
             </text>
@@ -94,9 +96,6 @@ function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; av
           </g>
         );
       })}
-      <text x={c} y={c - r / RADAR_MAX - 4} textAnchor="middle" className="radar-avg-label">
-        {props.average}
-      </text>
     </svg>
   );
 }
@@ -266,9 +265,9 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   }
 
   // Radar.
-  const cx = 965;
-  const cy = 395;
-  const r = 100;
+  const cx = 975;
+  const cy = 390;
+  const r = 98;
   const path = (scale: (skill: Skill) => number) => {
     ctx.beginPath();
     SKILLS.forEach((skill, index) => {
@@ -297,13 +296,13 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   ctx.stroke();
   ctx.textAlign = "center";
   SKILLS.forEach((skill, index) => {
-    const [x, y] = radarPoint(index, r + 40, cx, cy);
+    const [x, y] = radarPoint(index, r + 42, cx, cy);
     ctx.fillStyle = "#a3919a";
-    ctx.font = `700 19px ${font}`;
-    ctx.fillText(text.labels[skill], x, y - 4);
+    ctx.font = `700 17px ${font}`;
+    ctx.fillText(text.labels[skill], x, y - 4, 190);
     ctx.fillStyle = data.skillIndex[skill] >= 1.05 ? "#b3ff66" : "#fff";
-    ctx.font = `800 22px ${font}`;
-    ctx.fillText(delta(data.skillIndex[skill]), x, y + 21);
+    ctx.font = `800 20px ${font}`;
+    ctx.fillText(delta(data.skillIndex[skill]), x, y + 19);
   });
   ctx.textAlign = "left";
 
@@ -325,7 +324,15 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
   const { data } = props;
   const tierColor = TIER_COLOR[tierOf(data.rank)];
   const [saving, setSaving] = useState(false);
-  const labels: Record<Skill, string> = { aim: t.skillAim, speed: t.skillSpeed, accuracy: t.skillAccuracy, reading: t.skillReading };
+  const labels: Record<Skill, string> = {
+    accuracy: t.skillAccuracy,
+    aim: t.skillAim,
+    reading: t.skillReading,
+    precision: t.skillPrecision,
+    tapping: t.skillTapping,
+    speed: t.skillSpeed,
+    fingercontrol: t.skillFingercontrol,
+  };
   const styleName = (style: string) => t.styles[style as MapStyle] ?? style;
   const country = data.country?.toUpperCase() ?? null;
   let countryName = country ?? "";

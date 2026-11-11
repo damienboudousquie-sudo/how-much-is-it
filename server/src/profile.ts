@@ -1,10 +1,10 @@
-import { modRate, ppGain, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
+import { modRate, PROFILE_SKILLS, ppGain, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
 import { me } from "./account";
 import { AppError } from "./errors";
 import { rankForPp } from "./osuApi";
 import { getProfile } from "./patternStore";
 import { calculatePlay } from "./pp";
-import { sharesOf, skillBase, type SkillShares } from "./skillBase";
+import { measurePlay, SkillMean, skillBase } from "./skillBase";
 
 /**
  * "My profile": the player card (weighted skills, map types, mods) and "if I had FC'd":
@@ -18,6 +18,7 @@ interface FcRead {
   speed: number;
   accuracy: number;
   reading: number;
+  cs: number | null;
   bpm: number | null;
   length: number | null;
 }
@@ -51,6 +52,7 @@ async function readFc(play: TopPlay): Promise<FcRead | null> {
             speed: s.speed ?? 0,
             accuracy: s.accuracyPp ?? 0,
             reading: s.reading ?? 0,
+            cs: result.stats.cs ?? null,
             bpm: result.stats.bpm || null,
             length: result.stats.lengthSeconds || null,
           }
@@ -119,26 +121,25 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     accuracy: round(weighted(parts.accuracy.sort((a, b) => b - a))),
     reading: round(weighted(parts.reading.sort((a, b) => b - a))),
   };
-  // Each play's split between the skills, weighted like pp, next to the usual split.
-  const mix: SkillShares = { aim: 0, speed: 0, accuracy: 0, reading: 0 };
-  let mixWeight = 0;
+  // The card's skills over the top, weighted like pp, next to the usual player.
+  const mine = new SkillMean();
   reads.forEach((read, index) => {
-    const shares = read && sharesOf(read);
-    if (!shares) return;
-    const weight = 0.95 ** index;
-    mix.aim += shares.aim * weight;
-    mix.speed += shares.speed * weight;
-    mix.accuracy += shares.accuracy * weight;
-    mix.reading += shares.reading * weight;
-    mixWeight += weight;
+    if (read) mine.add(measurePlay(read, getProfile(plays[index].beatmapId), modRate(plays[index].mods)), 0.95 ** index);
   });
   const base = await skillBase();
-  const index = (key: keyof SkillShares) => (mixWeight > 0 && base.shares[key] > 0 ? round(mix[key] / mixWeight / base.shares[key], 0.01) : 1);
-  const skillIndex = { aim: index("aim"), speed: index("speed"), accuracy: index("accuracy"), reading: index("reading") };
+  const skillIndex = Object.fromEntries(
+    PROFILE_SKILLS.map((skill) => {
+      const value = mine.value(skill);
+      const usual = Math.max(base.values[skill], 0.02);
+      // Capped at 3x: a skill rare on farm maps (finger control) would otherwise explode.
+      return [skill, value == null ? 1 : round(Math.min(3, value / usual), 0.01)];
+    }),
+  ) as ProfileInsights["skillIndex"];
 
   // If FC: a play counts for its FC pp when that is higher than what it gave.
   const chokes: ProfileChoke[] = [];
-  plays.forEach((play, index) => {
+  // Only the top 20: the plays that really make the total.
+  plays.slice(0, 20).forEach((play, index) => {
     const read = reads[index];
     if (!read) return;
     const misses = play.misses ?? 0;
@@ -163,9 +164,9 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
       });
     }
   });
-  // The ten chokes that would add the most to the total, and the total with those ten FC'd.
-  chokes.sort((a, b) => b.gain - a.gain || b.fcPp - b.pp - (a.fcPp - a.pp));
-  const shown = chokes.slice(0, 10);
+  // Biggest choke first (pp lost on the play), and the total with all of them FC'd.
+  chokes.sort((a, b) => b.fcPp - b.pp - (a.fcPp - a.pp));
+  const shown = chokes;
   const fcById = new Map(shown.map((choke) => [`${choke.beatmapId}`, choke.fcPp]));
   const fcValues = plays.map((play) => fcById.get(`${play.beatmapId}`) ?? play.pp);
   const now = weighted(plays.map((play) => play.pp));
