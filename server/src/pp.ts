@@ -32,6 +32,7 @@ interface PerfParts {
   accuracyPp: number | null;
   flashlight: number | null;
   difficultyPp: number | null;
+  reading: number | null;
 }
 
 function asError(error: unknown): AppError {
@@ -44,8 +45,9 @@ function modArg(mods: string[]): { acronym: string }[] {
   return mods.map((acronym) => ({ acronym }));
 }
 
-function readPerf(attrs: { pp: number; ppAim?: number; ppSpeed?: number; ppAccuracy?: number; ppFlashlight?: number; ppDifficulty?: number }): PerfParts {
+function readPerf(attrs: { pp: number; ppAim?: number; ppSpeed?: number; ppAccuracy?: number; ppFlashlight?: number; ppDifficulty?: number; ppReading?: number }): PerfParts {
   return {
+    reading: attrs.ppReading ?? null,
     pp: attrs.pp,
     aim: attrs.ppAim ?? null,
     speed: attrs.ppSpeed ?? null,
@@ -194,6 +196,7 @@ function compute(
       aim: custom.aim,
       speed: custom.speed,
       accuracyPp: custom.accuracyPp,
+      reading: custom.reading,
       flashlight: custom.flashlight,
       difficultyPp: custom.difficultyPp,
     },
@@ -255,6 +258,7 @@ export function calculateFixture(bytes: Uint8Array, input: Omit<CalculateRequest
           aim: custom.aim,
           speed: custom.speed,
           accuracyPp: custom.accuracyPp,
+          reading: custom.reading,
           flashlight: custom.flashlight,
           difficultyPp: custom.difficultyPp,
         },

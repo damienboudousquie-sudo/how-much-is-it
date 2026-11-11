@@ -12,7 +12,7 @@ const pct = (share: number) => `${Math.round(share * 100)} %`;
  * Rank brackets drawn in the osu! tier colours (iron to lustrous, the colours osu! uses
  * for its tiers), from the top 100 down.
  */
-const TIERS: { max: number; name: string }[] = [
+export const TIERS: { max: number; name: string }[] = [
   { max: 100, name: "lustrous" },
   { max: 1000, name: "radiant" },
   { max: 5000, name: "rhodium" },
@@ -23,7 +23,7 @@ const TIERS: { max: number; name: string }[] = [
   { max: Infinity, name: "iron" },
 ];
 
-function tierOf(rank: number | null): string {
+export function tierOf(rank: number | null): string {
   if (rank == null || rank <= 0) return "iron";
   return TIERS.find((tier) => rank <= tier.max)!.name;
 }

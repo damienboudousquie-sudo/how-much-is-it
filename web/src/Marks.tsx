@@ -170,7 +170,7 @@ export function PlayerBadges(props: { beatmapId: number; pp: number }) {
 }
 
 /** Sign in with osu!, or the signed-in player with a small menu. */
-export function AccountButton(props: { onPinned(): void; onFeedback(): void; onForYou(): void; onStats(): void }) {
+export function AccountButton(props: { onPinned(): void; onFeedback(): void; onForYou(): void; onStats(): void; onProfile(): void }) {
   const { t } = useI18n();
   const account = useAccount();
   const [open, setOpen] = useState(false);
@@ -204,6 +204,18 @@ export function AccountButton(props: { onPinned(): void; onFeedback(): void; onF
         </button>
         {open && (
           <div className="account-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              className="is-profile"
+              onClick={() => {
+                setOpen(false);
+                props.onProfile();
+              }}
+            >
+              {t.myProfile}
+              <span className="new-badge">{t.newBadge}</span>
+            </button>
             <button
               type="button"
               role="menuitem"

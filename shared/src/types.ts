@@ -59,6 +59,8 @@ export interface ScoreResult {
   accuracyPp: number | null;
   flashlight: number | null;
   difficultyPp: number | null;
+  /** Reading skill (pp rework of 2026); missing with older calculators. */
+  reading?: number | null;
 }
 
 export interface LookupResponse {
@@ -252,6 +254,19 @@ export interface TopPlay {
   pp: number;
   accuracy: number | null;
   mods: string[];
+  /** Score details (saves from before they were kept lack them). */
+  misses?: number;
+  combo?: number;
+  n300?: number;
+  n100?: number;
+  n50?: number;
+  /** Set on osu!stable (CL), where slider ends do not count. */
+  classic?: boolean;
+  title?: string;
+  artist?: string;
+  version?: string;
+  setId?: number;
+  stars?: number;
 }
 
 /** What a pinned map looked like when it was pinned, to list it without a lookup. */
@@ -365,4 +380,48 @@ export interface StatsResponse extends StatsRates {
   screens: StatsCount[];
   events: StatsCount[];
   maps: { id: number; title: string; value: number }[];
+}
+
+/* ---------- "My profile": player card and "if I had FC'd" ---------- */
+
+export interface ProfileChoke {
+  beatmapId: number;
+  setId: number | null;
+  title: string;
+  artist: string;
+  version: string;
+  mods: string[];
+  stars: number | null;
+  accuracy: number | null;
+  misses: number;
+  combo: number | null;
+  maxCombo: number | null;
+  pp: number;
+  /** pp of the same score as a full combo (misses turned into 300s). */
+  fcPp: number;
+}
+
+export interface ProfileInsights {
+  username: string;
+  avatarUrl: string | null;
+  country: string | null;
+  pp: number;
+  rank: number | null;
+  countryRank: number | null;
+  /** Weighted skill pp over the top plays (aim, speed, accuracy, reading). */
+  skills: { aim: number; speed: number; accuracy: number; reading: number };
+  /** Share of the top 20 per map type, and per mod combo over the top 100. */
+  styles: { style: string; share: number }[];
+  mods: { mods: string; share: number }[];
+  averageAccuracy: number | null;
+  medianLength: number | null;
+  medianBpm: number | null;
+  topPlay: { title: string; version: string; pp: number; mods: string[] } | null;
+  ifFc: {
+    pp: number;
+    gain: number;
+    rank: { rank: number; exact: boolean } | null;
+    chokes: ProfileChoke[];
+    lost: number;
+  };
 }

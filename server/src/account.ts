@@ -261,11 +261,16 @@ interface ApiScore {
   pp?: number | null;
   accuracy?: number;
   mods?: ({ acronym: string } | string)[];
-  beatmap?: { id: number };
+  beatmap?: { id: number; version?: string; difficulty_rating?: number };
+  beatmapset?: { id?: number; title?: string; artist?: string };
+  max_combo?: number;
+  statistics?: { great?: number; ok?: number; meh?: number; miss?: number; count_300?: number; count_100?: number; count_50?: number; count_miss?: number };
 }
 
 async function refreshTop(sessionId: string, session: Session, file: PlayerFile): Promise<void> {
-  if (Date.now() - file.topAt < TOP_TTL_MS) return;
+  // Saves from before score details were kept (no misses field) are fetched again at once.
+  const detailed = file.top.length === 0 || file.top[0].misses !== undefined;
+  if (detailed && Date.now() - file.topAt < TOP_TTL_MS) return;
   const access = await freshToken(sessionId, session);
   const [me, scores] = await Promise.all([
     apiGet<ApiUser>("/me/osu", access),
@@ -274,12 +279,27 @@ async function refreshTop(sessionId: string, session: Session, file: PlayerFile)
   file.profile = toProfile(me);
   file.top = scores
     .filter((score) => score.beatmap?.id && typeof score.pp === "number")
-    .map((score) => ({
-      beatmapId: score.beatmap!.id,
-      pp: Math.round(score.pp! * 100) / 100,
-      accuracy: typeof score.accuracy === "number" ? Math.round(score.accuracy * 10000) / 100 : null,
-      mods: (score.mods ?? []).map((mod) => (typeof mod === "string" ? mod : mod.acronym)).filter((mod) => mod !== "CL"),
-    }));
+    .map((score) => {
+      const acronyms = (score.mods ?? []).map((mod) => (typeof mod === "string" ? mod : mod.acronym));
+      const stats = score.statistics ?? {};
+      return {
+        beatmapId: score.beatmap!.id,
+        pp: Math.round(score.pp! * 100) / 100,
+        accuracy: typeof score.accuracy === "number" ? Math.round(score.accuracy * 10000) / 100 : null,
+        mods: acronyms.filter((mod) => mod !== "CL"),
+        misses: stats.miss ?? stats.count_miss ?? 0,
+        combo: typeof score.max_combo === "number" ? score.max_combo : undefined,
+        n300: stats.great ?? stats.count_300,
+        n100: stats.ok ?? stats.count_100,
+        n50: stats.meh ?? stats.count_50,
+        classic: acronyms.includes("CL"),
+        title: score.beatmapset?.title,
+        artist: score.beatmapset?.artist,
+        version: score.beatmap?.version,
+        setId: score.beatmapset?.id,
+        stars: typeof score.beatmap?.difficulty_rating === "number" ? Math.round(score.beatmap.difficulty_rating * 100) / 100 : undefined,
+      };
+    });
   file.topAt = Date.now();
   await savePlayer(session.userId, file);
 }

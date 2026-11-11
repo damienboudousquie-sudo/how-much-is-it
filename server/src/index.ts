@@ -19,6 +19,7 @@ import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
 import { mapAudio } from "./audio";
 import { recommend } from "./recommend";
+import { avatarBytes, profileInsights } from "./profile";
 import { readStats, recordEvent, recordHit, recordLeave } from "./stats";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
 import { scanStatus, startFullScan } from "./scan";
@@ -234,6 +235,31 @@ app.get("/api/recommend", async (request, reply) => {
     return await recommend(sessionFromCookie(request.headers.cookie), skip);
   } catch (error) {
     sendError(reply, error);
+  }
+});
+
+/** "My profile": player card and "if I had FC'd" for the signed-in player. */
+app.get("/api/profile", async (request, reply) => {
+  try {
+    reply.header("cache-control", "no-store");
+    return await profileInsights(sessionFromCookie(request.headers.cookie));
+  } catch (error) {
+    sendError(reply, error);
+  }
+});
+
+/** Avatars served from this origin, so the player card can be exported as a PNG. */
+app.get("/api/avatar/:id", async (request, reply) => {
+  const id = Number((request.params as { id: string }).id);
+  if (!Number.isInteger(id) || id <= 0 || id > 1e9) return reply.code(400).send();
+  try {
+    const image = await avatarBytes(id);
+    if (!image) return reply.code(404).send();
+    reply.header("cache-control", "public, max-age=86400");
+    reply.header("content-type", image.type);
+    return reply.send(image.body);
+  } catch {
+    return reply.code(502).send();
   }
 });
 
