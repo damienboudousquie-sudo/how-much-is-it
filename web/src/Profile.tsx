@@ -51,20 +51,14 @@ function radarPoint(index: number, r: number, cx: number, cy: number): [number, 
   return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r];
 }
 
-function delta(index: number): string {
-  const value = Math.round((index - 1) * 100);
-  return value === 0 ? "=" : `${value > 0 ? "+" : "−"}${Math.abs(value)} %`;
-}
-
 function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; average: string }) {
-  const { lang } = useI18n();
-  const { skillIndex, skills } = props.data;
+  const { skillIndex } = props.data;
   const size = 320;
   const c = size / 2;
   const r = 96;
   const ring = (scale: number) => SKILLS.map((_, index) => radarPoint(index, r * scale, c, c).join(",")).join(" ");
   return (
-    <svg className="radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={SKILLS.map((skill) => `${props.labels[skill]} ${delta(skillIndex[skill])}`).join(", ")}>
+    <svg className="radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={SKILLS.map((skill) => props.labels[skill]).join(", ")}>
       <polygon className="radar-ring" points={ring(1)} />
       <polygon className="radar-ring" points={ring(0.5)} />
       <polygon className="radar-avg" points={ring(1 / RADAR_MAX)}>
@@ -82,18 +76,11 @@ function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; av
         })}
       </g>
       {SKILLS.map((skill, index) => {
-        const [x, y] = radarPoint(index, r + 32, c, c);
-        const up = skillIndex[skill] >= 1.05;
+        const [x, y] = radarPoint(index, r + 24, c, c);
         return (
-          <g key={skill} className="radar-label">
-            {skill in skills && <title>{`${Math.round(skills[skill as keyof typeof skills]).toLocaleString(lang)} pp`}</title>}
-            <text x={x} y={y - 5} textAnchor="middle">
-              {props.labels[skill]}
-            </text>
-            <text x={x} y={y + 11} textAnchor="middle" className={`radar-value${up ? " is-up" : ""}`}>
-              {delta(skillIndex[skill])}
-            </text>
-          </g>
+          <text key={skill} x={x} y={y + 4} textAnchor="middle" className="radar-label">
+            {props.labels[skill]}
+          </text>
         );
       })}
     </svg>
@@ -296,13 +283,10 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   ctx.stroke();
   ctx.textAlign = "center";
   SKILLS.forEach((skill, index) => {
-    const [x, y] = radarPoint(index, r + 42, cx, cy);
-    ctx.fillStyle = "#a3919a";
-    ctx.font = `700 17px ${font}`;
-    ctx.fillText(text.labels[skill], x, y - 4, 190);
-    ctx.fillStyle = data.skillIndex[skill] >= 1.05 ? "#b3ff66" : "#fff";
-    ctx.font = `800 20px ${font}`;
-    ctx.fillText(delta(data.skillIndex[skill]), x, y + 19);
+    const [x, y] = radarPoint(index, r + 34, cx, cy);
+    ctx.fillStyle = "#e9e1e5";
+    ctx.font = `700 19px ${font}`;
+    ctx.fillText(text.labels[skill], x, y + 7, 190);
   });
   ctx.textAlign = "left";
 

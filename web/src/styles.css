@@ -4169,9 +4169,9 @@ a.stats-key:hover {
   }
 }
 
-.radar-label text {
-  fill: var(--muted);
-  font-size: 11.5px;
+.radar-label {
+  fill: var(--light);
+  font-size: 12px;
   font-weight: 600;
 }
 
