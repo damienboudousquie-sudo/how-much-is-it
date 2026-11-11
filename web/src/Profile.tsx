@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PROFILE_SKILLS, type MapStyle, type ProfileChoke, type ProfileInsights, type ProfileSkill } from "@osu-pp/shared";
+import type { MapStyle, ProfileChoke, ProfileInsights } from "@osu-pp/shared";
 import { useAccount } from "./account";
 import { fetchProfile } from "./api";
 import { ModBadges, StarPill } from "./Badges";
@@ -9,7 +9,7 @@ import { trackEvent } from "./track";
 
 /**
  * "My profile": a player card in the spirit of the osu! profile header (banner, avatar,
- * ranks, a skills radar next to the usual player) that can be saved as an image, and
+ * ranks, map types and mods) that can be saved as an image, and
  * "if I had FC'd": the ten chokes worth the most, played as full combos.
  */
 
@@ -34,76 +34,7 @@ const STYLE_COLOR: Record<string, string> = {
   fingercontrol: "#f2df5e",
 };
 
-const PINK = "#ff66b3";
-const SKILLS = PROFILE_SKILLS;
-type Skill = ProfileSkill;
-/**
- * Radar scale, logarithmic: the usual player sits at AVERAGE_RING, 3x the usual at the
- * edge and a third of it near the centre, so "twice as much" and "half as much" look as
- * far from the average.
- */
-const AVERAGE_RING = 0.55;
-
 let kept: { player: number; data: ProfileInsights } | null = null;
-
-function radius(index: number): number {
-  const value = AVERAGE_RING + ((1 - AVERAGE_RING) * Math.log(Math.max(index, 0.01))) / Math.log(3);
-  return Math.min(1, Math.max(0.08, value));
-}
-
-/** Where a skill name sits: just outside its axis tip, anchored away from the shape. */
-function labelPlace(index: number, r: number, cx: number, cy: number): { x: number; y: number; anchor: "start" | "middle" | "end" } {
-  const angle = -Math.PI / 2 + (index * Math.PI * 2) / PROFILE_SKILLS.length;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  const anchor = cos > 0.25 ? "start" : cos < -0.25 ? "end" : "middle";
-  // Top and bottom names need more room than side ones (text height, not width).
-  const gap = anchor === "middle" ? 14 : 10;
-  return { x: cx + cos * (r + gap), y: cy + sin * (r + gap) + (sin > 0.5 ? 6 : sin < -0.5 ? -2 : 0), anchor };
-}
-
-function radarPoint(index: number, r: number, cx: number, cy: number): [number, number] {
-  const angle = -Math.PI / 2 + (index * Math.PI * 2) / SKILLS.length;
-  return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r];
-}
-
-function Radar(props: { data: ProfileInsights; labels: Record<Skill, string>; average: string }) {
-  const { skillIndex } = props.data;
-  const width = 380;
-  const height = 290;
-  const cx = width / 2;
-  const cy = 148;
-  const r = 96;
-  const ring = (scale: number) => SKILLS.map((_, index) => radarPoint(index, r * scale, cx, cy).join(",")).join(" ");
-  return (
-    <svg className="radar" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={SKILLS.map((skill) => props.labels[skill]).join(", ")}>
-      <polygon className="radar-ring" points={ring(1)} />
-      <polygon className="radar-ring" points={ring(0.5)} />
-      <polygon className="radar-avg" points={ring(AVERAGE_RING)}>
-        <title>{props.average}</title>
-      </polygon>
-      {SKILLS.map((skill, index) => {
-        const [x, y] = radarPoint(index, r, cx, cy);
-        return <line key={skill} className="radar-axis" x1={cx} y1={cy} x2={x} y2={y} />;
-      })}
-      <g className="radar-shape" style={{ transformOrigin: `${cx}px ${cy}px` }}>
-        <polygon points={SKILLS.map((skill, index) => radarPoint(index, r * radius(skillIndex[skill]), cx, cy).join(",")).join(" ")} />
-        {SKILLS.map((skill, index) => {
-          const [x, y] = radarPoint(index, r * radius(skillIndex[skill]), cx, cy);
-          return <circle key={skill} cx={x} cy={y} r="3.5" />;
-        })}
-      </g>
-      {SKILLS.map((skill, index) => {
-        const place = labelPlace(index, r, cx, cy);
-        return (
-          <text key={skill} x={place.x} y={place.y} textAnchor={place.anchor} dominantBaseline="middle" className="radar-label">
-            {props.labels[skill]}
-          </text>
-        );
-      })}
-    </svg>
-  );
-}
 
 function StyleBar(props: { styles: ProfileInsights["styles"]; names: (style: string) => string }) {
   if (props.styles.length === 0) return <span className="pcard-none">—</span>;
@@ -162,13 +93,11 @@ function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: nu
 }
 
 interface CardText {
-  labels: Record<Skill, string>;
   styles: (style: string) => string;
   globalRank: string;
   countryRank: string;
   acc: string;
   ifFc: string;
-  average: string;
 }
 
 async function drawCard(data: ProfileInsights, userId: number, text: CardText, lang: string): Promise<Blob | null> {
@@ -269,54 +198,28 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
     lx += ctx.measureText(label).width + 48;
   }
 
-  // Radar.
-  const cx = 975;
-  const cy = 390;
-  const r = 98;
-  const path = (scale: (skill: Skill) => number) => {
-    ctx.beginPath();
-    SKILLS.forEach((skill, index) => {
-      const [x, y] = radarPoint(index, r * scale(skill), cx, cy);
-      if (index) ctx.lineTo(x, y);
-      else ctx.moveTo(x, y);
-    });
-    ctx.closePath();
-  };
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 1.5;
-  path(() => 1);
-  ctx.stroke();
-  path(() => 0.5);
-  ctx.stroke();
-  ctx.setLineDash([6, 6]);
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  path(() => AVERAGE_RING);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  path((skill) => radius(data.skillIndex[skill]));
-  ctx.fillStyle = "rgba(255,102,179,0.3)";
-  ctx.fill();
-  ctx.strokeStyle = PINK;
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.textBaseline = "middle";
-  SKILLS.forEach((skill, index) => {
-    const place = labelPlace(index, r, cx, cy);
-    ctx.textAlign = place.anchor === "start" ? "left" : place.anchor === "end" ? "right" : "center";
-    ctx.fillStyle = "#e9e1e5";
-    ctx.font = `700 19px ${font}`;
-    ctx.fillText(text.labels[skill], place.x, place.y + (place.anchor === "middle" ? Math.sign(place.y - cy) * 6 : 0), 200);
-  });
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-
   ctx.fillStyle = "#6f6168";
   ctx.font = `700 18px ${font}`;
   ctx.fillText("how-much-is-it.com", AX, 596);
+  // If FC, on the right.
   if (data.ifFc.chokes.length) {
-    ctx.textAlign = "right";
-    ctx.fillText(`${text.ifFc} · ${num(data.ifFc.pp)}pp`, 740, 596);
-    ctx.textAlign = "left";
+    const BX = 800;
+    roundRect(ctx, BX, 350, 344, 200, 18);
+    ctx.fillStyle = "#241e21";
+    ctx.fill();
+    ctx.fillStyle = "#a3919a";
+    ctx.font = `600 20px ${font}`;
+    ctx.fillText(text.ifFc, BX + 28, 392);
+    ctx.fillStyle = "#ff99cc";
+    ctx.font = `800 46px ${font}`;
+    ctx.fillText(`${num(data.ifFc.pp)}pp`, BX + 28, 448, 290);
+    ctx.fillStyle = "#b3ff66";
+    ctx.font = `700 22px ${font}`;
+    ctx.fillText(`+${num(data.ifFc.gain)}pp`, BX + 28, 490);
+    if (data.ifFc.rank) {
+      ctx.fillStyle = "#e9e1e5";
+      ctx.fillText(`${data.ifFc.rank.exact ? "" : "≈"}#${num(data.ifFc.rank.rank)}`, BX + 28, 526);
+    }
   }
   return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/png"));
 }
@@ -328,15 +231,6 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
   const { data } = props;
   const tierColor = TIER_COLOR[tierOf(data.rank)];
   const [saving, setSaving] = useState(false);
-  const labels: Record<Skill, string> = {
-    accuracy: t.skillAccuracy,
-    aim: t.skillAim,
-    reading: t.skillReading,
-    precision: t.skillPrecision,
-    tapping: t.skillTapping,
-    speed: t.skillSpeed,
-    fingercontrol: t.skillFingercontrol,
-  };
   const styleName = (style: string) => t.styles[style as MapStyle] ?? style;
   const country = data.country?.toUpperCase() ?? null;
   let countryName = country ?? "";
@@ -345,7 +239,6 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
   } catch {
     // Keep the code.
   }
-  const strongest = SKILLS.reduce((best, skill) => (data.skillIndex[skill] > data.skillIndex[best] ? skill : best), "aim" as Skill);
   const number = (value: number) => Math.round(value).toLocaleString(lang);
 
   async function save() {
@@ -355,7 +248,7 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
       const blob = await drawCard(
         data,
         props.userId,
-        { labels, styles: styleName, globalRank: t.globalRank, countryRank: t.countryRank, acc: t.cardAcc, ifFc: t.ifFcTitle, average: t.radarAverage },
+        { styles: styleName, globalRank: t.globalRank, countryRank: t.countryRank, acc: t.cardAcc, ifFc: t.ifFcTitle },
         lang,
       );
       if (!blob) return;
@@ -415,12 +308,6 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
         )}
       </dl>
       <div className="pcard-body">
-        <div className="pcard-radar">
-          <Radar data={data} labels={labels} average={t.radarAverage} />
-          <p>
-            {t.cardStrongest} : <b>{labels[strongest]}</b>
-          </p>
-        </div>
         <div className="pcard-info">
           <div className="pcard-row">
             <span className="pcard-label">{t.cardStyles}</span>
@@ -458,7 +345,6 @@ function PlayerCard(props: { data: ProfileInsights; userId: number }) {
               </span>
             </div>
           )}
-          <p className="pcard-note">{t.radarNote}</p>
         </div>
       </div>
     </section>

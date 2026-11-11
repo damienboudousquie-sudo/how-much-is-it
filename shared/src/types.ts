@@ -386,10 +386,6 @@ export interface StatsResponse extends StatsRates {
 
 /* ---------- "My profile": player card and "if I had FC'd" ---------- */
 
-/** Skills on the player card radar, in display order. */
-export const PROFILE_SKILLS = ["accuracy", "aim", "reading", "precision", "tapping", "speed", "fingercontrol"] as const;
-export type ProfileSkill = (typeof PROFILE_SKILLS)[number];
-
 export interface ProfileChoke {
   beatmapId: number;
   setId: number | null;
@@ -419,13 +415,6 @@ export interface ProfileInsights {
   coverUrl: string | null;
   /** Weighted skill pp over the top plays (aim, speed, accuracy, reading). */
   skills: { aim: number; speed: number; accuracy: number; reading: number };
-  /**
-   * Each skill in the player's top against the same measure on the farm maps most players
-   * play: 1 = like most players, 1.3 = 30 % more. aim, speed, accuracy and reading are the
-   * skill's share of the pp; precision the circle size; tapping the streams (share and
-   * BPM); fingercontrol the uneven rhythms.
-   */
-  skillIndex: Record<ProfileSkill, number>;
   /** Share of the top 20 per map type, and per mod combo over the top 100. */
   styles: { style: string; share: number }[];
   mods: { mods: string; share: number }[];

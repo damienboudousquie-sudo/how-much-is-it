@@ -1,10 +1,9 @@
-import { modRate, PROFILE_SKILLS, ppGain, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
+import { modRate, ppGain, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
 import { me } from "./account";
 import { AppError } from "./errors";
 import { rankForPp } from "./osuApi";
 import { getProfile } from "./patternStore";
 import { calculatePlay } from "./pp";
-import { measurePlay, SkillMean, skillBase } from "./skillBase";
 
 /**
  * "My profile": the player card (weighted skills, map types, mods) and "if I had FC'd":
@@ -121,21 +120,6 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     accuracy: round(weighted(parts.accuracy.sort((a, b) => b - a))),
     reading: round(weighted(parts.reading.sort((a, b) => b - a))),
   };
-  // The card's skills over the top, weighted like pp, next to the usual player.
-  const mine = new SkillMean();
-  reads.forEach((read, index) => {
-    if (read) mine.add(measurePlay(read, getProfile(plays[index].beatmapId), modRate(plays[index].mods)), 0.95 ** index);
-  });
-  const base = await skillBase();
-  const skillIndex = Object.fromEntries(
-    PROFILE_SKILLS.map((skill) => {
-      const value = mine.value(skill);
-      const usual = Math.max(base.values[skill], 0.02);
-      // Capped at 3x: a skill rare on farm maps (finger control) would otherwise explode.
-      return [skill, value == null ? 1 : round(Math.min(3, value / usual), 0.01)];
-    }),
-  ) as ProfileInsights["skillIndex"];
-
   // If FC: a play counts for its FC pp when that is higher than what it gave.
   const chokes: ProfileChoke[] = [];
   // Only the top 20: the plays that really make the total.
@@ -204,7 +188,6 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     countryRank: profile.countryRank ?? null,
     coverUrl: profile.coverUrl ?? null,
     skills,
-    skillIndex,
     styles: [...styleCount].map(([style, count]) => ({ style, share: count / (styled || 1) })).sort((a, b) => b.share - a.share),
     mods: [...modCount].map(([mods, count]) => ({ mods, share: count / (plays.length || 1) })).sort((a, b) => b.share - a.share).slice(0, 5),
     averageAccuracy: accs.length ? round(accs.reduce((sum, acc) => sum + acc, 0) / accs.length, 0.01) : null,
@@ -219,8 +202,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
       lost: round(shown.reduce((sum, choke) => sum + choke.fcPp - choke.pp, 0), 0.01),
     },
   };
-  // Not kept while the usual split is still being measured, so the next view gets it.
-  if (base.measured) answers.set(profile.id, { at: Date.now(), topKey, value });
+  answers.set(profile.id, { at: Date.now(), topKey, value });
   return value;
 }
 
