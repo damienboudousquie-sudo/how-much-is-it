@@ -356,7 +356,7 @@ export function BeatmapView(props: {
             <a className="button ghost" href={osuDirectUrl(meta.beatmapsetId, meta.beatmapId)}>
               {t.osuDirect}
             </a>
-            {meta.mode === "osu" && (
+            {(
               <button
                 ref={autoButton}
                 type="button"
@@ -382,7 +382,7 @@ export function BeatmapView(props: {
         </div>
       </section>
 
-      {showAuto && meta.mode === "osu" && (
+      {showAuto && (
         <AutoPlayerPopup
           key={meta.beatmapId}
           anchor={autoButton.current}

@@ -4670,3 +4670,7 @@ a.stats-key:hover {
   opacity: 0.5;
   cursor: progress;
 }
+
+.auto-bar.no-seek {
+  cursor: default;
+}

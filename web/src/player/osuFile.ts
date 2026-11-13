@@ -1,4 +1,4 @@
-/** Minimal osu!standard .osu reader for the auto player: hit objects, timing, colours. */
+/** Minimal .osu reader for the auto player (all four modes): hit objects, timing, colours. */
 
 export interface Point {
   x: number;
@@ -14,7 +14,8 @@ export interface TimingPoint {
 }
 
 export interface HitObject {
-  kind: "circle" | "slider" | "spinner";
+  /** "hold": an osu!mania long note (endTime = its end). */
+  kind: "circle" | "slider" | "spinner" | "hold";
   x: number;
   y: number;
   time: number;
@@ -40,6 +41,8 @@ export interface HitObject {
 }
 
 export interface OsuMap {
+  /** 0 osu!, 1 taiko, 2 catch, 3 mania (the map's own mode). */
+  mode: number;
   title: string;
   artist: string;
   version: string;
@@ -48,6 +51,7 @@ export interface OsuMap {
   stackLeniency: number;
   cs: number;
   ar: number;
+  od: number;
   sliderMultiplier: number;
   tickRate: number;
   timing: TimingPoint[];
@@ -120,6 +124,10 @@ export function parseOsu(text: string): OsuMap {
         base.slides = Math.max(1, Number(p[6] ?? 1));
         base.length = Math.max(0, Number(p[7] ?? 0));
         base.edges = p[8] ? p[8].split("|").map(Number) : null;
+      } else if (type & 128) {
+        // osu!mania long note: the end time leads the extras field ("end:sampleset:…").
+        base.kind = "hold";
+        base.endTime = Math.max(base.time, Number((p[5] ?? "").split(":")[0]) || base.time);
       } else if (type & 8) {
         base.kind = "spinner";
         base.x = 256;
@@ -130,6 +138,7 @@ export function parseOsu(text: string): OsuMap {
     }
   }
   const map: OsuMap = {
+    mode: Number(meta.Mode ?? 0) || 0,
     title: meta.Title ?? "",
     artist: meta.Artist ?? "",
     version: meta.Version ?? "",
@@ -139,6 +148,7 @@ export function parseOsu(text: string): OsuMap {
     cs: Number(diff.CircleSize ?? 4),
     ar: Number(diff.ApproachRate ?? diff.OverallDifficulty ?? 8),
     sliderMultiplier: Number(diff.SliderMultiplier ?? 1.4),
+    od: Number(diff.OverallDifficulty ?? 5),
     tickRate: Number(diff.SliderTickRate ?? 1),
     timing,
     objects,

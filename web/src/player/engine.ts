@@ -1,3 +1,4 @@
+import { drawCatch, drawMania, drawTaiko } from "./modes";
 import { pointAt, type HitObject, type OsuMap, type Point } from "./osuFile";
 import { tinted, type Skin } from "./skin";
 
@@ -129,19 +130,28 @@ export class AutoPlayer {
     if (this.music) this.music.volume = this.volume;
   }
 
-  togglePlay(): void {
-    this.playing = !this.playing;
-    if (this.music) {
-      if (this.playing) void this.music.play().catch(() => undefined);
-      else this.music.pause();
+  /**
+   * Play / pause. The map only moves with its music: without music (not started yet, or
+   * the clip ended) this does nothing and returns false, so the caller starts the music.
+   */
+  togglePlay(): boolean {
+    if (!this.music) {
+      this.playing = false;
+      this.report();
+      return false;
     }
+    this.playing = !this.playing;
+    if (this.playing) void this.music.play().catch(() => undefined);
+    else this.music.pause();
     this.report();
+    return true;
   }
 
+  /** Seeking needs the whole song (the 10 s clip only covers its own part of the map). */
   seek(fraction: number): void {
+    if (!this.music || !this.fullSong) return;
     this.time = this.map.start + Math.max(0, Math.min(1, fraction)) * (this.map.duration - this.map.start);
-    if (this.music && this.fullSong) this.music.currentTime = Math.max(0, this.time / 1000);
-    else this.stopMusic();
+    this.music.currentTime = Math.max(0, this.time / 1000);
   }
 
   /**
@@ -169,7 +179,11 @@ export class AutoPlayer {
     }
     audio.addEventListener("ended", () => {
       if (this.music !== audio) return;
-      if (!fullSong) return this.stopMusic();
+      if (!fullSong) {
+        // The clip is over: the map stops with it.
+        this.playing = false;
+        return this.stopMusic();
+      }
       // Loop the whole map, like the silent player does.
       this.time = this.map.start;
       audio.currentTime = Math.max(0, this.map.start / 1000);
@@ -195,12 +209,11 @@ export class AutoPlayer {
   // ---------- timing ----------
 
   private tick = (now: number): void => {
-    const dt = Math.min(100, now - this.last);
     this.last = now;
     if (this.playing) {
       const before = this.time;
+      // The map follows the music clock only: while the song loads or buffers, it waits.
       if (this.music && !this.music.paused) this.time = this.musicBase + this.music.currentTime * 1000;
-      else this.time += dt * this.mods.rate;
       if (this.time > this.map.duration) {
         this.time = this.map.start;
         if (this.music && this.fullSong) this.music.currentTime = Math.max(0, this.map.start / 1000);
@@ -252,7 +265,7 @@ export class AutoPlayer {
     const push = (time: number, bits: number, tick = false) => out.push({ time, bits, tick, ...at(time) });
     for (const o of objects) {
       index += 1;
-      if (o.kind === "circle") push(o.time, o.sound);
+      if (o.kind === "circle" || o.kind === "hold") push(o.time, o.sound);
       else if (o.kind === "spinner") push(o.endTime, o.sound);
       else {
         for (let i = 0; i <= o.slides; i++) push(o.time + i * o.slideTime, o.edges ? (o.edges[i] ?? o.sound) : o.sound);
@@ -577,6 +590,14 @@ export class AutoPlayer {
   }
 
   private draw(): void {
+    if (this.map.mode !== 0) {
+      // taiko, catch, mania: their own playfields (player/modes.ts).
+      const view = { ctx: this.ctx, width: this.canvas.width, height: this.canvas.height, dpr: this.dpr, colours: this.skin.colours };
+      if (this.map.mode === 1) drawTaiko(view, this.map, this.time);
+      else if (this.map.mode === 2) drawCatch(view, this.map, this.time, this.preempt);
+      else drawMania(view, this.map, this.time, 1);
+      return;
+    }
     const ctx = this.ctx;
     const t = this.time;
     const images = this.skin.images;

@@ -305,8 +305,12 @@ function AutoPlayerPanel(props: { beatmapId: number; setId: number | null; mods:
           type="button"
           className="auto-play"
           aria-label={playing ? t.playerPause : t.playerPlay}
-          disabled={state !== "ready"}
-          onClick={() => player.current?.togglePlay()}
+          // The map never moves without its music: play starts the music when there is none.
+          disabled={state !== "ready" || musicState === "loading"}
+          onClick={() => {
+            const p = player.current;
+            if (p && !p.togglePlay()) void startSong();
+          }}
         >
           {playing ? (
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -319,7 +323,7 @@ function AutoPlayerPanel(props: { beatmapId: number; setId: number | null; mods:
             </svg>
           )}
         </button>
-        <div className="auto-bar" ref={bar} onPointerDown={seek}>
+        <div className={musicState === "clip" ? "auto-bar no-seek" : "auto-bar"} ref={bar} onPointerDown={seek}>
           <div className="auto-fill" ref={fill} />
         </div>
         <span className="auto-clock" ref={clock}>
