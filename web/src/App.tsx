@@ -12,10 +12,11 @@ import { PreviewDock } from "./PreviewDock";
 import { FeedbackInbox, TopLinks } from "./Feedback";
 import { ForYou } from "./Recommend";
 import { ProfilePage } from "./Profile";
+import { ChangelogPage } from "./Changelog";
 import { StatsPage } from "./Stats";
 import { trackView } from "./track";
 import { AccountButton, LoginError } from "./Marks";
-import { beatmapPath, FEEDBACK_PATH, FOR_YOU_PATH, LEGAL_PATH, PROFILE_PATH, STATS_PATH, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
+import { beatmapPath, FEEDBACK_PATH, FOR_YOU_PATH, CHANGELOG_PATH, LEGAL_PATH, PROFILE_PATH, STATS_PATH, mapsPath, parseRoute, PINNED_PATH, type AppRoute } from "./route";
 import { PinnedMaps } from "./Pinned";
 import { SearchBox, type OpenTarget } from "./SearchBox";
 import { Triangles } from "./Triangles";
@@ -74,7 +75,7 @@ export function App() {
   useEffect(() => {
     // Old links used ?b=123. Keep them working, then show the canonical hash.
     const initial = parseRoute(window.location.hash, window.location.search);
-    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : initial.page === "feedback" ? FEEDBACK_PATH : initial.page === "foryou" ? FOR_YOU_PATH : initial.page === "stats" ? STATS_PATH : initial.page === "legal" ? LEGAL_PATH : initial.page === "profile" ? PROFILE_PATH : mapsPath(initial.mode);
+    const canonical = initial.page === "beatmap" ? beatmapPath(initial.mode, initial.id) : initial.page === "pinned" ? PINNED_PATH : initial.page === "feedback" ? FEEDBACK_PATH : initial.page === "foryou" ? FOR_YOU_PATH : initial.page === "stats" ? STATS_PATH : initial.page === "legal" ? LEGAL_PATH : initial.page === "profile" ? PROFILE_PATH : initial.page === "changelog" ? CHANGELOG_PATH : mapsPath(initial.mode);
     const url = new URL(window.location.href);
     url.searchParams.delete("b");
     const target = `${url.pathname}${url.search}${canonical}`;
@@ -215,6 +216,15 @@ export function App() {
             ← {t.backToMaps}
           </a>
           <FeedbackInbox />
+        </>
+      )}
+
+      {route.page === "changelog" && (
+        <>
+          <a className="back" href={mapsPath(finderMode)}>
+            ← {t.backToMaps}
+          </a>
+          <ChangelogPage />
         </>
       )}
 

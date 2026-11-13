@@ -1,3 +1,5 @@
+import { formatDay, LAST_UPDATE } from "./Changelog";
+import { CHANGELOG_PATH } from "./route";
 import { useEffect, useRef, useState } from "react";
 import { trackEvent } from "./track";
 import { createPortal } from "react-dom";
@@ -14,10 +16,14 @@ async function send(url: string, init: RequestInit): Promise<Response> {
 
 /** "Feedback" and "Contact: (osu!)" on the right of the top bar. */
 export function TopLinks() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <div className="top-links">
+      <a className="top-updated" href={CHANGELOG_PATH} title={t.changelogTitle} onClick={() => trackEvent("changelog_open")}>
+        <span className="dot" aria-hidden="true" />
+        <span className="top-updated-label">{t.updatedOn}</span> {formatDay(LAST_UPDATE, lang)}
+      </a>
       <button type="button" className="top-feedback" onClick={() => {
           setOpen(true);
           trackEvent("feedback_open");

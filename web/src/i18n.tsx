@@ -154,6 +154,8 @@ export type Copy = {
   creatorProfile: string;
   forYou: string;
   myProfile: string;
+  updatedOn: string;
+  changelogTitle: string;
   modeSwitch: string;
   stdOnly: string;
   newBadge: string;
@@ -444,6 +446,8 @@ const en: Copy = {
   creatorProfile: "The creator's osu! profile",
   forYou: "Maps for you",
   myProfile: "My profile",
+  updatedOn: "Updated",
+  changelogTitle: "What's new",
   modeSwitch: "Game mode",
   stdOnly: "For now this only works for osu! (standard). Your main mode on osu! is {mode}.",
   newBadge: "New",
@@ -734,6 +738,8 @@ const fr: Copy = {
   creatorProfile: "Le profil osu! du créateur",
   forYou: "Maps pour toi",
   myProfile: "Mon profil",
+  updatedOn: "Mis à jour",
+  changelogTitle: "Nouveautés",
   modeSwitch: "Mode de jeu",
   stdOnly: "Pour l'instant, ça ne marche qu'en osu! (standard). Ton mode principal sur osu! est {mode}.",
   newBadge: "Nouveau",
@@ -1024,6 +1030,8 @@ const es: Copy = {
   creatorProfile: "El perfil de osu! del creador",
   forYou: "Mapas para ti",
   myProfile: "Mi perfil",
+  updatedOn: "Actualizado",
+  changelogTitle: "Novedades",
   modeSwitch: "Modo de juego",
   stdOnly: "Por ahora solo funciona en osu! (standard). Tu modo principal en osu! es {mode}.",
   newBadge: "Nuevo",
@@ -1342,6 +1350,8 @@ const de: Copy = {
   creatorProfile: "Das osu!-Profil des Erstellers",
   forYou: "Maps für dich",
   myProfile: "Mein Profil",
+  updatedOn: "Aktualisiert",
+  changelogTitle: "Neuigkeiten",
   modeSwitch: "Spielmodus",
   stdOnly: "Funktioniert vorerst nur für osu! (Standard). Dein Hauptmodus auf osu! ist {mode}.",
   newBadge: "Neu",
@@ -1660,6 +1670,8 @@ const pt: Copy = {
   creatorProfile: "O perfil osu! do criador",
   forYou: "Mapas para você",
   myProfile: "Meu perfil",
+  updatedOn: "Atualizado",
+  changelogTitle: "Novidades",
   modeSwitch: "Modo de jogo",
   stdOnly: "Por enquanto só funciona no osu! (standard). Seu modo principal no osu! é {mode}.",
   newBadge: "Novo",
@@ -1978,6 +1990,8 @@ const pl: Copy = {
   creatorProfile: "Profil osu! twórcy",
   forYou: "Mapy dla ciebie",
   myProfile: "Mój profil",
+  updatedOn: "Zaktualizowano",
+  changelogTitle: "Co nowego",
   modeSwitch: "Tryb gry",
   stdOnly: "Na razie działa tylko dla osu! (standard). Twój główny tryb w osu! to {mode}.",
   newBadge: "Nowe",
@@ -2296,6 +2310,8 @@ const ru: Copy = {
   creatorProfile: "Профиль osu! создателя",
   forYou: "Карты для вас",
   myProfile: "Мой профиль",
+  updatedOn: "Обновлено",
+  changelogTitle: "Что нового",
   modeSwitch: "Режим игры",
   stdOnly: "Пока работает только для osu! (standard). Ваш основной режим в osu!: {mode}.",
   newBadge: "Новое",
@@ -2614,6 +2630,8 @@ const ko: Copy = {
   creatorProfile: "제작자의 osu! 프로필",
   forYou: "추천 맵",
   myProfile: "내 프로필",
+  updatedOn: "업데이트",
+  changelogTitle: "새 소식",
   modeSwitch: "게임 모드",
   stdOnly: "현재는 osu! (스탠다드)에서만 작동합니다. osu!의 주 모드: {mode}.",
   newBadge: "신규",
@@ -2932,6 +2950,8 @@ const ja: Copy = {
   creatorProfile: "制作者の osu! プロフィール",
   forYou: "あなたへのおすすめ",
   myProfile: "マイプロフィール",
+  updatedOn: "更新",
+  changelogTitle: "更新履歴",
   modeSwitch: "ゲームモード",
   stdOnly: "現在は osu!（スタンダード）のみ対応しています。osu! でのメインモード：{mode}。",
   newBadge: "新着",
@@ -3250,6 +3270,8 @@ const zh: Copy = {
   creatorProfile: "作者的 osu! 个人资料",
   forYou: "为你推荐",
   myProfile: "我的资料",
+  updatedOn: "更新于",
+  changelogTitle: "更新日志",
   modeSwitch: "游戏模式",
   stdOnly: "目前仅支持 osu!（标准）。你在 osu! 的主模式是 {mode}。",
   newBadge: "新",
