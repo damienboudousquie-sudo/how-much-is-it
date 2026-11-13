@@ -4,6 +4,7 @@ import { useAccount } from "./account";
 import { fetchProfile } from "./api";
 import { ModBadges, StarPill } from "./Badges";
 import { fill, useI18n } from "./i18n";
+import { ModeSwitch, usePlayerMode } from "./ModeSwitch";
 import { modeName, tierOf } from "./Recommend";
 import { trackEvent } from "./track";
 
@@ -34,7 +35,7 @@ const STYLE_COLOR: Record<string, string> = {
   fingercontrol: "#f2df5e",
 };
 
-let kept: { player: number; data: ProfileInsights } | null = null;
+let kept: { player: number; mode: string; data: ProfileInsights } | null = null;
 
 function StyleBar(props: { styles: ProfileInsights["styles"]; names: (style: string) => string }) {
   if (props.styles.length === 0) return <span className="pcard-none">—</span>;
@@ -445,25 +446,35 @@ export function ProfilePage(props: { onOpen: (choke: ProfileChoke) => void }) {
   const { t } = useI18n();
   const account = useAccount();
   const player = account.profile?.id ?? 0;
-  const [data, setData] = useState<ProfileInsights | null>(kept && kept.player === player ? kept.data : null);
+  const [mode, setMode] = usePlayerMode();
+  const [data, setData] = useState<ProfileInsights | null>(kept && kept.player === player && kept.mode === mode ? kept.data : null);
   const [error, setError] = useState<string | null>(null);
-  const started = useRef(false);
+  const loaded = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!account.ready || !account.profile || started.current) return;
-    started.current = true;
+    if (!account.ready || !account.profile || loaded.current === mode) return;
+    loaded.current = mode;
+    if (kept && kept.player === player && kept.mode === mode) {
+      setData(kept.data);
+      return;
+    }
+    setData(null);
+    setError(null);
     const controller = new AbortController();
-    fetchProfile(controller.signal)
+    fetchProfile(mode, controller.signal)
       .then((answer) => {
-        kept = { player, data: answer };
+        kept = { player, mode, data: answer };
         setData(answer);
       })
       .catch((caught) => {
-        if (!controller.signal.aborted && !data) setError(caught instanceof Error ? caught.message : t.profileError);
+        if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : t.profileError);
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (loaded.current === mode) loaded.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account.ready, account.profile]);
+  }, [account.ready, account.profile, mode]);
 
   const loadingSteps = useMemo(() => [t.profileLoading1, t.profileLoading2, t.profileLoading3], [t]);
   const [step, setStep] = useState(0);
@@ -488,6 +499,7 @@ export function ProfilePage(props: { onOpen: (choke: ProfileChoke) => void }) {
   }
   return (
     <div className="profile-page">
+      <ModeSwitch value={mode} disabled={!data && !error} onChange={(next) => { trackEvent("profile_mode"); setMode(next); }} />
       {data ? (
         <>
           <PlayerCard data={data} userId={player} />

@@ -266,6 +266,8 @@ export interface TopPlay {
   n50?: number;
   /** Set on osu!stable (CL), where slider ends do not count. */
   classic?: boolean;
+  /** The score's raw hit counts as osu! names them (great, ok, meh, miss, perfect, good, large_tick_hit…). */
+  stats?: Record<string, number>;
   title?: string;
   artist?: string;
   version?: string;
@@ -327,6 +329,8 @@ export interface RecommendHit extends DiscoverHit {
 }
 
 export interface RecommendResponse {
+  /** The player's stats in the mode of the list (it may not be their main mode). */
+  profile?: UserProfile;
   /** FC (SS) pp range the suggestions come from: that of the maps in the top plays. */
   ppMin: number;
   ppMax: number;

@@ -8,6 +8,7 @@ import {
   styleScores,
   type DiscoverHit,
   type DiscoverRequest,
+  type Mode,
   type RecommendHit,
   type RecommendResponse,
   type TopPlay,
@@ -52,12 +53,12 @@ interface SsInfo {
 }
 const ssCache = new Map<string, SsInfo | null>();
 
-async function ssInfo(beatmapId: number, mods: readonly string[]): Promise<SsInfo | null> {
-  const key = `${beatmapId}:${[...mods].sort().join("")}`;
+async function ssInfo(beatmapId: number, mods: readonly string[], mode: Mode = "osu"): Promise<SsInfo | null> {
+  const key = `${mode}:${beatmapId}:${[...mods].sort().join("")}`;
   if (ssCache.has(key)) return ssCache.get(key)!;
   let value: SsInfo | null = null;
   try {
-    const result = await calculatePlay({ beatmapId, mode: "osu", mods: [...mods], clockRate: null, accuracy: 100, combo: null, misses: 0 }, "osu", 0, true);
+    const result = await calculatePlay({ beatmapId, mode, mods: [...mods], clockRate: null, accuracy: 100, combo: null, misses: 0 }, mode, 0, true);
     value = result.score.pp > 0 ? { pp: result.score.pp, bpm: result.stats.bpm, length: result.stats.lengthSeconds } : null;
   } catch {
     value = null;
@@ -67,19 +68,19 @@ async function ssInfo(beatmapId: number, mods: readonly string[]): Promise<SsInf
   return value;
 }
 
-async function ssPp(beatmapId: number, mods: readonly string[]): Promise<number | null> {
-  return (await ssInfo(beatmapId, mods))?.pp ?? null;
+async function ssPp(beatmapId: number, mods: readonly string[], mode: Mode = "osu"): Promise<number | null> {
+  return (await ssInfo(beatmapId, mods, mode))?.pp ?? null;
 }
 
 /** pp of a full combo at the given accuracy (no miss), cached like ssPp. */
 const fcCache = new Map<string, number | null>();
 
-async function fcPp(beatmapId: number, mods: readonly string[], accuracy: number): Promise<number | null> {
-  const key = `${beatmapId}:${[...mods].sort().join("")}:${accuracy.toFixed(2)}`;
+async function fcPp(beatmapId: number, mods: readonly string[], accuracy: number, mode: Mode = "osu"): Promise<number | null> {
+  const key = `${mode}:${beatmapId}:${[...mods].sort().join("")}:${accuracy.toFixed(2)}`;
   if (fcCache.has(key)) return fcCache.get(key)!;
   let value: number | null = null;
   try {
-    const result = await calculatePlay({ beatmapId, mode: "osu", mods: [...mods], clockRate: null, accuracy, combo: null, misses: 0 }, "osu", 0, true);
+    const result = await calculatePlay({ beatmapId, mode, mods: [...mods], clockRate: null, accuracy, combo: null, misses: 0 }, mode, 0, true);
     value = result.score.pp > 0 ? result.score.pp : null;
   } catch {
     value = null;
@@ -104,7 +105,7 @@ function median(values: number[], fallback: number): number {
  * scored (play pp ÷ accuracy share), capped by the map's SS pp. So a 230 pp play with 4
  * misses on a map worth 420 at SS counts as ~280, not 420.
  */
-async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; levels: number[] }> {
+async function scoreRatio(plays: TopPlay[], mode: Mode): Promise<{ ratio: number; levels: number[] }> {
   const ratios: number[] = [];
   const accShares: number[] = [];
   const found: { play: TopPlay; ss: number }[] = [];
@@ -113,12 +114,12 @@ async function scoreRatio(plays: TopPlay[]): Promise<{ ratio: number; levels: nu
     Array.from({ length: 4 }, async () => {
       for (let play = queue.shift(); play; play = queue.shift()) {
         const mods = play.mods.filter((mod) => mod !== "CL");
-        const ss = await ssPp(play.beatmapId, mods);
+        const ss = await ssPp(play.beatmapId, mods, mode);
         if (!ss || ss <= 0) continue;
         ratios.push(Math.min(1, play.pp / ss));
         found.push({ play, ss });
         if (play.accuracy != null && play.accuracy < 100) {
-          const fc = await fcPp(play.beatmapId, mods, play.accuracy);
+          const fc = await fcPp(play.beatmapId, mods, play.accuracy, mode);
           if (fc) accShares.push(Math.min(1, fc / ss));
         } else if (play.accuracy === 100) {
           accShares.push(1);
@@ -148,17 +149,19 @@ function sample<T extends { score: number }>(list: T[], count: number): T[] {
 
 const RESULTS = 40;
 
-export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set()): Promise<RecommendResponse> {
-  const { top, marks, mode } = playerData(sessionId);
+export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set(), askedMode?: Mode): Promise<RecommendResponse> {
+  const { top, marks, mode, profile: player } = await playerData(sessionId, askedMode);
   const plays = [...top].sort((a, b) => b.pp - a.pp);
-  // Built on osu! (standard) map analysis: other modes get an empty list (the page says why).
-  if (plays.length === 0 || mode !== "osu") return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
+  // Map types (jump, stream, hybrid) exist for osu! (standard) only: the other modes get
+  // one group, matched on pp range, mods and length.
+  const standard = mode === "osu";
+  if (plays.length === 0) return { profile: player, ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
 
   // Everything is read from the top 20: the SS level of those plays sets the range, from
   // the lowest to 10 % above the highest. A choke on a much harder map counts for what the
   // player really scored there, not for the map's SS pp (see scoreRatio).
   const best = plays.slice(0, 20);
-  const { ratio, levels } = await scoreRatio(best);
+  const { ratio, levels } = await scoreRatio(best, mode);
   const ssMin = levels.length >= 3 ? Math.round(levels[0]) : Math.round((plays[Math.min(plays.length - 1, 19)].pp * 0.95) / ratio);
   // Top: 10 % above the best level, to leave room to progress.
   const ssMax = levels.length >= 3 ? Math.round(levels[levels.length - 1] * 1.1) : Math.round((plays[0].pp * 1.1) / ratio);
@@ -178,22 +181,22 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
   const reads: Read[] = [];
   await Promise.all(
     best.map(async (play) => {
-      const profile = getProfile(play.beatmapId);
-      if (!profile) return;
-      const scores = styleScores(profile, { version: "" }, modRate(play.mods));
-      const main = primaryStyle(scores) as Group;
-      const info = await ssInfo(play.beatmapId, play.mods.filter((mod) => mod !== "CL"));
+      const profile = standard ? getProfile(play.beatmapId) : null;
+      if (standard && !profile) return;
+      const scores = profile ? styleScores(profile, { version: "" }, modRate(play.mods)) : null;
+      const main = scores ? (primaryStyle(scores) as Group) : "hybrid";
+      const info = await ssInfo(play.beatmapId, play.mods.filter((mod) => mod !== "CL"), mode);
       reads.push({
         group: main,
         combo: comboOf(play.mods).join("") || "NM",
-        tags: main === "hybrid" ? secondaryStyles(scores, main) : [],
+        tags: scores && main === "hybrid" ? secondaryStyles(scores, main) : [],
         length: info?.length ?? null,
         bpm: info?.bpm ?? null,
       });
     }),
   );
   const comboShares = shares(best.map((play) => ({ key: comboOf(play.mods).join("") || "NM", weight: 1 })));
-  const styleShares = shares(reads.map((read) => ({ key: read.group as string, weight: 1 })));
+  const styleShares = standard ? shares(reads.map((read) => ({ key: read.group as string, weight: 1 }))) : [];
 
   const groups: Group[] = (["stream", "jump", "hybrid"] as Group[]).filter((group) => reads.some((read) => read.group === group));
   if (groups.length === 0) groups.push("hybrid");
@@ -225,7 +228,8 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     const groupCombos = shares(source.map((read) => ({ key: read.combo, weight: 1 })));
     const combos = (groupCombos.length ? groupCombos : comboShares).filter((item, index) => index === 0 || item.share >= 0.15).slice(0, 3);
     let styles: ConcreteStyle[];
-    if (group !== "hybrid") styles = [group];
+    if (!standard) styles = [];
+    else if (group !== "hybrid") styles = [group];
     else {
       const tagCount = new Map<ConcreteStyle, number>();
       for (const read of mine) for (const tag of read.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
@@ -237,7 +241,7 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
       combos,
       styles,
       length: median(mine.map((read) => read.length)),
-      bpm: group === "stream" ? median(mine.map((read) => read.bpm)) : null,
+      bpm: group === "stream" && standard ? median(mine.map((read) => read.bpm)) : null,
     };
   });
   const wanted = [...new Set(plan.flatMap((item) => item.styles))];
@@ -267,7 +271,7 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
         for (let page = 0; page < 2; page++) {
           const answer = await discover({
             query: "",
-            mode: "osu",
+            mode,
             styles: target.styles,
             mods: modRecord(mods),
             ppMin: range.min,
@@ -330,7 +334,7 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
       Array.from({ length: 6 }, async () => {
         for (let hit = queue.shift(); hit; hit = queue.shift()) {
           if (Date.now() > deadline) break;
-          const ss = await ssPp(hit.beatmapId, hit.mods);
+          const ss = await ssPp(hit.beatmapId, hit.mods, mode);
           if (!ss) continue;
           hit.pp = Math.round(ss * 100) / 100;
           hit.gain = ppGain(plays, hit.beatmapId, ss * ratio);
@@ -361,6 +365,7 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     .slice(0, RESULTS)
     .map(({ score: _score, slice: _slice, group: _group, sim: _sim, ...hit }) => hit);
   return {
+    profile: player,
     ppMin: ssMin,
     ppMax: ssMax,
     ratio,

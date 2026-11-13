@@ -72,6 +72,6 @@ export function prefetchMap(beatmapId: number, beatmapsetId: number | null): voi
   }).catch(() => prefetched.delete(beatmapId));
 }
 
-export function fetchProfile(signal?: AbortSignal): Promise<import("@osu-pp/shared").ProfileInsights> {
-  return request("/api/profile", { signal });
+export function fetchProfile(mode: string, signal?: AbortSignal): Promise<import("@osu-pp/shared").ProfileInsights> {
+  return request(`/api/profile?mode=${encodeURIComponent(mode)}`, { signal });
 }

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { trackEvent } from "./track";
-import type { DiscoverHit, MapStyle, RecommendResponse } from "@osu-pp/shared";
+import type { DiscoverHit, MapStyle, Mode, RecommendResponse, UserProfile } from "@osu-pp/shared";
 import { useAccount } from "./account";
 import { MapCard } from "./Finder";
 import { formatPp } from "./format";
 import { currentLang, fill, useI18n } from "./i18n";
+import { ModeSwitch, usePlayerMode } from "./ModeSwitch";
 
 const pct = (share: number) => `${Math.round(share * 100)} %`;
 
@@ -29,10 +30,10 @@ export function tierOf(rank: number | null): string {
 }
 
 /** The signed-in player as a small osu!-style card: avatar, name, flag, ranks and pp. */
-function PlayerCard() {
+function PlayerCard(props: { profile?: UserProfile | null }) {
   const { t, lang } = useI18n();
   const account = useAccount();
-  const profile = account.profile;
+  const profile = props.profile ?? account.profile;
   if (!profile) return null;
   const country = profile.country?.toUpperCase() ?? null;
   let countryName = country ?? "";
@@ -77,13 +78,14 @@ function PlayerCard() {
 
 /** Tillerino-style suggestions built from the signed-in player's top plays. */
 /** The last list, kept so coming back from a map shows the same suggestions. */
-let lastList: { player: number; data: RecommendResponse; shown: number[] } | null = null;
+let lastList: { player: number; mode: Mode; data: RecommendResponse; shown: number[] } | null = null;
 
 export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
   const { t } = useI18n();
   const account = useAccount();
   const player = account.profile?.id ?? 0;
-  const kept = lastList && lastList.player === player ? lastList : null;
+  const [mode, setMode] = usePlayerMode();
+  const kept = lastList && lastList.player === player && lastList.mode === mode ? lastList : null;
   const [data, setData] = useState<RecommendResponse | null>(kept?.data ?? null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -94,12 +96,12 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
 
   useEffect(() => {
     if (!signedIn) return;
-    if (round === 0 && data && lastList?.player === player) return;
+    if (round === 0 && data && lastList?.player === player && lastList.mode === mode) return;
     let alive = true;
     setLoading(true);
     setError(null);
-    const skip = round > 0 ? `?skip=${shown.current.slice(-400).join(",")}` : "";
-    fetch(`/api/recommend${skip}`, { headers: { "x-lang": currentLang() }, cache: "no-store" })
+    const skip = round > 0 ? `&skip=${shown.current.slice(-400).join(",")}` : "";
+    fetch(`/api/recommend?mode=${mode}${skip}`, { headers: { "x-lang": currentLang() }, cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
@@ -112,7 +114,7 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
         shown.current = [...shown.current, ...answer.results.map((hit) => hit.beatmapId)];
         // Cards show the FC pp (the range is in FC pp); the gain uses what the player would really get.
         const next = { ...answer, results: answer.results.map((hit) => ({ ...hit, expectedPp: Math.round(hit.pp * answer.ratio) })) };
-        lastList = { player, data: next, shown: shown.current };
+        lastList = { player, mode, data: next, shown: shown.current };
         setData(next);
       })
       .catch((failure) => alive && setError(failure instanceof Error ? failure.message : String(failure)))
@@ -120,10 +122,9 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
     return () => {
       alive = false;
     };
-  }, [signedIn, round, account.top.length]);
+  }, [signedIn, round, account.top.length, mode]);
 
   if (!account.ready) return null;
-  const otherMode = account.profile?.mode && account.profile.mode !== "osu" ? account.profile.mode : null;
 
   return (
     <section className="finder pinned for-you">
@@ -141,7 +142,18 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
           </button>
         )}
         <p className="help">{signedIn ? t.forYouIntro : t.forYouSignIn}</p>
-        {otherMode && <p className="notice">{fill(t.stdOnly, { mode: modeName(otherMode) })}</p>}
+        {signedIn && (
+          <ModeSwitch
+            value={mode}
+            disabled={loading}
+            onChange={(next) => {
+              trackEvent("foryou_mode");
+              shown.current = [];
+              setData(null);
+              setMode(next);
+            }}
+          />
+        )}
         {data && data.results.length > 0 && (
           <dl className="for-you-profile">
             <div>
@@ -186,7 +198,7 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
           </div>
         )}
       </div>
-      <PlayerCard />
+      <PlayerCard profile={data?.profile} />
       {error && <p className="notice error">{error}</p>}
       {loading && !data && <p className="empty">{t.forYouLoading}</p>}
       {data && data.results.length === 0 && !loading && <p className="empty">{t.forYouEmpty}</p>}

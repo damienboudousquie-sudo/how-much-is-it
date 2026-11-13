@@ -7,7 +7,7 @@ import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyReply } from "fastify";
 import { apiKeyConfigured, mirrorHealth, rankForPp } from "./osuApi";
-import { InputError } from "@osu-pp/shared";
+import { apiMode, InputError, type Mode } from "@osu-pp/shared";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
@@ -232,17 +232,23 @@ app.get("/api/recommend", async (request, reply) => {
     reply.header("cache-control", "no-store");
     const raw = String((request.query as { skip?: string }).skip ?? "");
     const skip = new Set(raw.split(",").slice(0, 400).map(Number).filter((id) => Number.isInteger(id) && id > 0));
-    return await recommend(sessionFromCookie(request.headers.cookie), skip);
+    return await recommend(sessionFromCookie(request.headers.cookie), skip, askedMode(request.query));
   } catch (error) {
     sendError(reply, error);
   }
 });
 
+/** ?mode= on the player pages: osu, taiko, catch (or fruits), mania; absent = the player's main mode. */
+function askedMode(query: unknown): Mode | undefined {
+  const raw = (query as { mode?: string }).mode;
+  return raw === "catch" ? "catch" : (apiMode(raw) ?? undefined);
+}
+
 /** "My profile": player card and "if I had FC'd" for the signed-in player. */
 app.get("/api/profile", async (request, reply) => {
   try {
     reply.header("cache-control", "no-store");
-    return await profileInsights(sessionFromCookie(request.headers.cookie));
+    return await profileInsights(sessionFromCookie(request.headers.cookie), askedMode(request.query));
   } catch (error) {
     sendError(reply, error);
   }

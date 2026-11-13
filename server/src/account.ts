@@ -39,6 +39,8 @@ interface PlayerFile {
   pins?: Record<string, PinInfo>;
   top: TopPlay[];
   topAt: number;
+  /** Stats and top plays in the modes other than the player's main one, fetched when asked. */
+  modes?: Partial<Record<Mode, { profile: UserProfile; top: TopPlay[]; at: number }>>;
 }
 
 export function loginConfigured(): boolean {
@@ -280,24 +282,17 @@ interface ApiScore {
   beatmap?: { id: number; version?: string; difficulty_rating?: number };
   beatmapset?: { id?: number; title?: string; artist?: string };
   max_combo?: number;
-  statistics?: { great?: number; ok?: number; meh?: number; miss?: number; count_300?: number; count_100?: number; count_50?: number; count_miss?: number };
+  statistics?: Record<string, number | undefined> & { great?: number; ok?: number; meh?: number; miss?: number; count_300?: number; count_100?: number; count_50?: number; count_miss?: number };
 }
 
-async function refreshTop(sessionId: string, session: Session, file: PlayerFile): Promise<void> {
-  // Saves from before score details were kept (no misses field) are fetched again at once.
-  const detailed = (file.top.length === 0 || file.top[0].misses !== undefined) && file.profile?.coverUrl !== undefined && file.profile?.mode !== undefined;
-  if (detailed && Date.now() - file.topAt < TOP_TTL_MS) return;
-  const access = await freshToken(sessionId, session);
-  // The player's main mode first, then the top plays of that mode.
-  const me = await apiGet<ApiUser>("/me", access);
-  const mode = playMode(me.playmode);
-  const scores = await apiGet<ApiScore[]>(`/users/${session.userId}/scores/best?mode=${pathMode(mode)}&limit=100`, access);
-  file.profile = toProfile(me);
-  file.top = scores
+function toTop(scores: ApiScore[]): TopPlay[] {
+  return scores
     .filter((score) => score.beatmap?.id && typeof score.pp === "number")
     .map((score) => {
       const acronyms = (score.mods ?? []).map((mod) => (typeof mod === "string" ? mod : mod.acronym));
       const stats = score.statistics ?? {};
+      const raw: Record<string, number> = {};
+      for (const [key, value] of Object.entries(stats)) if (typeof value === "number") raw[key] = value;
       return {
         beatmapId: score.beatmap!.id,
         pp: Math.round(score.pp! * 100) / 100,
@@ -309,6 +304,7 @@ async function refreshTop(sessionId: string, session: Session, file: PlayerFile)
         n100: stats.ok ?? stats.count_100,
         n50: stats.meh ?? stats.count_50,
         classic: acronyms.includes("CL"),
+        stats: raw,
         title: score.beatmapset?.title,
         artist: score.beatmapset?.artist,
         version: score.beatmap?.version,
@@ -316,6 +312,19 @@ async function refreshTop(sessionId: string, session: Session, file: PlayerFile)
         stars: typeof score.beatmap?.difficulty_rating === "number" ? Math.round(score.beatmap.difficulty_rating * 100) / 100 : undefined,
       };
     });
+}
+
+async function refreshTop(sessionId: string, session: Session, file: PlayerFile): Promise<void> {
+  // Saves from before score details were kept (no misses field) are fetched again at once.
+  const detailed = (file.top.length === 0 || file.top[0].stats !== undefined) && file.profile?.coverUrl !== undefined && file.profile?.mode !== undefined;
+  if (detailed && Date.now() - file.topAt < TOP_TTL_MS) return;
+  const access = await freshToken(sessionId, session);
+  // The player's main mode first, then the top plays of that mode.
+  const me = await apiGet<ApiUser>("/me", access);
+  const mode = playMode(me.playmode);
+  const scores = await apiGet<ApiScore[]>(`/users/${session.userId}/scores/best?mode=${pathMode(mode)}&limit=100`, access);
+  file.profile = toProfile(me);
+  file.top = toTop(scores);
   file.topAt = Date.now();
   await savePlayer(session.userId, file);
 }
@@ -374,10 +383,41 @@ export async function me(sessionId: string | undefined): Promise<MeAnswer> {
   return { signedIn: true, loginAvailable: true, profile: file.profile, marks: file.marks, pins: file.pins ?? {}, top: file.top, admin: isAdmin(file.profile) };
 }
 
-/** The signed-in player's top plays and marks, for recommendations. */
-export function playerData(sessionId: string | undefined): { top: TopPlay[]; marks: Record<string, MapMark>; mode: Mode } {
-  const { file } = requirePlayer(sessionId);
-  return { top: file.top, marks: file.marks, mode: file.profile.mode ?? "osu" };
+/**
+ * The signed-in player's stats, top plays and marks in a mode: their main mode by default
+ * (kept up to date by me()), another mode on demand (fetched from osu!, kept 10 minutes).
+ */
+export async function playerData(
+  sessionId: string | undefined,
+  wanted?: Mode,
+): Promise<{ profile: UserProfile; top: TopPlay[]; marks: Record<string, MapMark>; mode: Mode }> {
+  const { session, file } = requirePlayer(sessionId);
+  const main = file.profile.mode ?? "osu";
+  const mode = wanted ?? main;
+  if (mode === main) {
+    try {
+      await refreshTop(sessionId!, session, file);
+    } catch {
+      // osu! down: what is stored.
+    }
+    return { profile: file.profile, top: file.top, marks: file.marks, mode };
+  }
+  const kept = file.modes?.[mode];
+  if (kept && Date.now() - kept.at < TOP_TTL_MS) return { profile: kept.profile, top: kept.top, marks: file.marks, mode };
+  try {
+    const access = await freshToken(sessionId!, session);
+    const [user, scores] = await Promise.all([
+      apiGet<ApiUser>(`/users/${session.userId}/${pathMode(mode)}`, access),
+      apiGet<ApiScore[]>(`/users/${session.userId}/scores/best?mode=${pathMode(mode)}&limit=100`, access),
+    ]);
+    const entry = { profile: { ...toProfile(user), mode }, top: toTop(scores), at: Date.now() };
+    file.modes = { ...(file.modes ?? {}), [mode]: entry };
+    await savePlayer(session.userId, file);
+    return { profile: entry.profile, top: entry.top, marks: file.marks, mode };
+  } catch (error) {
+    if (kept) return { profile: kept.profile, top: kept.top, marks: file.marks, mode };
+    throw error;
+  }
 }
 
 function requirePlayer(sessionId: string | undefined): { session: Session; file: PlayerFile } {

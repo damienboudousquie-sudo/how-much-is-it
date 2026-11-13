@@ -1,5 +1,5 @@
-import { modRate, ppGain, primaryStyle, styleScores, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
-import { me } from "./account";
+import { modRate, ppGain, primaryStyle, styleScores, type Mode, type ProfileChoke, type ProfileInsights, type TopPlay } from "@osu-pp/shared";
+import { playerData } from "./account";
 import { AppError } from "./errors";
 import { rankForPp } from "./osuApi";
 import { getProfile } from "./patternStore";
@@ -24,7 +24,28 @@ interface FcRead {
 
 const fcCache = new Map<string, FcRead | null>();
 
-function fcAccuracy(play: TopPlay): number | null {
+/**
+ * Accuracy of the same score with its combo-breaking misses hit: as a 300 (osu!, taiko,
+ * mania: as a GREAT) or as a caught fruit (catch). The other judgements stay as they were.
+ */
+function fcAccuracy(play: TopPlay, mode: Mode): number | null {
+  const s = play.stats;
+  if (mode !== "osu" && s) {
+    const n = (key: string) => s[key] ?? 0;
+    if (mode === "taiko") {
+      const total = n("great") + n("ok") + n("miss");
+      return total > 0 ? Math.min(100, ((n("great") + n("miss") + 0.5 * n("ok")) / total) * 100) : play.accuracy;
+    }
+    if (mode === "mania") {
+      const total = n("perfect") + n("great") + n("good") + n("ok") + n("meh") + n("miss");
+      const points = 300 * (n("perfect") + n("great") + n("miss")) + 200 * n("good") + 100 * n("ok") + 50 * n("meh");
+      return total > 0 ? Math.min(100, (points / (300 * total)) * 100) : play.accuracy;
+    }
+    // catch: fruits and drops missed become caught; missed droplets stay missed.
+    const caught = n("great") + n("large_tick_hit") + n("small_tick_hit") + n("miss") + n("large_tick_miss");
+    const total = caught + n("small_tick_miss");
+    return total > 0 ? Math.min(100, (caught / total) * 100) : play.accuracy;
+  }
   const { n300, n100, n50, misses = 0 } = play;
   if (n300 == null || n100 == null || n50 == null) return play.accuracy;
   const total = n300 + n100 + n50 + misses;
@@ -33,14 +54,19 @@ function fcAccuracy(play: TopPlay): number | null {
   return Math.min(100, ((300 * (n300 + misses) + 100 * n100 + 50 * n50) / (300 * total)) * 100);
 }
 
-async function readFc(play: TopPlay): Promise<FcRead | null> {
-  const accuracy = fcAccuracy(play) ?? 100;
+/** Misses that broke the combo: misses, plus missed drops in catch. */
+function missesOf(play: TopPlay, mode: Mode): number {
+  return (play.misses ?? 0) + (mode === "catch" ? (play.stats?.large_tick_miss ?? 0) : 0);
+}
+
+async function readFc(play: TopPlay, mode: Mode): Promise<FcRead | null> {
+  const accuracy = fcAccuracy(play, mode) ?? 100;
   const mods = play.classic ? [...play.mods, "CL"] : play.mods;
-  const key = `${play.beatmapId}:${[...mods].sort().join("")}:${accuracy.toFixed(3)}`;
+  const key = `${mode}:${play.beatmapId}:${[...mods].sort().join("")}:${accuracy.toFixed(3)}`;
   if (fcCache.has(key)) return fcCache.get(key)!;
   let value: FcRead | null = null;
   try {
-    const result = await calculatePlay({ beatmapId: play.beatmapId, mode: "osu", mods, clockRate: null, accuracy, combo: null, misses: 0 }, "osu", 0, true);
+    const result = await calculatePlay({ beatmapId: play.beatmapId, mode, mods, clockRate: null, accuracy, combo: null, misses: 0 }, mode, 0, true);
     const s = result.score;
     value =
       s.pp > 0
@@ -91,21 +117,23 @@ function medianOf(values: (number | null)[]): number | null {
   return list.length ? list[Math.floor(list.length / 2)] : null;
 }
 
-const answers = new Map<number, { at: number; topKey: string; value: ProfileInsights }>();
+const answers = new Map<string, { at: number; topKey: string; value: ProfileInsights }>();
 const ANSWER_TTL_MS = 10 * 60 * 1000;
 
-export async function profileInsights(sessionId: string | undefined): Promise<ProfileInsights> {
-  const account = await me(sessionId);
+export async function profileInsights(sessionId: string | undefined, askedMode?: Mode): Promise<ProfileInsights> {
+  const account = await playerData(sessionId, askedMode);
   const profile = account.profile;
-  if (!account.signedIn || !profile) throw new AppError("signed_out", "Sign in with osu! first.", 401);
+  const mode = account.mode;
+  if (!profile) throw new AppError("signed_out", "Sign in with osu! first.", 401);
   const plays = [...account.top].sort((a, b) => b.pp - a.pp);
   const topKey = plays.map((play) => `${play.beatmapId}:${play.pp}`).join(",");
-  const kept = answers.get(profile.id);
+  const cacheKey = `${profile.id}:${mode}`;
+  const kept = answers.get(cacheKey);
   if (kept && kept.topKey === topKey && Date.now() - kept.at < ANSWER_TTL_MS) return kept.value;
 
-  // The FC replays, map types and lengths are worked out for osu! (standard) only for now.
-  const standard = (profile.mode ?? "osu") === "osu";
-  const reads = standard ? await mapLimit(plays, 6, readFc) : plays.map(() => null);
+  // Map types (jump, stream…) exist for osu! (standard) only; the FC replays work in every mode.
+  const standard = mode === "osu";
+  const reads = await mapLimit(plays, 6, (play) => readFc(play, mode));
 
   // Skills: each part of every play, weighted like pp (best play counts the most).
   const parts = { aim: [] as number[], speed: [] as number[], accuracy: [] as number[], reading: [] as number[] };
@@ -128,8 +156,9 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
   plays.slice(0, 20).forEach((play, index) => {
     const read = reads[index];
     if (!read) return;
-    const misses = play.misses ?? 0;
-    const broke = read.maxCombo != null && play.combo != null && play.combo < read.maxCombo * 0.97;
+    const misses = missesOf(play, mode);
+    // A slider break (combo cut without a miss) exists in osu! and catch only.
+    const broke = (mode === "osu" || mode === "catch") && read.maxCombo != null && play.combo != null && play.combo < read.maxCombo * 0.97;
     const fc = Math.max(play.pp, read.pp);
     if ((misses > 0 || broke) && fc - play.pp >= 0.5) {
       chokes.push({
@@ -162,7 +191,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
   const anchor = profile.pp && profile.rank ? { pp: profile.pp, rank: profile.rank } : undefined;
   let rank: { rank: number; exact: boolean } | null = null;
   try {
-    rank = chokes.length ? await rankForPp(ifFcPp, anchor) : profile.rank ? { rank: profile.rank, exact: true } : null;
+    rank = chokes.length ? await rankForPp(ifFcPp, anchor, mode) : profile.rank ? { rank: profile.rank, exact: true } : null;
   } catch {
     rank = null;
   }
@@ -170,7 +199,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
   // Map types over the top 20, mods over the whole top.
   const styleCount = new Map<string, number>();
   let styled = 0;
-  for (const play of plays.slice(0, 20)) {
+  for (const play of standard ? plays.slice(0, 20) : []) {
     const pattern = getProfile(play.beatmapId);
     if (!pattern) continue;
     const style = primaryStyle(styleScores(pattern, { version: play.version ?? "" }, modRate(play.mods)));
@@ -183,7 +212,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
 
   const value: ProfileInsights = {
     username: profile.username,
-    mode: profile.mode ?? "osu",
+    mode,
     avatarUrl: profile.avatarUrl,
     country: profile.country,
     pp: totalPp,
@@ -195,9 +224,9 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     mods: [...modCount].map(([mods, count]) => ({ mods, share: count / (plays.length || 1) })).sort((a, b) => b.share - a.share).slice(0, 5),
     averageAccuracy: accs.length ? round(accs.reduce((sum, acc) => sum + acc, 0) / accs.length, 0.01) : null,
     medianLength: medianOf(reads.slice(0, 20).map((read) => read?.length ?? null)),
-    medianBpm: medianOf(reads.slice(0, 20).map((read) => read?.bpm ?? null)),
+    medianBpm: !standard ? null : medianOf(reads.slice(0, 20).map((read) => read?.bpm ?? null)),
     topPlay: plays[0] ? { title: plays[0].title ?? `#${plays[0].beatmapId}`, version: plays[0].version ?? "", pp: plays[0].pp, mods: plays[0].mods } : null,
-    ifFc: !standard ? null : {
+    ifFc: {
       pp: ifFcPp,
       gain: round(Math.max(0, ifFcPp - totalPp), 0.01),
       rank,
@@ -205,7 +234,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
       lost: round(shown.reduce((sum, choke) => sum + choke.fcPp - choke.pp, 0), 0.01),
     },
   };
-  answers.set(profile.id, { at: Date.now(), topKey, value });
+  answers.set(cacheKey, { at: Date.now(), topKey, value });
   return value;
 }
 
