@@ -47,7 +47,6 @@ export class AutoPlayer {
   private volume = 0.6;
   private mods: PlayerMods = { rate: 1, hr: false, ez: false, hd: false, nc: false };
   private frame = 0;
-  private last = performance.now();
   private scale = 1;
   private ox = 0;
   private oy = 0;
@@ -208,8 +207,7 @@ export class AutoPlayer {
 
   // ---------- timing ----------
 
-  private tick = (now: number): void => {
-    this.last = now;
+  private tick = (): void => {
     if (this.playing) {
       const before = this.time;
       // The map follows the music clock only: while the song loads or buffers, it waits.
