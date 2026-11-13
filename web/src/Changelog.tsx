@@ -13,6 +13,7 @@ export const CHANGELOG: { date: string; en: string[]; fr: string[] }[] = [
       "If I had FC'd now works in every mode, with the rank from that mode's ranking.",
       "Maps for you now works in taiko, catch and mania: your pp range, your mods and maps of a similar length.",
       "The pp gain and new rank on a map page now only show for maps of your mode.",
+      "My profile loads much faster: only your top 20 is recomputed.",
     ],
     fr: [
       "Joueurs taiko, catch et mania : votre profil, vos pp, votre rang et vos top plays viennent maintenant de votre mode principal sur osu! (avant, tout était lu en osu! standard, d'où 0 pp pour les joueurs mania).",
@@ -20,6 +21,7 @@ export const CHANGELOG: { date: string; en: string[]; fr: string[] }[] = [
       "Si j'avais FC marche maintenant dans tous les modes, avec le rang du classement de ce mode.",
       "Maps for you marche en taiko, catch et mania : votre plage de pp, vos mods et des maps de durée proche.",
       "Le gain de pp et le nouveau rang sur la page d'une map ne s'affichent que pour les maps de votre mode.",
+      "Mon profil charge beaucoup plus vite : seul votre top 20 est recalculé.",
     ],
   },
 ];

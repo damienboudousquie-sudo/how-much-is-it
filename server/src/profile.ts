@@ -133,7 +133,12 @@ export async function profileInsights(sessionId: string | undefined, askedMode?:
 
   // Map types (jump, stream…) exist for osu! (standard) only; the FC replays work in every mode.
   const standard = mode === "osu";
-  const reads = await mapLimit(plays, 6, (play) => readFc(play, mode));
+  // Only the top 20 is recomputed (the chokes, lengths and BPM come from it): five times
+  // fewer maps to download and compute than the whole top. The ranking pages the new rank
+  // will need are fetched meanwhile (they sit near the player's own pp).
+  const warm = profile.pp ? rankForPp(profile.pp * 1.03, undefined, mode).catch(() => null) : Promise.resolve(null);
+  const reads = await mapLimit(plays.slice(0, 20), 8, (play) => readFc(play, mode));
+  await warm;
 
   // Skills: each part of every play, weighted like pp (best play counts the most).
   const parts = { aim: [] as number[], speed: [] as number[], accuracy: [] as number[], reading: [] as number[] };
@@ -223,8 +228,8 @@ export async function profileInsights(sessionId: string | undefined, askedMode?:
     styles: [...styleCount].map(([style, count]) => ({ style, share: count / (styled || 1) })).sort((a, b) => b.share - a.share),
     mods: [...modCount].map(([mods, count]) => ({ mods, share: count / (plays.length || 1) })).sort((a, b) => b.share - a.share).slice(0, 5),
     averageAccuracy: accs.length ? round(accs.reduce((sum, acc) => sum + acc, 0) / accs.length, 0.01) : null,
-    medianLength: medianOf(reads.slice(0, 20).map((read) => read?.length ?? null)),
-    medianBpm: !standard ? null : medianOf(reads.slice(0, 20).map((read) => read?.bpm ?? null)),
+    medianLength: medianOf(reads.map((read) => read?.length ?? null)),
+    medianBpm: !standard ? null : medianOf(reads.map((read) => read?.bpm ?? null)),
     topPlay: plays[0] ? { title: plays[0].title ?? `#${plays[0].beatmapId}`, version: plays[0].version ?? "", pp: plays[0].pp, mods: plays[0].mods } : null,
     ifFc: {
       pp: ifFcPp,

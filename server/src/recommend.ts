@@ -111,7 +111,7 @@ async function scoreRatio(plays: TopPlay[], mode: Mode): Promise<{ ratio: number
   const found: { play: TopPlay; ss: number }[] = [];
   const queue = [...plays];
   await Promise.all(
-    Array.from({ length: 4 }, async () => {
+    Array.from({ length: 8 }, async () => {
       for (let play = queue.shift(); play; play = queue.shift()) {
         const mods = play.mods.filter((mod) => mod !== "CL");
         const ss = await ssPp(play.beatmapId, mods, mode);
