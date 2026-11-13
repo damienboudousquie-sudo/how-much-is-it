@@ -103,7 +103,9 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
   const kept = answers.get(profile.id);
   if (kept && kept.topKey === topKey && Date.now() - kept.at < ANSWER_TTL_MS) return kept.value;
 
-  const reads = await mapLimit(plays, 6, readFc);
+  // The FC replays, map types and lengths are worked out for osu! (standard) only for now.
+  const standard = (profile.mode ?? "osu") === "osu";
+  const reads = standard ? await mapLimit(plays, 6, readFc) : plays.map(() => null);
 
   // Skills: each part of every play, weighted like pp (best play counts the most).
   const parts = { aim: [] as number[], speed: [] as number[], accuracy: [] as number[], reading: [] as number[] };
@@ -181,6 +183,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
 
   const value: ProfileInsights = {
     username: profile.username,
+    mode: profile.mode ?? "osu",
     avatarUrl: profile.avatarUrl,
     country: profile.country,
     pp: totalPp,
@@ -194,7 +197,7 @@ export async function profileInsights(sessionId: string | undefined): Promise<Pr
     medianLength: medianOf(reads.slice(0, 20).map((read) => read?.length ?? null)),
     medianBpm: medianOf(reads.slice(0, 20).map((read) => read?.bpm ?? null)),
     topPlay: plays[0] ? { title: plays[0].title ?? `#${plays[0].beatmapId}`, version: plays[0].version ?? "", pp: plays[0].pp, mods: plays[0].mods } : null,
-    ifFc: {
+    ifFc: !standard ? null : {
       pp: ifFcPp,
       gain: round(Math.max(0, ifFcPp - totalPp), 0.01),
       rank,

@@ -543,7 +543,7 @@ export function BeatmapView(props: {
               misses: score.misses,
             })}
           </p>
-          {meta.mode === "osu" && <ProfileImpact beatmapId={meta.beatmapId} pp={score.pp} />}
+          <ProfileImpact mode={meta.mode} beatmapId={meta.beatmapId} pp={score.pp} />
           {parts.length > 0 && (
             <div className="parts">
               {parts.map(([label, value]) => (
@@ -578,7 +578,7 @@ export function BeatmapView(props: {
  * weighting of the top 100) and the global rank that total would have. "≈" when the rank is
  * estimated (beyond the top 10,000, where osu! publishes no list).
  */
-function ProfileImpact(props: { beatmapId: number; pp: number }) {
+function ProfileImpact(props: { mode: Mode; beatmapId: number; pp: number }) {
   const { t, lang } = useI18n();
   const account = useAccount();
   const profile = account.profile;
@@ -604,7 +604,8 @@ function ProfileImpact(props: { beatmapId: number; pp: number }) {
     };
   }, [key, gain > 0]);
 
-  if (!profile || current <= 0 || account.top.length === 0) return null;
+  // The player's pp, rank and top plays are those of their main mode on osu!.
+  if (!profile || current <= 0 || account.top.length === 0 || (profile.mode ?? "osu") !== props.mode) return null;
   const locale = numberLocaleOf(lang);
   const number = (value: number) => value.toLocaleString(locale);
   if (!(gain > 0)) return <p className="impact none">{t.impactNone}</p>;

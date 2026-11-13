@@ -4,7 +4,7 @@ import { useAccount } from "./account";
 import { fetchProfile } from "./api";
 import { ModBadges, StarPill } from "./Badges";
 import { fill, useI18n } from "./i18n";
-import { tierOf } from "./Recommend";
+import { modeName, tierOf } from "./Recommend";
 import { trackEvent } from "./track";
 
 /**
@@ -202,7 +202,7 @@ async function drawCard(data: ProfileInsights, userId: number, text: CardText, l
   ctx.font = `700 18px ${font}`;
   ctx.fillText("how-much-is-it.com", AX, 596);
   // If FC, on the right.
-  if (data.ifFc.chokes.length) {
+  if (data.ifFc && data.ifFc.chokes.length) {
     const BX = 800;
     roundRect(ctx, BX, 350, 344, 200, 18);
     ctx.fillStyle = "#241e21";
@@ -392,6 +392,14 @@ function ChokeRow(props: { choke: ProfileChoke; place: number; onOpen: (choke: P
 function IfFc(props: { data: ProfileInsights; onOpen: (choke: ProfileChoke) => void }) {
   const { t, lang } = useI18n();
   const { data } = props;
+  if (!data.ifFc) {
+    return (
+      <section className="iffc">
+        <h2>{t.ifFcTitle}</h2>
+        <p className="iffc-lead">{fill(t.stdOnly, { mode: modeName(data.mode ?? "osu") })}</p>
+      </section>
+    );
+  }
   const chokes = data.ifFc.chokes;
   const number = (value: number) => Math.round(value).toLocaleString(lang);
   const fcRank = data.ifFc.rank;

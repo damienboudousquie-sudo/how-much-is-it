@@ -149,9 +149,10 @@ function sample<T extends { score: number }>(list: T[], count: number): T[] {
 const RESULTS = 40;
 
 export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set()): Promise<RecommendResponse> {
-  const { top, marks } = playerData(sessionId);
+  const { top, marks, mode } = playerData(sessionId);
   const plays = [...top].sort((a, b) => b.pp - a.pp);
-  if (plays.length === 0) return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
+  // Built on osu! (standard) map analysis: other modes get an empty list (the page says why).
+  if (plays.length === 0 || mode !== "osu") return { ppMin: 0, ppMax: 0, ratio: 1, mods: [], styles: [], wanted: [], results: [] };
 
   // Everything is read from the top 20: the SS level of those plays sets the range, from
   // the lowest to 10 % above the highest. A choke on a much harder map counts for what the

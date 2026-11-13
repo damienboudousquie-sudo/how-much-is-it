@@ -220,7 +220,7 @@ app.get("/api/rank", async (request, reply) => {
     if (!Number.isFinite(pp) || pp <= 0 || pp > 100000) throw new InputError("pp must be a positive number.");
     const profile = currentUser(sessionFromCookie(request.headers.cookie));
     const anchor = profile?.pp && profile.rank ? { pp: profile.pp, rank: profile.rank } : undefined;
-    return { result: await rankForPp(pp, anchor) };
+    return { result: await rankForPp(pp, anchor, profile?.mode ?? "osu") };
   } catch (error) {
     sendError(reply, error);
   }

@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { MAP_STYLES, type MapMark, type PinInfo, type TopPlay, type UserProfile } from "@osu-pp/shared";
+import { MAP_STYLES, type MapMark, type Mode, type PinInfo, type TopPlay, type UserProfile } from "@osu-pp/shared";
 import { repoRoot } from "./env";
 import { AppError } from "./errors";
 
@@ -189,6 +189,7 @@ interface ApiUser {
   country_code?: string;
   cover_url?: string;
   cover?: { url?: string | null; custom_url?: string | null };
+  playmode?: string;
   statistics?: { pp?: number; global_rank?: number | null; country_rank?: number | null };
 }
 
@@ -202,7 +203,18 @@ function toProfile(user: ApiUser): UserProfile {
     pp: user.statistics?.pp ?? null,
     rank: user.statistics?.global_rank ?? null,
     countryRank: user.statistics?.country_rank ?? null,
+    mode: playMode(user.playmode),
   };
+}
+
+/** The player's main mode as osu! names it (osu, taiko, fruits, mania). */
+function playMode(value: string | undefined): Mode {
+  return value === "taiko" ? "taiko" : value === "fruits" ? "catch" : value === "mania" ? "mania" : "osu";
+}
+
+/** The mode name in osu! API paths. */
+function pathMode(mode: Mode): string {
+  return mode === "catch" ? "fruits" : mode;
 }
 
 /** Finishes the sign-in. Returns the new session id, to put in the cookie. */
@@ -211,7 +223,8 @@ export async function completeLogin(code: string, state: string): Promise<string
   pendingStates.delete(state);
   if (!at || Date.now() - at > STATE_TTL_MS) throw new AppError("login_failed", "This sign-in link expired. Try again.", 400);
   const token = await tokenRequest({ grant_type: "authorization_code", code, redirect_uri: callbackUrl() });
-  const me = await apiGet<ApiUser>("/me/osu", token.access_token);
+  // No mode in the path: osu! answers with the player's main mode (and its stats).
+  const me = await apiGet<ApiUser>("/me", token.access_token);
   const id = randomBytes(24).toString("base64url");
   loadSessions().set(id, {
     userId: me.id,
@@ -272,13 +285,13 @@ interface ApiScore {
 
 async function refreshTop(sessionId: string, session: Session, file: PlayerFile): Promise<void> {
   // Saves from before score details were kept (no misses field) are fetched again at once.
-  const detailed = (file.top.length === 0 || file.top[0].misses !== undefined) && file.profile?.coverUrl !== undefined;
+  const detailed = (file.top.length === 0 || file.top[0].misses !== undefined) && file.profile?.coverUrl !== undefined && file.profile?.mode !== undefined;
   if (detailed && Date.now() - file.topAt < TOP_TTL_MS) return;
   const access = await freshToken(sessionId, session);
-  const [me, scores] = await Promise.all([
-    apiGet<ApiUser>("/me/osu", access),
-    apiGet<ApiScore[]>(`/users/${session.userId}/scores/best?mode=osu&limit=100`, access),
-  ]);
+  // The player's main mode first, then the top plays of that mode.
+  const me = await apiGet<ApiUser>("/me", access);
+  const mode = playMode(me.playmode);
+  const scores = await apiGet<ApiScore[]>(`/users/${session.userId}/scores/best?mode=${pathMode(mode)}&limit=100`, access);
   file.profile = toProfile(me);
   file.top = scores
     .filter((score) => score.beatmap?.id && typeof score.pp === "number")
@@ -362,9 +375,9 @@ export async function me(sessionId: string | undefined): Promise<MeAnswer> {
 }
 
 /** The signed-in player's top plays and marks, for recommendations. */
-export function playerData(sessionId: string | undefined): { top: TopPlay[]; marks: Record<string, MapMark> } {
+export function playerData(sessionId: string | undefined): { top: TopPlay[]; marks: Record<string, MapMark>; mode: Mode } {
   const { file } = requirePlayer(sessionId);
-  return { top: file.top, marks: file.marks };
+  return { top: file.top, marks: file.marks, mode: file.profile.mode ?? "osu" };
 }
 
 function requirePlayer(sessionId: string | undefined): { session: Session; file: PlayerFile } {

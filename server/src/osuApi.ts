@@ -486,20 +486,21 @@ interface RankRow {
 }
 
 /** Ranking pages (50 players each, 200 pages = the top 10,000), kept for an hour. */
-const rankPages = new Map<number, { at: number; rows: RankRow[] }>();
+const rankPages = new Map<string, { at: number; rows: RankRow[] }>();
 const RANK_PAGE_TTL = 60 * 60 * 1000;
 const RANK_PAGES = 200;
 
-async function rankingPage(page: number): Promise<RankRow[]> {
-  const kept = rankPages.get(page);
+async function rankingPage(page: number, mode: Mode): Promise<RankRow[]> {
+  const key = `${mode}:${page}`;
+  const kept = rankPages.get(key);
   if (kept && Date.now() - kept.at < RANK_PAGE_TTL) return kept.rows;
-  const json = (await apiGet(`/rankings/osu/performance?cursor%5Bpage%5D=${page}`)) as {
+  const json = (await apiGet(`/rankings/${mode === "catch" ? "fruits" : mode}/performance?cursor%5Bpage%5D=${page}`)) as {
     ranking?: { pp?: number; global_rank?: number }[];
   };
   const rows = (json.ranking ?? [])
     .map((row, index) => ({ pp: Number(row.pp), rank: Number(row.global_rank) || (page - 1) * 50 + index + 1 }))
     .filter((row) => Number.isFinite(row.pp));
-  rankPages.set(page, { at: Date.now(), rows });
+  rankPages.set(key, { at: Date.now(), rows });
   return rows;
 }
 
@@ -508,9 +509,9 @@ async function rankingPage(page: number): Promise<RankRow[]> {
  * 10,000; below, estimated on a log-log line through the 10,000th player and the player's
  * own current pp and rank (`anchor`), which fits the pp curve well over short distances.
  */
-export async function rankForPp(pp: number, anchor?: { pp: number; rank: number }): Promise<{ rank: number; exact: boolean } | null> {
+export async function rankForPp(pp: number, anchor?: { pp: number; rank: number }, mode: Mode = "osu"): Promise<{ rank: number; exact: boolean } | null> {
   if (!apiKeyConfigured() || !(pp > 0)) return null;
-  const last = await rankingPage(RANK_PAGES);
+  const last = await rankingPage(RANK_PAGES, mode);
   const floor = last[last.length - 1];
   if (!floor) return null;
   if (pp >= floor.pp) {
@@ -519,12 +520,12 @@ export async function rankForPp(pp: number, anchor?: { pp: number; rank: number 
     let high = RANK_PAGES;
     while (low < high) {
       const mid = (low + high) >> 1;
-      const rows = await rankingPage(mid);
+      const rows = await rankingPage(mid, mode);
       const end = rows[rows.length - 1];
       if (!end || pp >= end.pp) high = mid;
       else low = mid + 1;
     }
-    const rows = await rankingPage(low);
+    const rows = await rankingPage(low, mode);
     const above = rows.filter((row) => row.pp > pp).length;
     return { rank: (low - 1) * 50 + above + 1, exact: true };
   }

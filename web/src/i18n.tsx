@@ -154,6 +154,7 @@ export type Copy = {
   creatorProfile: string;
   forYou: string;
   myProfile: string;
+  stdOnly: string;
   newBadge: string;
   profileLoading1: string;
   profileLoading2: string;
@@ -442,6 +443,7 @@ const en: Copy = {
   creatorProfile: "The creator's osu! profile",
   forYou: "Maps for you",
   myProfile: "My profile",
+  stdOnly: "For now this only works for osu! (standard). Your main mode on osu! is {mode}.",
   newBadge: "New",
   profileLoading1: "Reading your top 100…",
   profileLoading2: "Replaying every choke as a full combo…",
@@ -730,6 +732,7 @@ const fr: Copy = {
   creatorProfile: "Le profil osu! du créateur",
   forYou: "Maps pour toi",
   myProfile: "Mon profil",
+  stdOnly: "Pour l'instant, ça ne marche qu'en osu! (standard). Ton mode principal sur osu! est {mode}.",
   newBadge: "Nouveau",
   profileLoading1: "Lecture de ton top 100…",
   profileLoading2: "On rejoue chaque choke en full combo…",
@@ -1018,6 +1021,7 @@ const es: Copy = {
   creatorProfile: "El perfil de osu! del creador",
   forYou: "Mapas para ti",
   myProfile: "Mi perfil",
+  stdOnly: "Por ahora solo funciona en osu! (standard). Tu modo principal en osu! es {mode}.",
   newBadge: "Nuevo",
   profileLoading1: "Leyendo tu top 100…",
   profileLoading2: "Rejugando cada choke como full combo…",
@@ -1334,6 +1338,7 @@ const de: Copy = {
   creatorProfile: "Das osu!-Profil des Erstellers",
   forYou: "Maps für dich",
   myProfile: "Mein Profil",
+  stdOnly: "Funktioniert vorerst nur für osu! (Standard). Dein Hauptmodus auf osu! ist {mode}.",
   newBadge: "Neu",
   profileLoading1: "Lese deine Top 100…",
   profileLoading2: "Spiele jeden Choke als Full Combo nach…",
@@ -1650,6 +1655,7 @@ const pt: Copy = {
   creatorProfile: "O perfil osu! do criador",
   forYou: "Mapas para você",
   myProfile: "Meu perfil",
+  stdOnly: "Por enquanto só funciona no osu! (standard). Seu modo principal no osu! é {mode}.",
   newBadge: "Novo",
   profileLoading1: "Lendo seu top 100…",
   profileLoading2: "Rejogando cada choke como full combo…",
@@ -1966,6 +1972,7 @@ const pl: Copy = {
   creatorProfile: "Profil osu! twórcy",
   forYou: "Mapy dla ciebie",
   myProfile: "Mój profil",
+  stdOnly: "Na razie działa tylko dla osu! (standard). Twój główny tryb w osu! to {mode}.",
   newBadge: "Nowe",
   profileLoading1: "Czytam twoje top 100…",
   profileLoading2: "Odgrywam każdy choke jako full combo…",
@@ -2282,6 +2289,7 @@ const ru: Copy = {
   creatorProfile: "Профиль osu! создателя",
   forYou: "Карты для вас",
   myProfile: "Мой профиль",
+  stdOnly: "Пока работает только для osu! (standard). Ваш основной режим в osu!: {mode}.",
   newBadge: "Новое",
   profileLoading1: "Читаем ваш топ-100…",
   profileLoading2: "Переигрываем каждый чок как фулл-комбо…",
@@ -2598,6 +2606,7 @@ const ko: Copy = {
   creatorProfile: "제작자의 osu! 프로필",
   forYou: "추천 맵",
   myProfile: "내 프로필",
+  stdOnly: "현재는 osu! (스탠다드)에서만 작동합니다. osu!의 주 모드: {mode}.",
   newBadge: "신규",
   profileLoading1: "상위 100개 플레이를 읽는 중…",
   profileLoading2: "모든 초크를 풀콤보로 다시 계산하는 중…",
@@ -2914,6 +2923,7 @@ const ja: Copy = {
   creatorProfile: "制作者の osu! プロフィール",
   forYou: "あなたへのおすすめ",
   myProfile: "マイプロフィール",
+  stdOnly: "現在は osu!（スタンダード）のみ対応しています。osu! でのメインモード：{mode}。",
   newBadge: "新着",
   profileLoading1: "トップ100を読み込み中…",
   profileLoading2: "すべてのチョークをフルコンボで再計算中…",
@@ -3230,6 +3240,7 @@ const zh: Copy = {
   creatorProfile: "作者的 osu! 个人资料",
   forYou: "为你推荐",
   myProfile: "我的资料",
+  stdOnly: "目前仅支持 osu!（标准）。你在 osu! 的主模式是 {mode}。",
   newBadge: "新",
   profileLoading1: "正在读取你的前 100 成绩…",
   profileLoading2: "正在把每个断连按全连重新计算…",

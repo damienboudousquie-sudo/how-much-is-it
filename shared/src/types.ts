@@ -248,6 +248,8 @@ export interface UserProfile {
   countryRank?: number | null;
   /** Profile banner (missing on profiles saved before it was kept). */
   coverUrl?: string | null;
+  /** The player's main game mode on osu! (stats and top plays are for it); missing = osu! on old saves. */
+  mode?: Mode;
 }
 
 /** One of the player's top 100 plays. */
@@ -407,6 +409,8 @@ export interface ProfileChoke {
 
 export interface ProfileInsights {
   username: string;
+  /** The player's main mode on osu!: the stats and top plays below are for it. */
+  mode: Mode;
   avatarUrl: string | null;
   country: string | null;
   pp: number;
@@ -422,11 +426,12 @@ export interface ProfileInsights {
   medianLength: number | null;
   medianBpm: number | null;
   topPlay: { title: string; version: string; pp: number; mods: string[] } | null;
+  /** null for modes other than osu! (standard), where it is not computed yet. */
   ifFc: {
     pp: number;
     gain: number;
     rank: { rank: number; exact: boolean } | null;
     chokes: ProfileChoke[];
     lost: number;
-  };
+  } | null;
 }

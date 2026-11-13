@@ -123,6 +123,7 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
   }, [signedIn, round, account.top.length]);
 
   if (!account.ready) return null;
+  const otherMode = account.profile?.mode && account.profile.mode !== "osu" ? account.profile.mode : null;
 
   return (
     <section className="finder pinned for-you">
@@ -140,6 +141,7 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
           </button>
         )}
         <p className="help">{signedIn ? t.forYouIntro : t.forYouSignIn}</p>
+        {otherMode && <p className="notice">{fill(t.stdOnly, { mode: modeName(otherMode) })}</p>}
         {data && data.results.length > 0 && (
           <dl className="for-you-profile">
             <div>
@@ -197,4 +199,9 @@ export function ForYou(props: { onOpen(hit: DiscoverHit): void }) {
       )}
     </section>
   );
+}
+
+/** How osu! names a mode. */
+export function modeName(mode: string): string {
+  return mode === "osu" ? "osu!" : mode === "catch" ? "osu!catch" : `osu!${mode}`;
 }
