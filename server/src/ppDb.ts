@@ -9,7 +9,10 @@ import { Lru } from "./lru";
 
 const MIRROR = "https://mirror.hinamizawa.ai";
 const MODE_ID: Record<Mode, string> = { osu: "0", taiko: "1", catch: "2", mania: "3" };
-/** The mirror caps a page at 200 maps and answers in ~2 s, so fewer, larger pages win. */
+/**
+ * Asked page size. The mirror caps it (200 on the range lists, 100 on text search), so the
+ * next offset always moves by what a page really held, never by this number.
+ */
 const PAGE_SIZE = 200;
 /** PP width of one cached slice. A range is the union of the slices it touches. */
 export const BAND = 25;
@@ -38,6 +41,10 @@ export const MAX_BANDS = 24;
 const MAX_PAGES_PER_BAND = 50;
 /** Ranked maps change slowly; the background warmer refreshes lists before they expire. */
 const TTL_MS = 4 * 24 * 60 * 60 * 1000;
+/** Text searches are cheap and should find newly ranked maps the same day. */
+const TEXT_TTL_MS = 12 * 60 * 60 * 1000;
+/** The warmer loads a band again once it is this old, so new ranked maps show within a day. */
+const REFRESH_MS = 20 * 60 * 60 * 1000;
 const SCHEMA = 6;
 const DIR = join(repoRoot, "cache", "pp-bands");
 
@@ -154,7 +161,7 @@ export function catalogHealth() {
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** One page of the pp catalogue. Retries twice on a slow, busy or failing mirror. */
-async function fetchPage(path: string, mods: string, signal?: AbortSignal): Promise<{ maps: PpDbMap[]; total: number }> {
+async function fetchPage(path: string, mods: string, signal?: AbortSignal): Promise<{ maps: PpDbMap[]; total: number; size: number }> {
   return slot(async () => {
     let problem = "";
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -190,7 +197,7 @@ async function fetchPage(path: string, mods: string, signal?: AbortSignal): Prom
           if (map) maps.push(map);
         }
         catalogStats.ok += 1;
-        return { maps, total: typeof json.total === "number" ? json.total : maps.length };
+        return { maps, total: typeof json.total === "number" ? json.total : maps.length, size: json.maps.length };
       } catch (error) {
         problem = error instanceof Error ? error.message : "invalid answer";
         await pause(1500 * (attempt + 1));
@@ -213,10 +220,12 @@ export async function fetchCatalogPage(offset: number, signal?: AbortSignal): Pr
 
 async function fetchAll(pathFor: (offset: number) => string, mods: string, maxPages: number): Promise<{ maps: PpDbMap[]; complete: boolean }> {
   const first = await fetchPage(pathFor(0), mods);
-  const pages = Math.max(1, Math.ceil(first.total / PAGE_SIZE));
+  // The page the mirror really serves (text search stops at 100 even when asked 200).
+  const size = Math.max(1, Math.min(PAGE_SIZE, first.size));
+  const pages = Math.max(1, Math.ceil(first.total / size));
   const wanted = Math.min(maxPages, pages);
   const rest = await Promise.all(
-    Array.from({ length: wanted - 1 }, (_, index) => fetchPage(pathFor((index + 1) * PAGE_SIZE), mods).then((page) => page.maps)),
+    Array.from({ length: wanted - 1 }, (_, index) => fetchPage(pathFor((index + 1) * size), mods).then((page) => page.maps)),
   );
   return { maps: first.maps.concat(...rest), complete: wanted === pages };
 }
@@ -259,14 +268,14 @@ async function writeStored(key: string, stored: Stored): Promise<void> {
   }
 }
 
-function cached(key: string, load: () => Promise<PpDbMap[]>): Promise<PpDbMap[]> {
+function cached(key: string, load: () => Promise<PpDbMap[]>, ttl = TTL_MS): Promise<PpDbMap[]> {
   const hit = memory.get(key);
-  if (hit && Date.now() - hit.at < TTL_MS) return Promise.resolve(hit.maps);
+  if (hit && Date.now() - hit.at < ttl) return Promise.resolve(hit.maps);
   const pending = inflight.get(key);
   if (pending) return pending;
   const job = (async () => {
     const disk = await readStored(key);
-    if (disk) {
+    if (disk && Date.now() - disk.at < ttl) {
       memory.set(key, disk);
       return disk.maps;
     }
@@ -310,14 +319,15 @@ function inBand(map: PpDbMap, low: number): boolean {
   return map.pp >= low && map.pp < low + bandWidth(low);
 }
 
-function startBand(mode: Mode, mods: string, low: number): Band {
+function startBand(mode: Mode, mods: string, low: number, refresh = false): Band {
   const key = `band\n${mode}\n${mods}\n${low}\n${bandWidth(low)}`;
   const existing = bands.get(key);
-  if (existing && !existing.failed) return existing;
+  if (existing && !existing.failed && !refresh) return existing;
   const band: Band = { maps: [], total: null, done: false, failed: false, ready: Promise.resolve() };
   band.ready = (async () => {
     const disk = memory.get(key) ?? (await readStored(key));
-    if (disk) {
+    // A refresh only refetches a band older than REFRESH_MS; searches keep the old one meanwhile.
+    if (disk && (!refresh || Date.now() - disk.at < REFRESH_MS)) {
       band.maps = disk.maps;
       band.total = disk.maps.length;
       band.done = true;
@@ -328,10 +338,11 @@ function startBand(mode: Mode, mods: string, low: number): Band {
       const first = await fetchPage(path(0), mods);
       band.maps.push(...first.maps.filter((map) => inBand(map, low)));
       band.total = first.total;
-      const pages = Math.min(MAX_PAGES_PER_BAND, Math.max(1, Math.ceil(first.total / PAGE_SIZE)));
+      const size = Math.max(1, Math.min(PAGE_SIZE, first.size));
+      const pages = Math.min(MAX_PAGES_PER_BAND, Math.max(1, Math.ceil(first.total / size)));
       await Promise.all(
         Array.from({ length: pages - 1 }, (_, index) =>
-          fetchPage(path((index + 1) * PAGE_SIZE), mods).then((page) => {
+          fetchPage(path((index + 1) * size), mods).then((page) => {
             band.maps.push(...page.maps.filter((map) => inBand(map, low)));
           }),
         ),
@@ -340,13 +351,15 @@ function startBand(mode: Mode, mods: string, low: number): Band {
       const stored = { schema: SCHEMA, at: Date.now(), maps: band.maps };
       memory.set(key, stored);
       void writeStored(key, stored);
+      if (refresh) bands.set(key, band);
     } catch {
       // Keep what arrived; the next search starts the band again.
       band.failed = true;
       band.done = true;
     }
   })();
-  bands.set(key, band);
+  // A refreshing band replaces the current one only once complete (above).
+  if (!refresh || !existing) bands.set(key, band);
   return band;
 }
 
@@ -362,7 +375,7 @@ function allBandLows(max: number): number[] {
 
 /** Combos loaded ahead of time: the ones people search with most. */
 const WARM_COMBOS = ["NM", "DT", "HD", "HR", "HDDT", "HDHR"];
-const WARM_EVERY_MS = 2 * 24 * 60 * 60 * 1000;
+const WARM_EVERY_MS = 24 * 60 * 60 * 1000;
 const warmStatus = { combo: null as string | null, bandsDone: 0, bandsTotal: 0, lastPass: null as string | null };
 
 export function warmerStatus() {
@@ -372,7 +385,8 @@ export function warmerStatus() {
 /**
  * Loads every PP band of the common mod combos in the background, one band at a time
  * and only while searches leave the mirror idle, so every range is already on disk
- * when someone asks for it. Runs again every few days to pick up newly ranked maps.
+ * when someone asks for it. Runs again every day and reloads bands older than 20 hours,
+ * so newly ranked maps show up within a day.
  */
 export function startCatalogueWarmer(): void {
   if (process.env.WARM_CATALOGUE === "0") return;
@@ -386,7 +400,7 @@ export function startCatalogueWarmer(): void {
         for (const low of lows) {
           // Searches first: wait while the mirror queue is busy.
           while (active > 4 || waiting.length > 0) await pause(2000);
-          await startBand("osu", combo, low).ready;
+          await startBand("osu", combo, low, true).ready;
           warmStatus.bandsDone += 1;
         }
       }
@@ -450,9 +464,9 @@ export function loadTextMaps(input: { query: string; mode: Mode; mods: string })
   return cached(key, async () => {
     const params = (offset: number) =>
       new URLSearchParams({ q: query, mods: input.mods, game_mode: MODE_ID[input.mode], limit: String(PAGE_SIZE), offset: String(offset) });
-    const { maps } = await fetchAll((offset) => `/v3/osu/pp-maps/search?${params(offset)}`, input.mods, 10);
+    const { maps } = await fetchAll((offset) => `/v3/osu/pp-maps/search?${params(offset)}`, input.mods, 20);
     return maps;
-  });
+  }, TEXT_TTL_MS);
 }
 
 export function coverFor(beatmapsetId: number | null, size: "card" | "cover" = "card"): string | null {

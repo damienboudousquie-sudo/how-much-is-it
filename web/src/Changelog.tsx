@@ -6,6 +6,17 @@ import { useI18n } from "./i18n";
  */
 export const CHANGELOG: { date: string; en: string[]; fr: string[] }[] = [
   {
+    date: "2026-11-14",
+    en: [
+      "Search fix: a title with more than 100 results (like \"REASON\") now finds every map; before, the results past the first 100 were missing.",
+      "Newly ranked maps now show up in the lists within a day (it could take several days).",
+    ],
+    fr: [
+      "Correction de la recherche : un titre qui a plus de 100 résultats (comme « REASON ») trouve maintenant toutes les maps ; avant, celles au-delà des 100 premières manquaient.",
+      "Les maps tout juste ranked apparaissent dans les listes en moins d'un jour (avant, ça pouvait prendre plusieurs jours).",
+    ],
+  },
+  {
     date: "2026-11-13",
     en: [
       "Taiko, catch and mania players: your profile, pp, rank and top plays now come from your main mode on osu! (they were always read as osu!standard before, so mania players saw 0 pp).",
