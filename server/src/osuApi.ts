@@ -406,14 +406,23 @@ export function pickBeatmap(set: RemoteSet): RemoteBeatmap {
  * then the most played: "freedom dive" should open on the set everybody plays.
  */
 function bestFirst(sets: RemoteSet[], query: string): RemoteSet[] {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const wanted = query.toLowerCase().trim();
+  const words = wanted.split(/\s+/).filter(Boolean);
+  const wordIn = (text: string, word: string) => new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`, "i").test(text);
+  // How well the set matches: the exact title first (a new set with few plays must not sink
+  // under older popular ones), then every word in the title, then in title + artist.
   const fits = (set: RemoteSet) => {
-    const text = `${set.title} ${set.artist}`.toLowerCase();
-    return words.every((word) => text.includes(word)) ? 0 : 1;
+    const title = set.title.toLowerCase();
+    const all = `${set.title} ${set.artist} ${set.creator}`.toLowerCase();
+    if (title === wanted || `${set.artist} - ${set.title}`.toLowerCase() === wanted) return 0;
+    if (words.every((word) => wordIn(title, word))) return 1;
+    if (words.every((word) => wordIn(all, word))) return 2;
+    if (words.every((word) => all.includes(word))) return 3;
+    return 4;
   };
   const tier = (set: RemoteSet) => (STATUS_RANK[set.status] <= 1 ? 0 : STATUS_RANK[set.status] <= 3 ? 1 : 2);
   return [...sets].sort(
-    (a, b) => tier(a) - tier(b) || fits(a) - fits(b) || (b.playCount ?? 0) - (a.playCount ?? 0),
+    (a, b) => fits(a) - fits(b) || tier(a) - tier(b) || (b.playCount ?? 0) - (a.playCount ?? 0),
   );
 }
 
@@ -440,6 +449,9 @@ function rankedOnly(sets: RemoteSet[]): RemoteSet[] {
     .filter((set) => set.beatmaps.length > 0);
 }
 
+/** Sets shown in the search dropdown. */
+const SEARCH_LIMIT = 12;
+
 export async function searchBeatmaps(query: string, signal?: AbortSignal, ranked = false): Promise<SearchHit[]> {
   const key = `${ranked ? "ranked" : "any"}\n${query.trim()}`;
   const cached = searchCache.get(key);
@@ -459,7 +471,7 @@ export async function searchBeatmaps(query: string, signal?: AbortSignal, ranked
   if (sets.length === 0) {
     sets = await mirrorSearch(query.trim(), signal);
   }
-  const hits = toHits(bestFirst(ranked ? rankedOnly(sets) : sets, query), 8);
+  const hits = toHits(bestFirst(ranked ? rankedOnly(sets) : sets, query), SEARCH_LIMIT);
   searchCache.set(key, { at: Date.now(), hits });
   return hits;
 }

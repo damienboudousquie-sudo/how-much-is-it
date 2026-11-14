@@ -12,42 +12,52 @@ export const CHANGELOG: { date: string; text: Partial<Record<Lang, string[]>> & 
       en: [
         "Search fix: a title with more than 100 results (like \"REASON\") now finds every map; before, the results past the first 100 were missing.",
         "Newly ranked maps now show up in the lists within a day (it could take several days).",
+        "Search bar: maps whose title is exactly what you typed come first (a newly ranked set no longer sinks under older popular ones), and 12 results instead of 8.",
       ],
       fr: [
         "Correction de la recherche : un titre qui a plus de 100 résultats (comme « REASON ») trouve maintenant toutes les maps ; avant, celles au-delà des 100 premières manquaient.",
         "Les maps tout juste ranked apparaissent dans les listes en moins d'un jour (avant, ça pouvait prendre plusieurs jours).",
+        "Barre de recherche : les maps dont le titre est exactement ce que vous tapez passent en premier (un set tout juste ranked ne coule plus sous les anciens plus joués), et 12 résultats au lieu de 8.",
       ],
       es: [
         "Búsqueda corregida: un título con más de 100 resultados (como \"REASON\") ahora encuentra todos los mapas; antes faltaban los que pasaban de los 100 primeros.",
         "Los mapas recién rankeados aparecen en las listas en menos de un día (antes podía tardar varios días).",
+        "Barra de búsqueda: los mapas cuyo título es exactamente lo que escribes salen primero (un set recién rankeado ya no queda por debajo de los antiguos más jugados), y 12 resultados en vez de 8.",
       ],
       de: [
         "Suche repariert: Ein Titel mit mehr als 100 Treffern (wie \"REASON\") findet jetzt alle Maps; vorher fehlten alle nach den ersten 100.",
         "Neu gerankte Maps erscheinen jetzt innerhalb eines Tages in den Listen (vorher konnte es mehrere Tage dauern).",
+        "Suchleiste: Maps, deren Titel genau deiner Eingabe entspricht, kommen zuerst (ein neu gerankter Set rutscht nicht mehr unter ältere, viel gespielte), und 12 statt 8 Ergebnisse.",
       ],
       pt: [
         "Busca corrigida: um título com mais de 100 resultados (como \"REASON\") agora encontra todos os mapas; antes, os que passavam dos 100 primeiros faltavam.",
         "Mapas recém-rankeados aparecem nas listas em menos de um dia (antes podia levar vários dias).",
+        "Barra de busca: mapas cujo título é exatamente o que você digitou vêm primeiro (um set recém-rankeado não fica mais abaixo dos antigos mais jogados), e 12 resultados em vez de 8.",
       ],
       pl: [
         "Poprawka wyszukiwania: tytuł z ponad 100 wynikami (np. \"REASON\") znajduje teraz wszystkie mapy; wcześniej brakowało tych po pierwszych 100.",
         "Nowo zrankowane mapy pojawiają się na listach w ciągu doby (wcześniej mogło to trwać kilka dni).",
+        "Pasek wyszukiwania: mapy, których tytuł to dokładnie wpisany tekst, są pierwsze (nowo zrankowany set nie spada już pod starsze, popularne), i 12 wyników zamiast 8.",
       ],
       ru: [
         "Исправлен поиск: название с более чем 100 результатами (например, \"REASON\") теперь находит все карты; раньше всё после первых 100 пропадало.",
         "Новые рейтинговые карты появляются в списках в течение суток (раньше это могло занять несколько дней).",
+        "Строка поиска: карты, название которых точно совпадает с запросом, идут первыми (новый рейтинговый сет больше не тонет под старыми популярными), и 12 результатов вместо 8.",
       ],
       ko: [
         "검색 수정: 결과가 100개를 넘는 제목(예: \"REASON\")도 이제 모든 맵을 찾습니다. 이전에는 처음 100개 이후의 결과가 빠졌습니다.",
         "새로 랭크된 맵이 하루 안에 목록에 나타납니다(이전에는 며칠이 걸릴 수 있었습니다).",
+        "검색창: 입력한 것과 제목이 정확히 같은 맵이 먼저 나옵니다(새로 랭크된 세트가 더 이상 인기 있는 예전 세트 아래로 밀리지 않습니다). 결과도 8개에서 12개로 늘었습니다.",
       ],
       ja: [
         "検索を修正：結果が100件を超えるタイトル（\"REASON\" など）でも全マップが見つかるようになりました。以前は最初の100件以降が抜けていました。",
         "新しくランクされたマップが1日以内にリストに表示されるようになりました（以前は数日かかることがありました）。",
+        "検索バー：入力と完全に一致するタイトルのマップが先頭に表示されます（新しくランクされたセットが人気の古いセットの下に埋もれなくなりました）。結果も8件から12件に増えました。",
       ],
       zh: [
         "搜索修复：结果超过 100 个的标题（如 \"REASON\"）现在能找到所有谱面；之前前 100 个之后的结果会丢失。",
         "新 Ranked 的谱面现在一天内就会出现在列表中（之前可能要好几天）。",
+        "搜索栏：标题与输入完全一致的谱面排在最前（新 Ranked 的谱面集不再被更热门的旧谱面压下去），结果也从 8 个增加到 12 个。",
       ],
     },
   },
