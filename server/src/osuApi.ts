@@ -548,3 +548,13 @@ export async function rankForPp(pp: number, anchor?: { pp: number; rank: number 
   const rank = Math.exp(Math.log(floor.rank) + b * (Math.log(pp) - Math.log(floor.pp)));
   return { rank: Math.max(floor.rank + 1, Math.round(rank)), exact: false };
 }
+
+/** For background jobs (the "who plays what" crawler): a GET with the app token. */
+export function appGet(path: string, signal?: AbortSignal): Promise<unknown> {
+  return apiGet(path, signal);
+}
+
+/** Whether osu! asked us to slow down right now (background jobs wait it out). */
+export function osuLimited(): boolean {
+  return Date.now() < limitedUntil;
+}

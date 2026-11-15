@@ -16,6 +16,7 @@ import {
 import { playerData } from "./account";
 import { getProfile } from "./patternStore";
 import { calculatePlay } from "./pp";
+import { comboKey, neighbourScores } from "./neighbors";
 import { discover } from "./service";
 
 /**
@@ -151,6 +152,9 @@ const RESULTS = 40;
 
 export async function recommend(sessionId: string | undefined, skip: ReadonlySet<number> = new Set(), askedMode?: Mode): Promise<RecommendResponse> {
   const { top, marks, mode, profile: player } = await playerData(sessionId, askedMode);
+  // What players with a top like this one play (Tillerino-style), 0 to 1 per map + mods.
+  const neighbours = neighbourScores(mode, player.id, top);
+  const neighbourOf = (hit: DiscoverHit) => neighbours.get(`${hit.beatmapId}:${comboKey(hit.mods)}`) ?? 0;
   const plays = [...top].sort((a, b) => b.pp - a.pp);
   // Map types (jump, stream, hybrid) exist for osu! (standard) only: the other modes get
   // one group, matched on pp range, mods and length.
@@ -285,7 +289,29 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
           offset = answer.nextOffset;
         }
       }
+      // The maps close players have with these mods, even when the farm sort ranks them
+      // too low to come up above.
+      const fromNeighbours = new Set(
+        [...neighbours.keys()].filter((key) => key.endsWith(`:${combo.key}`)).map((key) => Number(key.split(":")[0])),
+      );
+      if (fromNeighbours.size > 0) {
+        let offset = 0;
+        for (let page = 0; page < 3; page++) {
+          const answer = await discover(
+            { query: "", mode, styles: target.styles, mods: modRecord(mods), ppMin: ssMin, ppMax: ssMax, offset, sort: [{ key: "farm", dir: "desc" }], ranges: emptyRanges() },
+            undefined,
+            fromNeighbours,
+          );
+          for (const hit of answer.results) consider(hit, combo.share, sliceOf(hit.pp), target);
+          if (!answer.hasMore) break;
+          offset = answer.nextOffset;
+        }
+      }
     }
+  }
+
+  function sliceOf(pp: number): number {
+    return Math.max(0, Math.min(SLICES - 1, Math.floor((pp - ssMin) / Math.max(1, step))));
   }
 
   function consider(hit: DiscoverHit, comboShare: number, slice: number, target: (typeof plan)[number]): void {
@@ -294,7 +320,8 @@ export async function recommend(sessionId: string | undefined, skip: ReadonlySet
     const gain = ppGain(plays, hit.beatmapId, hit.pp * ratio);
     if (gain <= 0) return;
     const sim = similarity(hit, target);
-    const score = gain * (0.5 + hit.farm / 200) * (0.6 + 0.4 * comboShare) * (0.2 + 0.8 * sim);
+    // Maps that close players have in their top count up to three times as much.
+    const score = gain * (0.5 + hit.farm / 200) * (0.6 + 0.4 * comboShare) * (0.2 + 0.8 * sim) * (1 + 2 * neighbourOf(hit));
     const previous = picked.get(hit.beatmapId);
     if (!previous || previous.score < score) picked.set(hit.beatmapId, { ...hit, gain, score, slice, group: target.group, sim });
   }

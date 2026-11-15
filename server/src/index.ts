@@ -19,6 +19,7 @@ import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
 import { mapAudio } from "./audio";
 import { recommend } from "./recommend";
+import { neighbourStats, startNeighbourCrawler } from "./neighbors";
 import { avatarBytes, coverBytes, profileInsights } from "./profile";
 import { readStats, recordEvent, recordHit, recordLeave } from "./stats";
 import { catalogHealth, startCatalogueWarmer, warmerStatus } from "./ppDb";
@@ -74,7 +75,7 @@ function abortOnClose(reply: FastifyReply): AbortController {
 app.get("/api/health", async () => ({ ok: true as const, apiKeyConfigured: apiKeyConfigured() }));
 
 /** Requests to the pp catalogue mirror, for troubleshooting. */
-app.get("/api/health/catalog", async () => ({ ...catalogHealth(), warmer: warmerStatus() }));
+app.get("/api/health/catalog", async () => ({ ...catalogHealth(), warmer: warmerStatus(), whoPlays: neighbourStats() }));
 
 /** Progress of the full catalogue scan. */
 app.get("/api/scan", async () => scanStatus());
@@ -441,5 +442,6 @@ await app.listen({ port, host });
 // The old index format kept whole ranges with tags and covers; bands replace it.
 void rm(join(repoRoot, "cache", "pp-index"), { recursive: true, force: true }).catch(() => undefined);
 warmFinderIndex();
+startNeighbourCrawler();
 startFullScan();
 startCatalogueWarmer();

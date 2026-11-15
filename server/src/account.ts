@@ -1,3 +1,4 @@
+import { addPlayer } from "./neighbors";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { rename, writeFile } from "node:fs/promises";
@@ -326,6 +327,7 @@ async function refreshTop(sessionId: string, session: Session, file: PlayerFile)
   file.profile = toProfile(me);
   file.top = toTop(scores);
   file.topAt = Date.now();
+  addPlayer(mode, session.userId, file.top);
   await savePlayer(session.userId, file);
 }
 
@@ -411,6 +413,7 @@ export async function playerData(
       apiGet<ApiScore[]>(`/users/${session.userId}/scores/best?mode=${pathMode(mode)}&limit=100`, access),
     ]);
     const entry = { profile: { ...toProfile(user), mode }, top: toTop(scores), at: Date.now() };
+    addPlayer(mode, session.userId, entry.top);
     file.modes = { ...(file.modes ?? {}), [mode]: entry };
     await savePlayer(session.userId, file);
     return { profile: entry.profile, top: entry.top, marks: file.marks, mode };

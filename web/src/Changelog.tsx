@@ -7,6 +7,51 @@ import { useI18n } from "./i18n";
  */
 export const CHANGELOG: { date: string; text: Partial<Record<Lang, string[]>> & { en: string[] } }[] = [
   {
+    date: "2026-11-15",
+    text: {
+      en: [
+        "Maps for you now also learns from what players like you play: the site collects the top plays of thousands of players (every rank, all 4 modes) and favours the maps that players with a top like yours (same maps, same mods, similar pp) have and you don't, still combined with your pp gain, farm score, mods, style and length.",
+        "Newly ranked maps that nobody has played yet keep coming through the usual method.",
+      ],
+      fr: [
+        "Maps for you apprend aussi de ce que jouent les joueurs comme vous : le site collecte les top plays de milliers de joueurs (tous les rangs, les 4 modes) et met en avant les maps que les joueurs au top proche du vôtre (mêmes maps, mêmes mods, pp proches) ont et que vous n'avez pas, toujours avec votre gain de pp, le score farm, vos mods, votre style et la durée.",
+        "Les maps tout juste ranked, que personne n'a encore jouées, continuent d'arriver par la méthode habituelle.",
+      ],
+      es: [
+        "Mapas para ti ahora también aprende de lo que juegan jugadores como tú: el sitio recopila las mejores jugadas de miles de jugadores (todos los rangos, los 4 modos) y da prioridad a los mapas que tienen los jugadores con un top parecido al tuyo (mismos mapas, mismos mods, pp similares) y tú no, siempre junto con tu ganancia de pp, el índice farm, tus mods, tu estilo y la duración.",
+        "Los mapas recién rankeados que nadie ha jugado todavía siguen llegando por el método habitual.",
+      ],
+      de: [
+        "Maps für dich lernt jetzt auch davon, was Spieler wie du spielen: Die Seite sammelt die Top-Plays tausender Spieler (alle Ränge, alle 4 Modi) und bevorzugt Maps, die Spieler mit einer ähnlichen Top (gleiche Maps, gleiche Mods, ähnliche pp) haben und du nicht, weiterhin kombiniert mit deinem pp-Gewinn, Farm-Wert, deinen Mods, deinem Stil und der Länge.",
+        "Neu gerankte Maps, die noch niemand gespielt hat, kommen weiterhin über die bisherige Methode.",
+      ],
+      pt: [
+        "Mapas para você agora também aprende com o que jogam jogadores como você: o site coleta as melhores jogadas de milhares de jogadores (todos os ranks, os 4 modos) e prioriza os mapas que jogadores com um top parecido com o seu (mesmos mapas, mesmos mods, pp parecidos) têm e você não, sempre junto com seu ganho de pp, índice farm, seus mods, seu estilo e a duração.",
+        "Mapas recém-rankeados que ninguém jogou ainda continuam chegando pelo método habitual.",
+      ],
+      pl: [
+        "Mapy dla ciebie uczą się teraz także z tego, w co grają gracze podobni do ciebie: strona zbiera najlepsze wyniki tysięcy graczy (wszystkie rangi, 4 tryby) i promuje mapy, które mają gracze o podobnym topie (te same mapy, te same mody, podobne pp), a ty nie, nadal razem z zyskiem pp, wskaźnikiem farmu, twoimi modami, stylem i długością.",
+        "Nowo zrankowane mapy, w które nikt jeszcze nie grał, nadal trafiają przez dotychczasową metodę.",
+      ],
+      ru: [
+        "Карты для вас теперь учатся и на том, во что играют похожие на вас игроки: сайт собирает лучшие результаты тысяч игроков (все ранги, все 4 режима) и выдвигает карты, которые есть в топе у игроков с похожим топом (те же карты, те же моды, близкие pp), а у вас нет — по-прежнему с учётом прироста pp, фарм-индекса, ваших модов, стиля и длины.",
+        "Новые рейтинговые карты, в которые ещё никто не играл, по-прежнему подбираются обычным способом.",
+      ],
+      ko: [
+        "추천 맵이 이제 당신과 비슷한 플레이어들이 하는 맵에서도 배웁니다: 사이트가 수천 명의 최고 기록(모든 순위, 4개 모드)을 모아, 당신과 비슷한 탑(같은 맵, 같은 모드, 비슷한 pp)을 가진 플레이어들은 있고 당신은 없는 맵을 우선합니다. pp 증가, 파밍 지수, 모드, 스타일, 길이도 계속 반영됩니다.",
+        "아직 아무도 플레이하지 않은 새로 랭크된 맵은 기존 방식으로 계속 추천됩니다.",
+      ],
+      ja: [
+        "おすすめマップが、あなたに似たプレイヤーが遊ぶマップからも学ぶようになりました：数千人のトッププレイ（全順位・4モード）を集め、あなたに近いトップ（同じマップ、同じMod、近いpp）を持つプレイヤーにはあってあなたにはないマップを優先します。pp の伸び、ファーム指数、Mod、スタイル、長さも引き続き考慮します。",
+        "まだ誰もプレイしていない新しいランクマップは、これまでの方法で引き続き表示されます。",
+      ],
+      zh: [
+        "为你推荐现在也会参考和你相似的玩家在玩什么：网站收集数千名玩家的最佳成绩（所有排名、4 个模式），优先推荐与你 BP 相近（相同谱面、相同 Mod、相近 pp）的玩家有而你没有的谱面，同时继续结合你的 pp 增长、刷分指数、Mod、风格和时长。",
+        "还没人玩过的新 Ranked 谱面仍按原来的方式推荐。",
+      ],
+    },
+  },
+  {
     date: "2026-11-14",
     text: {
       en: [

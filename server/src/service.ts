@@ -269,7 +269,11 @@ async function loadCombos(input: DiscoverRequest, combos: string[]) {
   return { maps, limitedFrom, catalog: complete ? null : { loaded, expected: Math.max(expected, loaded) } };
 }
 
-export async function discover(input: DiscoverRequest, signal?: AbortSignal): Promise<DiscoverResponse> {
+/**
+ * `only`: server-side only (Maps for you), keeps just these beatmap ids, e.g. the maps that
+ * players like the one asking have in their top.
+ */
+export async function discover(input: DiscoverRequest, signal?: AbortSignal, only?: ReadonlySet<number>): Promise<DiscoverResponse> {
   const osu = input.mode === "osu";
   const styleIgnored = !osu && input.styles.length > 0;
   const effective: DiscoverRequest = styleIgnored ? { ...input, styles: [] } : input;
@@ -285,6 +289,7 @@ export async function discover(input: DiscoverRequest, signal?: AbortSignal): Pr
   let pool: Candidate[] = [];
   for (const map of maps) {
     if (map.pp < effective.ppMin || map.pp > effective.ppMax) continue;
+    if (only && !only.has(map.beatmapId)) continue;
     if (query && !textMatches(query, [map.title, map.artist, map.creator, map.version])) continue;
     const ranges = effective.ranges;
     if (!inRange(map.stars, ranges.stars) || !inRange(map.bpm, ranges.bpm) || !inRange(map.ar, ranges.ar) || !inRange(map.lengthSeconds, ranges.length)) continue;
