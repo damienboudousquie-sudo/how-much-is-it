@@ -14,6 +14,8 @@ import { fetchBeatmapText } from "./beatmapCache";
 const DIR = join(repoRoot, "cache", "audio");
 const MAX_ARCHIVE = 80 * 1024 * 1024;
 const MAX_CACHE = 3 * 1024 * 1024 * 1024;
+/** A song is a few MB; a bigger deflated entry is broken or a zip bomb. */
+const MAX_SONG = 60 * 1024 * 1024;
 const SOURCES = [
   (setId: number) => `https://osu.direct/api/d/${setId}?noVideo=1`,
   (setId: number) => `https://catboy.best/d/${setId}n`,
@@ -69,8 +71,15 @@ function unzipOne(zip: Buffer, wanted: string): Buffer | null {
     if (zip.readUInt32LE(local) !== 0x04034b50) return null;
     const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
     const data = zip.subarray(start, start + size);
-    if (method === 0) return Buffer.from(data);
-    if (method === 8) return inflateRawSync(data);
+    if (method === 0) return data.length <= MAX_SONG ? Buffer.from(data) : null;
+    if (method === 8) {
+      try {
+        return inflateRawSync(data, { maxOutputLength: MAX_SONG });
+      } catch {
+        // Too big once inflated, or corrupt.
+        return null;
+      }
+    }
     return null;
   }
   return null;
@@ -109,7 +118,15 @@ async function trim(): Promise<void> {
   }
 }
 
-export async function mapAudio(beatmapId: number, setHint: number | null): Promise<{ bytes: Buffer; type: string }> {
+/**
+ * `mayDownload` is asked before a song that is neither on disk nor already being fetched is
+ * downloaded (a whole .osz, up to 80 MB): false answers 429 instead.
+ */
+export async function mapAudio(
+  beatmapId: number,
+  setHint: number | null,
+  mayDownload: () => boolean = () => true,
+): Promise<{ bytes: Buffer; type: string }> {
   const text = await fetchBeatmapText(beatmapId);
   const audioName = field(text, "AudioFilename");
   const setId = Number(field(text, "BeatmapSetID") ?? setHint ?? 0);
@@ -123,6 +140,7 @@ export async function mapAudio(beatmapId: number, setHint: number | null): Promi
 
   let pending = inflight.get(file);
   if (!pending) {
+    if (!mayDownload()) throw new AppError("rate_limited", "Too many new songs at once. Try again in a few minutes.", 429);
     pending = slot(async () => {
       const archive = await downloadArchive(setId);
       const song = unzipOne(archive, audioName);

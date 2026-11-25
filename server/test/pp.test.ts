@@ -11,7 +11,9 @@ const base = { mods: [] as string[], clockRate: null, accuracy: 100, combo: null
 describe("pp", () => {
   it("matches a frozen full-combo value within 0.01 pp", () => {
     const result = calculateFixture(bytes, base);
-    expect(result.score.pp).toBeCloseTo(20.24082184850346, 2);
+    // Frozen with @richardscull/rosu-pp-js 4.0.1-experimental.3 (rework with the Reading
+    // skill). Changing the pp library moves this value: update it on purpose, not by accident.
+    expect(result.score.pp).toBeCloseTo(19.739506351320628, 2);
     expect(result.stats.stars).toBeGreaterThan(0);
     expect(result.curve.map((point) => point.accuracy)).toEqual([100, 99, 98, 97, 95]);
     expect(result.curve[0]!.pp).toBeGreaterThanOrEqual(result.curve[4]!.pp);
