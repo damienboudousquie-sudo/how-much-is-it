@@ -1,8 +1,8 @@
 # PP map
 
-Outil local pour connaître le PP d'une beatmap osu!. Colle un lien ou un ID de difficulté, choisis les mods, et lis la courbe full combo ainsi qu'un score simulé. Le calcul tourne sur ta machine avec [rosu-pp](https://github.com/MaxOhn/rosu-pp) 4.0.1, calé sur le modèle lazer d'avril 2026, pour osu!, taiko, catch et mania.
+Le site [how-much-is-it.com](https://how-much-is-it.com) : le PP d'une beatmap osu! et des maps à farm. Colle un lien ou un ID de difficulté, choisis les mods, et lis la courbe full combo ainsi qu'un score simulé. Il tourne aussi en local (voir plus bas). Le calcul se fait sur le serveur avec un fork expérimental de [rosu-pp](https://github.com/MaxOhn/rosu-pp), `@richardscull/rosu-pp-js` 4.0.1-experimental.3, qui suit le dernier rework, skill Reading compris, pour osu!, taiko, catch et mania.
 
-osu! a ajouté le skill Reading le 3 juillet 2026. rosu-pp 4.0.1, et les bases publiques précalculées qui s'appuient dessus, ne l'incluent pas encore. Il n'existe pas de base officielle du PP actuel : l'API osu! ne publie pas le PP d'une map, seulement celui des scores. Sur Power of the Dragonflame [Uri's Extreme], un SS sans mod vaut environ 599 pp ici et environ 550 pp dans lazer.
+osu! a ajouté le skill Reading le 3 juillet 2026. rosu-pp 4.0.1 officiel, et les bases publiques précalculées qui s'appuient dessus, ne l'incluent pas encore : leurs valeurs peuvent donc s'écarter de celles du site. Il n'existe pas de base officielle du PP actuel : l'API osu! ne publie pas le PP d'une map, seulement celui des scores.
 
 ## Lancer
 

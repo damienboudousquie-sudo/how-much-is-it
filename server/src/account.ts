@@ -118,11 +118,20 @@ async function savePlayer(userId: number, file: PlayerFile): Promise<void> {
 /* ---------- OAuth ---------- */
 
 const pendingStates = new Map<string, number>();
+/** Sign-ins started and not finished; past this, the oldest are forgotten (a flood of /login). */
+const MAX_PENDING_STATES = 10_000;
+export const STATE_COOKIE = "hmi_oauth_state";
 
-export function loginRedirect(): string {
+/** Where to send the browser to sign in, and the state to keep in its cookie. */
+export function loginRedirect(): { url: string; state: string } {
   if (!loginConfigured()) throw new AppError("login_off", "Sign-in with osu! is not set up on this server.", 503);
   const now = Date.now();
   for (const [state, at] of pendingStates) if (now - at > STATE_TTL_MS) pendingStates.delete(state);
+  // Insertion order: the first keys are the oldest.
+  for (const state of pendingStates.keys()) {
+    if (pendingStates.size < MAX_PENDING_STATES) break;
+    pendingStates.delete(state);
+  }
   const state = randomBytes(16).toString("hex");
   pendingStates.set(state, now);
   const params = new URLSearchParams({
@@ -132,7 +141,7 @@ export function loginRedirect(): string {
     scope: "identify public",
     state,
   });
-  return `${AUTHORIZE_URL}?${params}`;
+  return { url: `${AUTHORIZE_URL}?${params}`, state };
 }
 
 interface TokenAnswer {
@@ -220,11 +229,16 @@ function pathMode(mode: Mode): string {
   return mode === "catch" ? "fruits" : mode;
 }
 
-/** Finishes the sign-in. Returns the new session id, to put in the cookie. */
-export async function completeLogin(code: string, state: string): Promise<string> {
+/**
+ * Finishes the sign-in. Returns the new session id, to put in the cookie. The state must
+ * also be the one this browser was given: otherwise someone could send a victim a callback
+ * link carrying their own code, and sign the victim in to the attacker's account.
+ */
+export async function completeLogin(code: string, state: string, browserState: string | undefined): Promise<string> {
   const at = pendingStates.get(state);
   pendingStates.delete(state);
   if (!at || Date.now() - at > STATE_TTL_MS) throw new AppError("login_failed", "This sign-in link expired. Try again.", 400);
+  if (browserState !== state) throw new AppError("login_failed", "This sign-in was started in another browser. Try again.", 400);
   const token = await tokenRequest({ grant_type: "authorization_code", code, redirect_uri: callbackUrl() });
   // No mode in the path: osu! answers with the player's main mode (and its stats).
   const me = await apiGet<ApiUser>("/me", token.access_token);
@@ -492,15 +506,36 @@ export async function setMarks(
   return { marks: file.marks, pins: file.pins };
 }
 
-/** Reads the session cookie from a Cookie header. */
-export function sessionFromCookie(header: string | undefined): string | undefined {
+/** Reads one cookie from a Cookie header. */
+export function readCookie(header: string | undefined, wanted: string): string | undefined {
   if (!header) return undefined;
   for (const part of header.split(";")) {
     const [name, ...rest] = part.trim().split("=");
-    if (name === SESSION_COOKIE) return decodeURIComponent(rest.join("="));
+    if (name !== wanted) continue;
+    try {
+      return decodeURIComponent(rest.join("="));
+    } catch {
+      return undefined;
+    }
   }
   return undefined;
 }
+
+/** Reads the session cookie from a Cookie header. */
+export function sessionFromCookie(header: string | undefined): string | undefined {
+  return readCookie(header, SESSION_COOKIE);
+}
+
+/**
+ * Ties a sign-in to the browser that started it. SameSite=Lax: osu! sends the browser back
+ * with a top-level GET, which carries Lax cookies. Path limited to the callback.
+ */
+export function stateCookie(state: string, maxAgeSeconds: number): string {
+  const secure = publicUrl().startsWith("https://") ? "; Secure" : "";
+  return `${STATE_COOKIE}=${encodeURIComponent(state)}; Path=/api/auth/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
+}
+
+export const STATE_MAX_AGE = STATE_TTL_MS / 1000;
 
 export function sessionCookie(value: string, maxAgeSeconds: number): string {
   const secure = publicUrl().startsWith("https://") ? "; Secure" : "";

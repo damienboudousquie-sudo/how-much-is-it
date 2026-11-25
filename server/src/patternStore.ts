@@ -118,9 +118,24 @@ export function knownCount(): number {
   return load().size;
 }
 
+/**
+ * Packing 150 000 maps takes seconds of CPU, and the route that serves it is public: the
+ * result is kept a while and concurrent callers share the same work.
+ */
+const EXPORT_TTL_MS = 15 * 60 * 1000;
+let packed: { at: number; body: Promise<Buffer> } | null = null;
+
 /** The whole store, compact and gzipped: what goes into data/patterns-seed.json.gz. */
-export async function exportPacked(): Promise<Buffer> {
-  return gzipAsync(JSON.stringify(encode(load())), { level: 9 });
+export function exportPacked(): Promise<Buffer> {
+  if (packed && Date.now() - packed.at < EXPORT_TTL_MS) return packed.body;
+  const body = gzipAsync(JSON.stringify(encode(load())), { level: 9 });
+  const entry = { at: Date.now(), body };
+  packed = entry;
+  // A failed export is not kept: the next call tries again.
+  body.catch(() => {
+    if (packed === entry) packed = null;
+  });
+  return body;
 }
 
 function scheduleSave(): void {

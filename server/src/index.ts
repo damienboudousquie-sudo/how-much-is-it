@@ -11,9 +11,25 @@ import { apiMode, InputError, type Mode } from "@osu-pp/shared";
 import { parseCalculate, parseDiscover, parseLookup } from "./body";
 import { host, port, repoRoot } from "./env";
 import { AppError } from "./errors";
+import { visitor } from "./clientIp";
+import { createLimiter } from "./rateLimit";
 import { currentUser, isAdmin } from "./account";
 import { addFeedback, deleteFeedback, listFeedback, updateFeedback } from "./feedback";
-import { completeLogin, loginErrorCookie, loginRedirect, logout, me, SESSION_MAX_AGE, sessionCookie, sessionFromCookie, setMarks } from "./account";
+import {
+  completeLogin,
+  loginErrorCookie,
+  loginRedirect,
+  logout,
+  me,
+  readCookie,
+  SESSION_MAX_AGE,
+  sessionCookie,
+  sessionFromCookie,
+  setMarks,
+  STATE_COOKIE,
+  STATE_MAX_AGE,
+  stateCookie,
+} from "./account";
 import { bindLang, tr } from "./locale";
 import { exportPacked } from "./patternStore";
 import { fetchBeatmapText } from "./beatmapCache";
@@ -146,6 +162,12 @@ app.get("/api/osu/:id", async (request, reply) => {
   }
 });
 
+/**
+ * Songs not on disk yet cost a whole .osz from the mirrors: 30 per visitor per 10 minutes
+ * is far more than anyone listens to, and stops a script walking every map id.
+ */
+const audioDownloads = createLimiter(30, 10 * 60 * 1000);
+
 /** The full song of a map (pulled from its .osz), for the auto player. */
 app.get("/api/audio/:id", async (request, reply) => {
   const id = Number((request.params as { id?: string }).id);
@@ -155,7 +177,8 @@ app.get("/api/audio/:id", async (request, reply) => {
     return;
   }
   try {
-    const { bytes, type } = await mapAudio(id, Number.isInteger(hint) && hint > 0 ? hint : null);
+    const ip = clientIp(request);
+    const { bytes, type } = await mapAudio(id, Number.isInteger(hint) && hint > 0 ? hint : null, () => audioDownloads(ip));
     reply.header("content-type", type).header("cache-control", "public, max-age=604800");
     return reply.send(bytes);
   } catch (error) {
@@ -178,6 +201,11 @@ app.post("/api/prefetch", async (request, reply) => {
  * one-time code never leaks through the Referer header.
  */
 app.addHook("onSend", async (request, reply, payload) => {
+  // Every answer: no type guessing (the .osu and audio routes serve files from mirrors),
+  // no framing by other sites, and only the origin in the Referer sent elsewhere.
+  reply.header("x-content-type-options", "nosniff");
+  reply.header("x-frame-options", "SAMEORIGIN");
+  reply.header("referrer-policy", "strict-origin-when-cross-origin");
   if (request.url.startsWith("/api/")) reply.header("x-robots-tag", "noindex, nofollow");
   if (request.url.startsWith("/api/auth/")) {
     reply.header("cache-control", "no-store");
@@ -188,7 +216,9 @@ app.addHook("onSend", async (request, reply, payload) => {
 
 app.get("/api/auth/login", async (_request, reply) => {
   try {
-    return reply.redirect(loginRedirect());
+    const { url, state } = loginRedirect();
+    reply.header("set-cookie", stateCookie(state, STATE_MAX_AGE));
+    return reply.redirect(url);
   } catch (error) {
     sendError(reply, error);
   }
@@ -196,19 +226,20 @@ app.get("/api/auth/login", async (_request, reply) => {
 
 app.get("/api/auth/callback", async (request, reply) => {
   const params = request.query as { code?: unknown; state?: unknown; error?: unknown };
+  const clearState = stateCookie("", 0);
   if (typeof params.code !== "string" || typeof params.state !== "string") {
-    reply.header("set-cookie", loginErrorCookie(typeof params.error === "string" ? `osu!: ${params.error}` : "Sign-in cancelled."));
+    reply.header("set-cookie", [clearState, loginErrorCookie(typeof params.error === "string" ? `osu!: ${params.error}` : "Sign-in cancelled.")]);
     return reply.redirect("/");
   }
   try {
-    const session = await completeLogin(params.code, params.state);
-    reply.header("set-cookie", sessionCookie(session, SESSION_MAX_AGE));
+    const session = await completeLogin(params.code, params.state, readCookie(request.headers.cookie, STATE_COOKIE));
+    reply.header("set-cookie", [clearState, sessionCookie(session, SESSION_MAX_AGE)]);
     // 303: the browser lands on the home page with a clean address (no code in it).
     return reply.redirect("/", 303);
   } catch (error) {
     request.log.warn({ err: error }, "osu! sign-in failed");
     const message = error instanceof Error ? error.message : "Sign-in failed.";
-    reply.header("set-cookie", loginErrorCookie(message));
+    reply.header("set-cookie", [clearState, loginErrorCookie(message)]);
     return reply.redirect("/");
   }
 });
@@ -288,12 +319,12 @@ app.get("/api/avatar/:id", async (request, reply) => {
 /* ---------- visit stats (owner only) ---------- */
 
 function hitInput(request: { body: unknown; headers: Record<string, string | string[] | undefined>; ip: string }) {
-  const country = request.headers["cf-ipcountry"];
+  const { ip, country } = visitor(request.headers, request.ip);
   return {
     body: request.body,
-    ip: clientIp(request),
+    ip,
     userAgent: String(request.headers["user-agent"] ?? ""),
-    country: typeof country === "string" ? country.toUpperCase() : undefined,
+    country,
     lang: String(request.headers["x-lang"] ?? ""),
     host: String(request.headers.host ?? ""),
     signedIn: currentUser(sessionFromCookie(request.headers.cookie as string | undefined)) != null,
@@ -328,9 +359,7 @@ app.get("/api/stats", async (request, reply) => {
 /* ---------- feedback ---------- */
 
 function clientIp(request: { headers: Record<string, string | string[] | undefined>; ip: string }): string {
-  const header = request.headers["cf-connecting-ip"] ?? request.headers["x-forwarded-for"];
-  const value = Array.isArray(header) ? header[0] : header;
-  return (value ?? request.ip).split(",")[0].trim();
+  return visitor(request.headers, request.ip).ip;
 }
 
 function requireAdmin(cookie: string | undefined): void {
